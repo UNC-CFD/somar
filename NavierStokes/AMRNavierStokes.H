@@ -1,3 +1,25 @@
+/*******************************************************************************
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
+ ******************************************************************************/
 #ifndef _AMRNAVIERSTOKES_H_
 #define _AMRNAVIERSTOKES_H_
 
@@ -549,8 +571,11 @@ protected:
     void syncSingleGridDiagnostics ();
     void syncTermDiagnostics ();
 
-    // Provides syncing with LES code
-    void syncWithLES ();
+    // Provides syncing with a subgrid scale model.
+    // This function does nothing by default. Feel free to add whatever code you
+    // like, but future versions of SOMAR will use this function to update the
+    // stress tensor via LES.
+    void syncWithSGS ();
 
 
     // AMRNavierStokesBasics.cpp -----------------------------------------------

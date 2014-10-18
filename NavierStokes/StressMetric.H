@@ -1,12 +1,28 @@
 /*******************************************************************************
- *    FILE: StressMetric.H
- *    DESC: Creates J*T^{i j} for viscous solves.
- *    DATE: Wed 6 Aug 2014 10:58 AM EDT
- *    MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
-
 #ifndef __StressMetric_H__INCLUDED__
 #define __StressMetric_H__INCLUDED__
+
 
 // To use a custom stress tensor, we override Jg^{i,j} in the viscous solver's
 // elliptic operators. By defining USE_STRESSMETRIC, all of the needed code
@@ -22,9 +38,12 @@
 // #define USE_STRESSMETRIC
 #ifdef USE_STRESSMETRIC
 
+
 #include "GeoSourceInterface.H"
 
-
+// -----------------------------------------------------------------------------
+// Creates J*T^{i j} for viscous solves.
+// -----------------------------------------------------------------------------
 class StressMetric: public FillJgupInterface
 {
 public:
