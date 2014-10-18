@@ -1,0 +1,93 @@
+#include "CONSTANTS.H"
+
+#define SMALLNUMBER 1.0d-9
+
+      subroutine RiemannSolver (
+     &     CHF_FRA[Wgdnv],
+     &     CHF_CONST_FRA[WLeft],
+     &     CHF_CONST_FRA[WRight],
+     &     CHF_CONST_FRA1[advVel],
+     &     CHF_CONST_INT[idir],
+     &     CHF_BOX[box])
+
+      integer CHF_AUTODECL[i]
+      integer n
+      real_t sl,sr
+      real_t so
+      real_t ustar
+
+      do n = 0, CHF_NCOMP[WLeft]-1
+
+         CHF_AUTOMULTIDO[box; i]
+            sl    =  WLeft(CHF_AUTOIX[i],n)
+            sr    = WRight(CHF_AUTOIX[i],n)
+            ustar = advVel(CHF_AUTOIX[i])
+
+            if (ustar .gt. zero) then
+               so = sl
+            else
+               so = sr
+            endif
+
+            if (abs(ustar) .lt. SMALLNUMBER) then
+               so = half*(sl+sr)
+            endif
+
+            Wgdnv(CHF_AUTOIX[i], n) = so
+
+         CHF_ENDDO
+      end do
+
+      return
+      end
+
+
+      subroutine AvgStates (
+     &     CHF_FRA[Wgdnv],
+     &     CHF_CONST_FRA[WLeft],
+     &     CHF_CONST_FRA[WRight],
+     &     CHF_CONST_INT[idir],
+     &     CHF_BOX[box])
+
+      integer CHF_AUTODECL[i]
+      integer n
+      real_t sl,sr
+
+      do n = 0, CHF_NCOMP[WLeft]-1
+         CHF_AUTOMULTIDO[box; i]
+            sl =  WLeft(CHF_AUTOIX[i],n)
+            sr = WRight(CHF_AUTOIX[i],n)
+            Wgdnv(CHF_AUTOIX[i], n) = half*(sl+sr)
+         CHF_ENDDO
+      end do
+
+      return
+      end
+
+
+      subroutine QuasilinearUpdateF (
+     &    CHF_FRA[AdWdx],
+     &    CHF_CONST_FRA[WHalf],
+     &    CHF_CONST_FRA1[cellVel],
+     &    CHF_CONST_REAL[scale],
+     &    CHF_CONST_INT[idir],
+     &    CHF_BOX[box])
+
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii;jj;kk]
+      integer n
+
+      CHF_DTERM[
+      ii = CHF_ID(idir,0);
+      jj = CHF_ID(idir,1);
+      kk = CHF_ID(idir,2)]
+
+      do n=0, CHF_NCOMP[AdWdx]-1
+        CHF_MULTIDO[box;i;j;k]
+          AdWdx(CHF_IX[i;j;k],n) = scale * cellVel(CHF_IX[i;j;k]) *
+     &        (WHalf(CHF_IX[i+ii;j+jj;k+kk],n) - WHalf(CHF_IX[i;j;k],n))
+        CHF_ENDDO
+      end do
+
+      return
+      end
