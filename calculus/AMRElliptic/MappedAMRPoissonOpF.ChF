@@ -24,7 +24,6 @@ c*******************************************************************************
 
 
 C     -----------------------------------------------------------------
-C     subroutine SUBTRACTOP
 C     Performs sub = a1 - a2.
 C     The OP stands for out of place, not operation.
 C
@@ -56,7 +55,6 @@ C     -----------------------------------------------------------------
 
 
 C     -----------------------------------------------------------------
-C     subroutine AXBYIP
 C     Performs lhs = alpha*phi + beta*lhs.
 C     The IP stands for in place.
 C     -----------------------------------------------------------------
@@ -86,7 +84,7 @@ C     -----------------------------------------------------------------
 
 
 C     ------------------------------------------------------------------
-C     subroutine FILLMAPPEDLAPDIAG*D
+C     FILLMAPPEDLAPDIAG*D
 C     Computes the diagonal matrix elements for the mapped Laplacian
 C     ------------------------------------------------------------------
       subroutine FILLMAPPEDLAPDIAG1D (
@@ -277,7 +275,6 @@ C     ------------------------------------------------------------------
 
 
 C     -----------------------------------------------------------------
-C     subroutine DIAGPRECOND
 C     preconditioner -- phi = rhs / (diag of op matrix)
 C
 C     Warning: phi, rhs must have the same number
@@ -331,7 +328,6 @@ C     ------------------------------------------------------------------
 
 
 C     -----------------------------------------------------------------
-C     subroutine MAPPEDGETFLUX
 C     Computes the fluxes at faces between valid cells of phi.
 C       flux^a = J g^{a b} D_b[phi]
 C     ------------------------------------------------------------------
@@ -431,7 +427,6 @@ C     ------------------------------------------------------------------
 
 
 C     -----------------------------------------------------------------
-C     subroutine MAPPEDGETFLATFLUX2D
 C     Computes the fluxes at faces between valid cells of phi.
 C       flux^a = J g^{a a} D_a[phi] (a = x-dir only)
 C     ------------------------------------------------------------------
@@ -496,7 +491,6 @@ C     ------------------------------------------------------------------
 
 
 C     -----------------------------------------------------------------
-C     subroutine MAPPEDGETFLATFLUX3D
 C     Computes the fluxes at faces between valid cells of phi.
 C       flux^a = J g^{a b} D_b[phi] (b = horizontal dirs only)
 C     ------------------------------------------------------------------

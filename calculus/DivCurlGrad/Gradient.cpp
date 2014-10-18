@@ -1,3 +1,25 @@
+/*******************************************************************************
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
+ ******************************************************************************/
 #include "Gradient.H"
 #include "DivCurlGradF_F.H"
 #include "Mask.H"
@@ -12,19 +34,15 @@
 #include "Constants.H"
 
 
-// You should leave this off. I just didn't want to erase the old
-// code until I'm sure the new code isn't buggy.
+// You should leave these undefined. They exist for debugging purposes.
 //
 // Old method: Handle all corner ghosts the same.
 // New method: Handle domain corners specially and treat all exchange
 //             ghosts the same.
-//
 // #define USE_OLD_EXTRAP
-
-
+//
 // With this defined, the CC gradient functions will use a smaller stencil
 // that do not require corner cells.
-//
 // #define USE_SIMPLE_STENCIL
 
 
