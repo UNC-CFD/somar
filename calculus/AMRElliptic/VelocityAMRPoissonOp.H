@@ -1,11 +1,31 @@
 /*******************************************************************************
- *  FILE: VelocityAMRPoissonOp.H
- *  DESC: Operator for solving (alpha I + beta*Laplacian)(phi) = rho over an
- *        AMR hierarchy in mapped coordiantes.
- *  DATE: Some time around Thu 24 May 2012, I think.
- *  MAIL: santilli@physics.unc.edu
- *  NOTE: This is a rework of VelocityAMRPoissonOp in Chombo's AMRINS example.
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
+
+// This is a rework of code found in the Chombo library. While these functions
+// have been reproduced for ease of modification, some of these functions may
+// not have been altered at all. To that end, you can find Chombo's copyright
+// file at somar/Chombo/Copyright.txt.
+
 #ifndef __VELOCITYAMRPOISSONOP_H__INCLUDED__
 #define __VELOCITYAMRPOISSONOP_H__INCLUDED__
 

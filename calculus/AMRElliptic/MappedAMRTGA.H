@@ -1,20 +1,34 @@
 /*******************************************************************************
- *    FILE: MappedAMRTGA.H
- *    DESC: Like Chombo's MappedAMRTGA, but allows for anisotropic refinement.
- *    DATE: Fri 14 Jun 2013 11:13:00 PM EDT
- *    MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
+
+// This is a rework of code found in the Chombo library. While these functions
+// have been reproduced for ease of modification, some of these functions may
+// not have been altered at all. To that end, you can find Chombo's copyright
+// file at somar/Chombo/Copyright.txt.
 
 #ifndef __MappedAMRTGA_H__INCLUDED__
 #define __MappedAMRTGA_H__INCLUDED__
 
-// #include <cmath>
-// #include <cstdlib>
-// #include <cstdio>
-// #include <iostream>
-// #include <iomanip>
-// #include <fstream>
-// #include <string>
 #include "MappedAMRMultiGrid.H"
 class DataIndex;
 
@@ -25,6 +39,8 @@ class DataIndex;
 //! alpha A(x) phi + beta div B(x) grad phi = rho.
 //! MappedAMRTGA needs to reset the constants alpha and beta often.
 //! \tparam T The LevelData class that holds solution data for the operator.
+//
+// Like Chombo's MappedAMRTGA, but allows for anisotropic refinement.
 template <class T>
 class MappedTGAHelmOp : public MappedAMRLevelOp<T> {
 public:
