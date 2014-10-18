@@ -1,5 +1,27 @@
-#ifndef __PHYSBCUTIL_HPP__INCLUDED__
-#define __PHYSBCUTIL_HPP__INCLUDED__
+/*******************************************************************************
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
+ ******************************************************************************/
+#ifndef __PHYSBCUTIL_H__INCLUDED__
+#define __PHYSBCUTIL_H__INCLUDED__
 
 #include "EllipticBCInterface.H"
 #include "LevelGeometry.H"
@@ -11,7 +33,7 @@
 // Encapsulates all physical BC's for mapped AMRINS solves.
 //
 // This class is designed to contain all the information needed to specify all
-// physical BCs needed for the AMRINS code. This includes BC's for velocity,
+// physical BCs needed by the AMR code. This includes BC's for velocity,
 // pressures, and scalars. While basic solid-wall BCs are coded in to this
 // class, the idea is that for a more complicated set of physical boundary
 // conditions (inflow, etc), a problem-dependent class will be derived from this
@@ -125,7 +147,7 @@ public:
 
     // Sponge layer functions --------------------------------------------------
 
-    // Simple accessor
+    // Sets the sponge ramp profile. This is a mapping [0,1] -> [0,1].
     inline static bool useSpongeLayer ();
 
     // Default is a linear increase as a_ratio approaches unity.
@@ -335,5 +357,5 @@ inline Real PhysBCUtil::spongeLayerRamp (Real a_ratio) const
 }
 
 
-#endif //!__PHYSBCUTIL_HPP__INCLUDED__
+#endif //!__PHYSBCUTIL_H__INCLUDED__
 

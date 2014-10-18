@@ -1,8 +1,24 @@
 /*******************************************************************************
- *    FILE: HorizConvBCUtil.H
- *    DESC: Horizontal convection problem a la Scotti & White.
- *    DATE: Wed 09 Apr 2014 10:37:56 AM EDT
- *    MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
 #ifndef __HorizConvBCUtil_H__INCLUDED__
 #define __HorizConvBCUtil_H__INCLUDED__
@@ -10,6 +26,9 @@
 #include "PhysBCUtil.H"
 
 
+// -----------------------------------------------------------------------------
+// Horizontal convection problem a la Scotti & White.
+// -----------------------------------------------------------------------------
 class HorizConvBCUtil: public PhysBCUtil
 {
 public:
@@ -25,17 +44,12 @@ public:
 
     // Fills a FAB with the initial scalars
     virtual void setScalarIC (FArrayBox&           a_scalarFAB,
-		              const int            a_scalarComp,
-			      const LevelGeometry& a_levGeo,
-			      const DataIndex&     a_di) const;
-
-    // Velocity BCs ------------------------------------------------------------
+                              const int            a_scalarComp,
+                              const LevelGeometry& a_levGeo,
+                              const DataIndex&     a_di) const;
 
     // Used in single-compoent velocity TGA solves
     virtual BCMethodHolder viscousSolveFuncBC (int a_dir) const;
-
-
-    // Scalar BCs --------------------------------------------------------------
 
     // used in scalar TGA solves
     virtual BCMethodHolder diffusiveSolveFuncBC () const;
@@ -45,9 +59,7 @@ public:
 
 
 protected:
-    // The basic BC functions --------------------------------------------------
-
-    /// Sets physical BCs on velocities
+    // Sets physical BCs on velocities
     virtual BCMethodHolder basicVelFuncBC (int a_veldir, bool a_isViscous) const;
 };
 
