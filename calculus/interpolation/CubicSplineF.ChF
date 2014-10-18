@@ -1,0 +1,87 @@
+c ----------------------------------------------------------------
+c Computes the second derivative at each node, x, needed to
+c construct a set of 1D cubic splines.
+c
+c lofbc and hifbc contains the desired first derivatives at the
+c boundaries. If these are set greater than 1e30, then natural
+c splines (zero second derivative) will be created.
+c
+c u is a workspace vector that must be >= size of f.
+c All other vectors must be the same size.
+c
+c This method was shamelessly taken from the Numerical Recipes
+c book. It solves the following tridiagonal problem
+c   dxl * f''_{i-1} + 2(dxl+dxr) * f''_{i} + dxr * f''{i+1}
+c     = 6 * (dfr/dxr - dfl/dxl)
+c for the f'' values where
+c   dxl = x_{i  } - x_{i-1},
+c   dxr = x_{i+1} - x_{i  },
+c   dfl = f_{i  } - f_{i-1}, and
+c   dfr = f_{i+1} - f_{i  }.
+c ----------------------------------------------------------------
+      subroutine CubicSpline_SolveSecondDeriv (
+     &      CHF_VR[d2f],
+     &      CHF_CONST_VR[x],
+     &      CHF_CONST_VR[f],
+     &      CHF_CONST_REAL[lofbc],
+     &      CHF_CONST_REAL[hifbc],
+     &      CHF_VR[u])
+
+      ! Declare variables
+      REAL_T p, sig, dxl, dxr, dfl, dfr
+      integer n, nmax
+      integer i
+
+      ! Lo end BC
+      i = 0
+      if (lofbc .gt. .99e30) then
+        ! Natural spline
+        u(i) = 0.0
+        d2f(i) = 0.0
+      else
+        ! Use the first derivative BC
+        dxr = x(i+1) - x(i)
+        dfr = f(i+1) - f(i)
+
+        u(i) = (3.0/dxr)*(dfr/dxr - lofbc)
+        d2f(i) = -0.5
+      endif
+
+      ! Decomposition loop of tridiagonal solve
+      do i = 1, ixhi0-1
+        dxl = x(i) - x(i-1)
+        dxr = x(i+1) - x(i)
+
+        dfl = f(i) - f(i-1)
+        dfr = f(i+1) - f(i)
+
+        sig = dxl / (dxr + dxl)
+        p = sig * d2f(i-1) + 2.0
+        d2f(i) = (sig - 1.0) / p
+
+        u(i) = (6.0*(dfr/dxr-dfl/dxl)/(dxr+dxl) - sig*u(i-1)) / p
+      enddo
+
+      ! Hi end BC
+      i = ixhi0
+      if (hifbc .gt. .99e30) then
+        ! Natural spline
+        u(i) = 0.0    ! un
+        d2f(i) = 0.0  ! qn
+      else
+        ! Use the first derivative BC
+        dxl = x(i) - x(i-1)
+        dfl = f(i) - f(i-1)
+
+        u(i) = (3.0/dxl)*(hifbc - dfl/dxl)   ! un
+        d2f(i) = 0.5                         ! qn
+      endif
+
+      ! Forward substitution loop of tridiagonal solve
+      d2f(i) = (u(i) - d2f(i)*u(i-1)) / (d2f(i) * d2f(i-1) + 1.0)
+      do i = ixhi0-1, 0, -1
+        d2f(i) = d2f(i)*d2f(i+1) + u(i)
+      enddo
+
+      return
+      end

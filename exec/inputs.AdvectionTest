@@ -1,0 +1,113 @@
+ibc.problem = 0                # 0 = Advection test
+amr.verbosity = 2              # [0]
+amr.gravityMethod = 0          # [1]   0 = none, 1 = explicit, 2 = implicit
+ibc.useBackgroundScalar = 0
+
+# amr.restart_file = chkpt_000010.2d.hdf5
+
+### Coordinate map
+geometry.coordMap = 0           # 0 = Cartesian, 1 = Twisted, 2 = Beam generator
+geometry.perturbations = 0.02 0.02
+
+### Base grid
+amr.length = 1.0 1.0
+amr.nx = 64 64
+amr.splitDirs = 1 1
+amr.isPeriodic = 1 1
+
+
+### Regridding
+amr.maxlevel = 2
+amr.refratio = 4 4
+amr.regrid_intervals = 1 1 1 1
+amr.tags_grow = 1                       # [0]
+amr.buoyancy_tag_tol = 0.04             # [0.0] 0 to turn off
+
+
+### Timestepping
+amr.final = 1.0
+amr.maxsteps = 100
+amr.cfl = 1.0
+amr.max_dt = 0.1
+amr.useSubcycling = 1         # [1]
+
+amr.limitDtViaViscosity = 0             [1]
+amr.limitDtViaDiffusion = 0             [1]
+amr.limitDtViaPressureGradient = 1      [0]
+amr.limitDtViaInternalWaveSpeed = 0     [0]
+
+
+# ### Viscosity / diffusion
+amr.scal_diffusion_coeffs = 0.000
+amr.viscosity = 0.00
+amr.viscous_solver_type = 1                 # [2] 0=backwardEuler, 1=CrankNicolson, 2=TGA
+amr.diffusive_solver_type = 1               # [2] 0=backwardEuler, 1=CrankNicolson, 2=TGA
+
+
+### Plot files
+plot.plot_interval = 1
+plot.checkpoint_interval = 100
+
+plot.writeDivergence = 1
+plot.writeLambda = 1
+plot.writePressure = 1
+plot.writeVorticity = 0
+plot.writeScalars = 1
+plot.writeScalarsMinusBackground = 0
+plot.writeProcIDs = 0
+plot.writeLevelIDs = 0
+plot.writeGrids = 0
+plot.writeGeometry = 0
+
+
+### Refluxing
+amr.advective_momentum_reflux = 0   # [0]
+amr.diffusive_momentum_reflux = 0   # [0]
+amr.implicit_momentum_reflux = 0    # [0]
+amr.advective_scalar_reflux = 0     # [0]
+amr.diffusive_scalar_reflux = 0     # [0]
+amr.implicit_scalar_reflux = 0      # [0]
+amr.advective_lambda_reflux = 0    # [0]
+
+
+### Advection scheme parameters
+# Velocity
+advection.normalPredOrderVel = 2               # [1] 0=CTU, 1=PLM, 2=PPM
+advection.useFourthOrderSlopesVel = 1          # [1]
+advection.useLimitingVel = 0                   # [0]
+advection.useHighOrderLimiterVel = 0           # [0]
+
+# Buoyancy
+advection.normalPredOrderScal = 2               # [1] 0=CTU, 1=PLM, 2=PPM
+advection.useFourthOrderSlopesScal = 1          # [1]
+advection.useLimitingScal = 1                   # [0]
+advection.useHighOrderLimiterScal = 1           # [0]
+
+
+### Projection & pressure initialization settings
+projection.isIncompressible = 0             # [1]
+
+
+### Solver settings
+AMRMG.eps = 1e-6                # [1e-6]    Solver tolerance
+AMRMG.relax_mode = 2            # [2]       0 = custom, 1 = Jacobi, 2 = looseGSRB, 3 = levelGSRB, 4 = overlapGSRB
+AMRMG.num_smooth_down    = 4    # [2]
+AMRMG.num_smooth_up      = 4    # [2]
+AMRMG.num_smooth_bottom  = 2    # [2]       MG bottom smoothing iters
+AMRMG.num_smooth_precond = 2    # [2]
+AMRMG.numMG = 1                 # [1]       1=V-cycle, 2=W-cycle, etc...
+AMRMG.imin = 5                  # [5]       Min number of V-cycles
+AMRMG.imax = 20                 # [20]      Max number of V-cycles
+AMRMG.hang = 1e-15              # [1e-15]
+AMRMG.normThresh = 1e-30        # [1e-30]
+AMRMG.maxDepth = -1             # [-1]      Max MG depth (-1=as deep as possible)
+AMRMG.verbosity = 3             # [3]
+
+bottom.eps = 1e-6               # [1e-6]    Solver tolerance
+bottom.reps = 1e-12             # [1e-12]   Solver relative tolerance
+bottom.imax = 80                # [80]      Max BiCGStab iterations
+bottom.numRestarts = 5          # [5]       Max BiCGStab restarts
+bottom.hang = 1e-15             # [1e-8]
+bottom.small = 1e-30            # [1e-30]
+bottom.normType = 2             # [2]
+bottom.verbosity = 0            # [3]

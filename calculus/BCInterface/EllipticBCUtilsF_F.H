@@ -1,0 +1,189 @@
+#ifndef _ELLIPTICBCUTILSF_F_H_
+#define _ELLIPTICBCUTILSF_F_H_
+
+#include "FORT_PROTO.H"
+#include "CH_Timer.H"
+#include "REAL.H"
+
+extern "C"
+{
+
+#ifndef GUARDELLIPTICCONSTDIRIBCGHOST 
+#define GUARDELLIPTICCONSTDIRIBCGHOST 
+// Prototype for Fortran procedure ELLIPTICCONSTDIRIBCGHOST ...
+//
+void FORTRAN_NAME( ELLIPTICCONSTDIRIBCGHOST ,ellipticconstdiribcghost )(
+      CHFp_FRA(state)
+      ,CHFp_BOX(ghostBox)
+      ,CHFp_CONST_REAL(bcval)
+      ,CHFp_CONST_INT(fdir)
+      ,CHFp_CONST_INT(fsign)
+      ,CHFp_CONST_INT(order) );
+
+#define FORT_ELLIPTICCONSTDIRIBCGHOST FORTRAN_NAME( inlineELLIPTICCONSTDIRIBCGHOST, inlineELLIPTICCONSTDIRIBCGHOST)
+#define FORTNT_ELLIPTICCONSTDIRIBCGHOST FORTRAN_NAME( ELLIPTICCONSTDIRIBCGHOST, ellipticconstdiribcghost)
+
+inline void FORTRAN_NAME(inlineELLIPTICCONSTDIRIBCGHOST, inlineELLIPTICCONSTDIRIBCGHOST)(
+      CHFp_FRA(state)
+      ,CHFp_BOX(ghostBox)
+      ,CHFp_CONST_REAL(bcval)
+      ,CHFp_CONST_INT(fdir)
+      ,CHFp_CONST_INT(fsign)
+      ,CHFp_CONST_INT(order) )
+{
+ CH_TIMELEAF("FORT_ELLIPTICCONSTDIRIBCGHOST");
+ FORTRAN_NAME( ELLIPTICCONSTDIRIBCGHOST ,ellipticconstdiribcghost )(
+      CHFt_FRA(state)
+      ,CHFt_BOX(ghostBox)
+      ,CHFt_CONST_REAL(bcval)
+      ,CHFt_CONST_INT(fdir)
+      ,CHFt_CONST_INT(fsign)
+      ,CHFt_CONST_INT(order) );
+}
+#endif  // GUARDELLIPTICCONSTDIRIBCGHOST 
+
+#ifndef GUARDELLIPTICEXTRAPBCGHOST 
+#define GUARDELLIPTICEXTRAPBCGHOST 
+// Prototype for Fortran procedure ELLIPTICEXTRAPBCGHOST ...
+//
+void FORTRAN_NAME( ELLIPTICEXTRAPBCGHOST ,ellipticextrapbcghost )(
+      CHFp_FRA(state)
+      ,CHFp_BOX(toRegion)
+      ,CHFp_CONST_INT(dir)
+      ,CHFp_CONST_INT(sidesign)
+      ,CHFp_CONST_INT(order) );
+
+#define FORT_ELLIPTICEXTRAPBCGHOST FORTRAN_NAME( inlineELLIPTICEXTRAPBCGHOST, inlineELLIPTICEXTRAPBCGHOST)
+#define FORTNT_ELLIPTICEXTRAPBCGHOST FORTRAN_NAME( ELLIPTICEXTRAPBCGHOST, ellipticextrapbcghost)
+
+inline void FORTRAN_NAME(inlineELLIPTICEXTRAPBCGHOST, inlineELLIPTICEXTRAPBCGHOST)(
+      CHFp_FRA(state)
+      ,CHFp_BOX(toRegion)
+      ,CHFp_CONST_INT(dir)
+      ,CHFp_CONST_INT(sidesign)
+      ,CHFp_CONST_INT(order) )
+{
+ CH_TIMELEAF("FORT_ELLIPTICEXTRAPBCGHOST");
+ FORTRAN_NAME( ELLIPTICEXTRAPBCGHOST ,ellipticextrapbcghost )(
+      CHFt_FRA(state)
+      ,CHFt_BOX(toRegion)
+      ,CHFt_CONST_INT(dir)
+      ,CHFt_CONST_INT(sidesign)
+      ,CHFt_CONST_INT(order) );
+}
+#endif  // GUARDELLIPTICEXTRAPBCGHOST 
+
+#ifndef GUARDELLIPTICEXTRAPBCCELLTOFACE 
+#define GUARDELLIPTICEXTRAPBCCELLTOFACE 
+// Prototype for Fortran procedure ELLIPTICEXTRAPBCCELLTOFACE ...
+//
+void FORTRAN_NAME( ELLIPTICEXTRAPBCCELLTOFACE ,ellipticextrapbccelltoface )(
+      CHFp_FRA(dest)
+      ,CHFp_CONST_FRA(src)
+      ,CHFp_BOX(toRegion)
+      ,CHFp_CONST_INT(dir)
+      ,CHFp_CONST_INT(sidesign)
+      ,CHFp_CONST_INT(order) );
+
+#define FORT_ELLIPTICEXTRAPBCCELLTOFACE FORTRAN_NAME( inlineELLIPTICEXTRAPBCCELLTOFACE, inlineELLIPTICEXTRAPBCCELLTOFACE)
+#define FORTNT_ELLIPTICEXTRAPBCCELLTOFACE FORTRAN_NAME( ELLIPTICEXTRAPBCCELLTOFACE, ellipticextrapbccelltoface)
+
+inline void FORTRAN_NAME(inlineELLIPTICEXTRAPBCCELLTOFACE, inlineELLIPTICEXTRAPBCCELLTOFACE)(
+      CHFp_FRA(dest)
+      ,CHFp_CONST_FRA(src)
+      ,CHFp_BOX(toRegion)
+      ,CHFp_CONST_INT(dir)
+      ,CHFp_CONST_INT(sidesign)
+      ,CHFp_CONST_INT(order) )
+{
+ CH_TIMELEAF("FORT_ELLIPTICEXTRAPBCCELLTOFACE");
+ FORTRAN_NAME( ELLIPTICEXTRAPBCCELLTOFACE ,ellipticextrapbccelltoface )(
+      CHFt_FRA(dest)
+      ,CHFt_CONST_FRA(src)
+      ,CHFt_BOX(toRegion)
+      ,CHFt_CONST_INT(dir)
+      ,CHFt_CONST_INT(sidesign)
+      ,CHFt_CONST_INT(order) );
+}
+#endif  // GUARDELLIPTICEXTRAPBCCELLTOFACE 
+
+#ifndef GUARDELLIPTICCONSTNEUMBCGHOST 
+#define GUARDELLIPTICCONSTNEUMBCGHOST 
+// Prototype for Fortran procedure ELLIPTICCONSTNEUMBCGHOST ...
+//
+void FORTRAN_NAME( ELLIPTICCONSTNEUMBCGHOST ,ellipticconstneumbcghost )(
+      CHFp_FRA(phi)
+      ,CHFp_CONST_FRA(extrap)
+      ,CHFp_CONST_FRA(nhat)
+      ,CHFp_BOX(ghostBox)
+      ,CHFp_CONST_REAL(bcval)
+      ,CHFp_CONST_INT(fdir)
+      ,CHFp_CONST_INT(fsign)
+      ,CHFp_CONST_REALVECT(dx) );
+
+#define FORT_ELLIPTICCONSTNEUMBCGHOST FORTRAN_NAME( inlineELLIPTICCONSTNEUMBCGHOST, inlineELLIPTICCONSTNEUMBCGHOST)
+#define FORTNT_ELLIPTICCONSTNEUMBCGHOST FORTRAN_NAME( ELLIPTICCONSTNEUMBCGHOST, ellipticconstneumbcghost)
+
+inline void FORTRAN_NAME(inlineELLIPTICCONSTNEUMBCGHOST, inlineELLIPTICCONSTNEUMBCGHOST)(
+      CHFp_FRA(phi)
+      ,CHFp_CONST_FRA(extrap)
+      ,CHFp_CONST_FRA(nhat)
+      ,CHFp_BOX(ghostBox)
+      ,CHFp_CONST_REAL(bcval)
+      ,CHFp_CONST_INT(fdir)
+      ,CHFp_CONST_INT(fsign)
+      ,CHFp_CONST_REALVECT(dx) )
+{
+ CH_TIMELEAF("FORT_ELLIPTICCONSTNEUMBCGHOST");
+ FORTRAN_NAME( ELLIPTICCONSTNEUMBCGHOST ,ellipticconstneumbcghost )(
+      CHFt_FRA(phi)
+      ,CHFt_CONST_FRA(extrap)
+      ,CHFt_CONST_FRA(nhat)
+      ,CHFt_BOX(ghostBox)
+      ,CHFt_CONST_REAL(bcval)
+      ,CHFt_CONST_INT(fdir)
+      ,CHFt_CONST_INT(fsign)
+      ,CHFt_CONST_REALVECT(dx) );
+}
+#endif  // GUARDELLIPTICCONSTNEUMBCGHOST 
+
+#ifndef GUARDELLIPTICCONSTNEUMBCGHOSTORTHO 
+#define GUARDELLIPTICCONSTNEUMBCGHOSTORTHO 
+// Prototype for Fortran procedure ELLIPTICCONSTNEUMBCGHOSTORTHO ...
+//
+void FORTRAN_NAME( ELLIPTICCONSTNEUMBCGHOSTORTHO ,ellipticconstneumbcghostortho )(
+      CHFp_FRA(phi)
+      ,CHFp_CONST_FRA1(nhat)
+      ,CHFp_BOX(ghostBox)
+      ,CHFp_CONST_REAL(bcval)
+      ,CHFp_CONST_INT(fdir)
+      ,CHFp_CONST_INT(fsign)
+      ,CHFp_CONST_REAL(dxDir) );
+
+#define FORT_ELLIPTICCONSTNEUMBCGHOSTORTHO FORTRAN_NAME( inlineELLIPTICCONSTNEUMBCGHOSTORTHO, inlineELLIPTICCONSTNEUMBCGHOSTORTHO)
+#define FORTNT_ELLIPTICCONSTNEUMBCGHOSTORTHO FORTRAN_NAME( ELLIPTICCONSTNEUMBCGHOSTORTHO, ellipticconstneumbcghostortho)
+
+inline void FORTRAN_NAME(inlineELLIPTICCONSTNEUMBCGHOSTORTHO, inlineELLIPTICCONSTNEUMBCGHOSTORTHO)(
+      CHFp_FRA(phi)
+      ,CHFp_CONST_FRA1(nhat)
+      ,CHFp_BOX(ghostBox)
+      ,CHFp_CONST_REAL(bcval)
+      ,CHFp_CONST_INT(fdir)
+      ,CHFp_CONST_INT(fsign)
+      ,CHFp_CONST_REAL(dxDir) )
+{
+ CH_TIMELEAF("FORT_ELLIPTICCONSTNEUMBCGHOSTORTHO");
+ FORTRAN_NAME( ELLIPTICCONSTNEUMBCGHOSTORTHO ,ellipticconstneumbcghostortho )(
+      CHFt_FRA(phi)
+      ,CHFt_CONST_FRA1(nhat)
+      ,CHFt_BOX(ghostBox)
+      ,CHFt_CONST_REAL(bcval)
+      ,CHFt_CONST_INT(fdir)
+      ,CHFt_CONST_INT(fsign)
+      ,CHFt_CONST_REAL(dxDir) );
+}
+#endif  // GUARDELLIPTICCONSTNEUMBCGHOSTORTHO 
+
+}
+
+#endif

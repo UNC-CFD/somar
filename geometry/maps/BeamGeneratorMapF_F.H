@@ -1,0 +1,50 @@
+#ifndef _BEAMGENERATORMAPF_F_H_
+#define _BEAMGENERATORMAPF_F_H_
+
+#include "FORT_PROTO.H"
+#include "CH_Timer.H"
+#include "REAL.H"
+
+extern "C"
+{
+
+#ifndef GUARDFILL_BEAMGENERATORMAPBATHYMETRY 
+#define GUARDFILL_BEAMGENERATORMAPBATHYMETRY 
+// Prototype for Fortran procedure FILL_BeamGeneratorMapBATHYMETRY ...
+//
+void FORTRAN_NAME( FILL_BEAMGENERATORMAPBATHYMETRY ,fill_beamgeneratormapbathymetry )(
+      CHFp_FRA1(elevation)
+      ,CHFp_BOX(depthBox)
+      ,CHFp_CONST_INTVECT(destBoxType)
+      ,CHFp_CONST_FRA(cartPos)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_CONST_REALVECT(length)
+      ,CHFp_CONST_REAL(angle) );
+
+#define FORT_FILL_BEAMGENERATORMAPBATHYMETRY FORTRAN_NAME( inlineFILL_BEAMGENERATORMAPBATHYMETRY, inlineFILL_BEAMGENERATORMAPBATHYMETRY)
+#define FORTNT_FILL_BEAMGENERATORMAPBATHYMETRY FORTRAN_NAME( FILL_BEAMGENERATORMAPBATHYMETRY, fill_beamgeneratormapbathymetry)
+
+inline void FORTRAN_NAME(inlineFILL_BEAMGENERATORMAPBATHYMETRY, inlineFILL_BEAMGENERATORMAPBATHYMETRY)(
+      CHFp_FRA1(elevation)
+      ,CHFp_BOX(depthBox)
+      ,CHFp_CONST_INTVECT(destBoxType)
+      ,CHFp_CONST_FRA(cartPos)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_CONST_REALVECT(length)
+      ,CHFp_CONST_REAL(angle) )
+{
+ CH_TIMELEAF("FORT_FILL_BEAMGENERATORMAPBATHYMETRY");
+ FORTRAN_NAME( FILL_BEAMGENERATORMAPBATHYMETRY ,fill_beamgeneratormapbathymetry )(
+      CHFt_FRA1(elevation)
+      ,CHFt_BOX(depthBox)
+      ,CHFt_CONST_INTVECT(destBoxType)
+      ,CHFt_CONST_FRA(cartPos)
+      ,CHFt_CONST_REALVECT(dXi)
+      ,CHFt_CONST_REALVECT(length)
+      ,CHFt_CONST_REAL(angle) );
+}
+#endif  // GUARDFILL_BEAMGENERATORMAPBATHYMETRY 
+
+}
+
+#endif

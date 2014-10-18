@@ -1,0 +1,97 @@
+#include "CONSTANTS.H"
+
+
+c ----------------------------------------------------------------
+c FILL_PHYSCOOR
+c ----------------------------------------------------------------
+      subroutine CARTESIAN_FILL_PHYSCOOR (CHF_FRA1[dest],
+     &                                    CHF_CONST_INT[mu],
+     &                                    CHF_CONST_REAL[dXi],
+     &                                    CHF_BOX[destBox],
+     &                                    CHF_CONST_INT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T offset
+
+      offset = (one - destBoxType) * half
+
+      ! TODO: This can be made much simpler with CHF_DSELECT
+      if (mu.eq.0) then
+#if CH_SPACEDIM > 2
+        do i2=CHF_LBOUND[destBox; 2], CHF_UBOUND[destBox; 2]
+#endif
+          do i1=CHF_LBOUND[destBox; 1], CHF_UBOUND[destBox; 1]
+            do i0=CHF_LBOUND[destBox; 0], CHF_UBOUND[destBox; 0]
+              dest(CHF_AUTOIX[i]) = dXi * (i0 + offset);
+            enddo
+          enddo
+#if CH_SPACEDIM > 2
+        enddo
+#endif
+      else
+        if (mu.eq.1) then
+#if CH_SPACEDIM > 2
+          do i2=CHF_LBOUND[destBox; 2], CHF_UBOUND[destBox; 2]
+#endif
+            do i1=CHF_LBOUND[destBox; 1], CHF_UBOUND[destBox; 1]
+              do i0=CHF_LBOUND[destBox; 0], CHF_UBOUND[destBox; 0]
+                dest(CHF_AUTOIX[i]) = dXi * (i1 + offset);
+              enddo
+            enddo
+#if CH_SPACEDIM > 2
+          enddo
+        else
+          do i2=CHF_LBOUND[destBox; 2], CHF_UBOUND[destBox; 2]
+            do i1=CHF_LBOUND[destBox; 1], CHF_UBOUND[destBox; 1]
+              do i0=CHF_LBOUND[destBox; 0], CHF_UBOUND[destBox; 0]
+                dest(CHF_AUTOIX[i]) = dXi * (i2 + offset);
+              enddo
+            enddo
+          enddo
+#endif
+        endif
+      endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c FILL_PHYSCOOR_ALL_COMPS
+c ----------------------------------------------------------------
+      subroutine CARTESIAN_FILL_PHYSCOOR_ALL_COMPS (CHF_FRA[dest],
+     &                                              CHF_CONST_REALVECT[dXi],
+     &                                              CHF_BOX[destBox],
+     &                                              CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[val]
+      REAL_T offset(0:CH_SPACEDIM-1)
+
+      CHF_DTERM[
+      offset(0) = (one - destBoxType(0)) * half;
+      offset(1) = (one - destBoxType(1)) * half;
+      offset(2) = (one - destBoxType(2)) * half]
+
+#if CH_SPACEDIM > 2
+      do i2=CHF_LBOUND[destBox; 2], CHF_UBOUND[destBox; 2]
+        val2 = dXi(2) * (i2 + offset(2))
+#endif
+        do i1=CHF_LBOUND[destBox; 1], CHF_UBOUND[destBox; 1]
+          val1 = dXi(1) * (i1 + offset(1))
+          do i0=CHF_LBOUND[destBox; 0], CHF_UBOUND[destBox; 0]
+            CHF_DTERM[
+            dest(CHF_AUTOIX[i],0) = dXi(0) * (i0 + offset(0));
+            dest(CHF_AUTOIX[i],1) = val1;
+            dest(CHF_AUTOIX[i],2) = val2]
+          enddo
+        enddo
+#if CH_SPACEDIM > 2
+      enddo
+#endif
+
+      return
+      end
+

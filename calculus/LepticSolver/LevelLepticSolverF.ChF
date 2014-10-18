@@ -1,0 +1,308 @@
+#include "CONSTANTS.H"
+#include "AddlFortranMacros.H"
+#include "BCDescriptor.H"
+
+
+! This will remove some of the clutter in the tridiagonal solver.
+#ifdef IDX
+#  error IDX needs to be renamed
+#endif
+
+#ifdef HORIZONTALLOOP
+#  error HORIZONTALLOOP needs to be renamed
+#endif
+
+#if CH_SPACEDIM == 2
+#  define IDX(j) i,(j)
+#  define ARRAYIDX(i) (i),1
+#  define BEGIN_HORIZONTALLOOP                              \
+      do i = CHF_LBOUND[region;0], CHF_UBOUND[region;0];
+#  define END_HORIZONTALLOOP                                \
+      enddo;
+
+#elif CH_SPACEDIM == 3
+#  define IDX(k) i,j,(k)
+#  define ARRAYIDX(i) (i),1,1
+#  define BEGIN_HORIZONTALLOOP                              \
+      do j = CHF_LBOUND[region;1], CHF_UBOUND[region;1];    \
+        do i = CHF_LBOUND[region;0], CHF_UBOUND[region;0];
+#  define END_HORIZONTALLOOP                                \
+        enddo;                                              \
+      enddo;
+
+#else
+#  error Bad SpaceDim
+#endif
+
+
+c -------------------------------------------------------------------
+c  This subroutine computes the vertical gradient as follows:
+c    scale*Jgup^{SpaceDim-1,m}*D[phi]/dx^[m], m=[0,SpaceDim-1).
+c
+c  INPUTS/OUTPUTS:
+c  bcVals   <=  The FC vertical gradient of phi.
+c  extrap    => phi with ghosts extrapolated
+c  Jgz       => Jg[SpaceDim-1]
+c  destFCBox => FC, flat region defining the stencil centers.
+c  isign     => -1 for lo bdry, +1 for hi bdry
+c  dx        => cell spacing
+c  scale     => overall multiplier
+c -----------------------------------------------------------------
+      subroutine LepticVertHorizGrad (
+     &    CHF_FRA1[bcVals],
+     &    CHF_CONST_FRA1[extrap],
+     &    CHF_CONST_FRA[Jgz],
+     &    CHF_BOX[destFCBox],
+     &    CHF_CONST_INT[isign],
+     &    CHF_CONST_REALVECT[dx],
+     &    CHF_CONST_REAL[scale])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[gi]
+      integer CHF_AUTODECL[vi]
+      REAL_T CHF_DTERM[; dxinv0;, dxinv1]
+      integer SpaceDim
+      parameter (SpaceDim = CH_SPACEDIM)
+
+      ! Add this to i to find the adjacent ghost/valid cell.
+      CHF_AUTOID[gi; SpaceDim-1; -(1-isign)/2]
+      CHF_AUTOID[vi; SpaceDim-1; -(1+isign)/2]
+
+      CHF_DTERM[;
+      dxinv0 = scale * fourth / dx(0);
+      dxinv1 = scale * fourth / dx(1)]
+
+      CHF_AUTOMULTIDO[destFCBox;i]
+        bcVals(CHF_AUTOIX[i]) =
+     &      CHF_DTERM[;
+     &         Jgz(CHF_AUTOIX[i],0) * dxinv0
+     &         * (  extrap(CHF_IX[i0+gi0+1; i1+gi1; i2+gi2]) - extrap(CHF_IX[i0+gi0-1; i1+gi1; i2+gi2])
+     &            + extrap(CHF_IX[i0+vi0+1; i1+vi1; i2+vi2]) - extrap(CHF_IX[i0+vi0-1; i1+vi1; i2+vi2])  );
+     &       + Jgz(CHF_AUTOIX[i],1) * dxinv1
+     &         * (  extrap(CHF_IX[i0+gi0; i1+gi1+1; i2+gi2]) - extrap(CHF_IX[i0+gi0; i1+gi1-1; i2+gi2])
+     &            + extrap(CHF_IX[i0+vi0; i1+vi1+1; i2+vi2]) - extrap(CHF_IX[i0+vi0; i1+vi1-1; i2+vi2])  )]
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c Homogeneous 1-D Poisson solver.
+c
+c NOTE: In this function, kmax+1 is used instead of N. In the comments, the two
+c are interchangeable.
+c
+c This uses Lapack's DPTSV tridiagonal solver. From the Lapack docs...
+c
+c  DPTSV computes the solution to a real system of linear equations
+c  A*X = B, where A is an N-by-N symmetric positive definite tridiagonal
+c  matrix, and X and B are N-by-NRHS matrices.
+c
+c  N       (input) INTEGER
+c          The order of the matrix A.  N >= 0.
+c
+c  NRHS    (input) INTEGER
+c          The number of right hand sides, i.e., the number of columns
+c          of the matrix B.  NRHS >= 0.
+c
+c  LDB     (input) INTEGER
+c          The leading dimension of the array B.  LDB >= max(1,N).
+c
+c  DL      (input/output) DOUBLE PRECISION array, dimension (N-1)
+c          On entry, DL must contain the (n-1) sub-diagonal elements of
+c          A. On exit, DL is overwritten by the (n-2) elements of the
+c          second super-diagonal of the upper triangular matrix U from
+c          the LU factorization of A, in DL(1), ..., DL(n-2).
+c
+c  D       (input/output) DOUBLE PRECISION array, dimension (N)
+c          On entry, D must contain the diagonal elements of A.
+c          On exit, D is overwritten by the n diagonal elements of U.
+c
+c  DU      (input/output) DOUBLE PRECISION array, dimension (N-1)
+c          On entry, DU must contain the (n-1) super-diagonal elements
+c          of A.
+c
+c  B       (input/output) DOUBLE PRECISION array, dimension (LDB,NRHS)
+c          On entry, the N-by-NRHS right hand side matrix B.
+c          On exit, if INFO = 0, the N-by-NRHS solution matrix X.
+c
+c  INFO    (output) INTEGER
+c          = 0:  successful exit
+c          < 0:  if INFO = -i, the i-th argument had an illegal value
+c          > 0:  if INFO = i, the leading minor of order i is not
+c                positive definite, and the solution has not been
+c                computed.  The factorization has not been completed
+c                unless i = N.
+c ------------------------------------------------------------------------------
+      subroutine LepticLapackVerticalSolver (
+     &     CHF_FRA1[phi],
+     &     CHF_CONST_FRA1[rhs],
+     &     CHF_CONST_FRA1[Jgzz],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[dz],
+     &     CHF_CONST_REAL[dzCrse],
+     &     CHF_FRA1[DU], ! Empty work space, dimensions 1..N-1
+     &     CHF_FRA1[D],  ! Empty work space, dimensions 1..N
+     &     CHF_FRA1[DL], ! Empty work space, dimensions 1..N-1
+     &     CHF_FRA1[B],  ! Empty work space, dimensions 1..N=LDB
+     &     CHF_CONST_INT[loBCType],
+     &     CHF_CONST_INT[hiBCType])
+
+      integer i,j,k
+      integer kmax
+      REAL_T invdz, invdzsq, avg, alpha, beta
+
+      integer NRHS, LDB, INFO
+
+#ifndef NDEBUG
+#if CH_SPACEDIM == 2
+      if (CHF_LBOUND[region;1] .ne. 0) then
+        print*, 'LepticLapackVerticalSolver: region must have a vertical lower bound of zero'
+        call MAYDAYERROR()
+      endif
+#else
+      if (CHF_LBOUND[region;2] .ne. 0) then
+        print*, 'LepticLapackVerticalSolver: region must have a vertical lower bound of zero'
+        call MAYDAYERROR()
+      endif
+#endif
+#endif
+
+#if CH_SPACEDIM == 2
+      kmax = CHF_UBOUND[region; 1] + 1
+#else
+      kmax = CHF_UBOUND[region; 2] + 1
+#endif
+      invdz = one / dz
+      invdzsq = one / (dz * dz)
+
+      NRHS = 1
+      LDB = kmax
+
+      BEGIN_HORIZONTALLOOP
+        ! Set up matrix equation. (Array indices are the column number.)
+        D (ARRAYIDX(1)) = (Jgzz(IDX(0)) + Jgzz(IDX(1))) * invdzsq
+        DL(ARRAYIDX(1)) = -Jgzz(IDX(1)) * invdzsq
+        B (ARRAYIDX(1)) = -rhs(IDX(0))
+        do k = 2, kmax-1
+          DU(ARRAYIDX(k)) = -Jgzz(IDX(k-1)) * invdzsq
+          D (ARRAYIDX(k)) = (Jgzz(IDX(k-1)) + Jgzz(IDX(k))) * invdzsq
+          DL(ARRAYIDX(k)) = -Jgzz(IDX(k)) * invdzsq
+          B (ARRAYIDX(k)) = -rhs(IDX(k-1))
+        enddo
+        DU(ARRAYIDX(kmax)) = -Jgzz(IDX(kmax-1)) * invdzsq
+        D (ARRAYIDX(kmax)) = (Jgzz(IDX(kmax-1)) + Jgzz(IDX(kmax))) * invdzsq
+        B (ARRAYIDX(kmax)) = -rhs(IDX(kmax-1))
+
+        ! Lower BCs
+        if (loBCType .eq. BCType_Neum) then
+          ! Neumann BC
+          D(ARRAYIDX(1)) = Jgzz(IDX(1)) * invdzsq
+        else if (loBCType .eq. BCType_Diri) then
+          ! Dirichlet BC
+          D(ARRAYIDX(1)) = (two*Jgzz(IDX(0)) + Jgzz(IDX(1))) * invdzsq
+        else if (loBCType .eq. BCType_CF) then
+          ! CF-BC (linear interp)
+          alpha = 1.0 - 2.0*dz/(dzCrse+dz)
+          beta  = 0.0
+          D(ARRAYIDX(1)) = ((1.0-alpha)*Jgzz(IDX(0)) + Jgzz(IDX(1))) * invdzsq
+
+!           ! CF-BC (quadratic interp)
+!           alpha = 2.0*(dzCrse-dz)/(dzCrse+dz)
+!           beta  = (dz-dzCrse)/(dzCrse+3.0*dz)
+!           DU(ARRAYIDX(2)) = -(beta*Jgzz(IDX(0)) + Jgzz(IDX(1))) * invdzsq
+!           D (ARRAYIDX(1)) = ((1.0-alpha)*Jgzz(IDX(0)) + Jgzz(IDX(1))) * invdzsq
+        else
+          print*,'LepticLapackVerticalSolver: Unforseen vertical BC!!!'
+          call MAYDAYERROR()
+        endif
+
+        ! Upper BCs
+        if (hiBCType .eq. BCType_Neum) then
+          ! Neumann BC
+          D(ARRAYIDX(kmax)) = Jgzz(IDX(kmax-1)) * invdzsq
+        else if (hiBCType .eq. BCType_Diri) then
+          ! Dirichlet BC
+          D(ARRAYIDX(kmax)) = (Jgzz(IDX(kmax-1)) + two*Jgzz(IDX(kmax))) * invdzsq
+        else if (hiBCType .eq. BCType_CF) then
+          ! CF-BC (linear interp)
+          alpha = 1.0 - 2.0*dz/(dzCrse+dz)
+          beta  = 0.0
+          D(ARRAYIDX(kmax)) = (Jgzz(IDX(kmax-1)) + (1.0-alpha)*Jgzz(IDX(kmax))) * invdzsq
+
+!           ! CF-BC (quadratic interp)
+!           alpha = 2.0*(dzCrse-dz)/(dzCrse+dz)
+!           beta  = (dz-dzCrse)/(dzCrse+3.0*dz)
+!           D (ARRAYIDX(kmax)) = (Jgzz(IDX(kmax-1)) + (1.0-alpha)*Jgzz(IDX(kmax))) * invdzsq
+!           DL(ARRAYIDX(kmax-1)) = -(beta*Jgzz(IDX(kmax)) + Jgzz(IDX(kmax-1))) * invdzsq
+        else
+          print*,'LepticLapackVerticalSolver: Unforseen vertical BC!!!'
+          call MAYDAYERROR()
+        endif
+
+        ! Call the lapack tridiagonal solver
+        call dptsv(kmax, NRHS, D, DL, B, LDB, INFO)
+!         call dgtsv(kmax, NRHS, DL, D, DU, B, LDB, INFO)
+
+        ! Check INFO
+        if ((INFO .ne. 0) .and. (INFO .ne. kmax)) then
+          print*, 'LepticLapackVerticalSolver: INFO = ', INFO
+          call MAYDAYERROR()
+        endif
+
+        ! Put solution in user's holder
+        do k = 0, kmax-1
+          phi(IDX(k)) = B(ARRAYIDX(k+1))
+        enddo
+      END_HORIZONTALLOOP
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c Accumulate -divergence
+c rhs += \partial_{FCdir} flux using dxScale as 1/dx
+c ------------------------------------------------------------------------------
+      subroutine LepticAccumDiv (
+     &     CHF_FRA1[rhs],
+     &     CHF_CONST_FRA1[flux],
+     &     CHF_BOX[CCregion],
+     &     CHF_CONST_REAL[dxScale],
+     &     CHF_CONST_INT[FCdir])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+
+#ifndef NDEBUG
+#  if CH_SPACEDIM == 2
+      ! Make sure fields are flat.
+      CH_assert((CHF_LBOUND[rhs;1] .eq. CHF_UBOUND[rhs;1]))
+      CH_assert((CHF_LBOUND[flux;1] .eq. CHF_UBOUND[flux;1]))
+      CH_assert((CHF_LBOUND[CCregion;1] .eq. CHF_UBOUND[CCregion;1]))
+
+      ! Make sure FCdir is a horizontal direction
+      CH_assert((FCdir .eq. 0))
+
+#  else
+      ! Make sure fields are flat with 0 vertical index.
+      CH_assert((CHF_LBOUND[rhs;2] .eq. CHF_UBOUND[rhs;2]))
+      CH_assert((CHF_LBOUND[flux;2] .eq. CHF_UBOUND[flux;2]))
+      CH_assert((CHF_LBOUND[CCregion;2] .eq. CHF_UBOUND[CCregion;2]))
+
+      ! Make sure FCdir is a horizontal direction
+      CH_assert(((FCdir .eq. 0) .or. (FCdir .eq. 1)))
+
+#  endif
+#endif
+
+      ! Integrate
+      CHF_AUTOID[ii;FCdir]
+      CHF_AUTOMULTIDO[CCregion; i]
+        rhs(CHF_AUTOIX[i]) = rhs(CHF_AUTOIX[i])
+     &                     + (flux(CHF_OFFSETIX[i;+ii]) - flux(CHF_AUTOIX[i])) * dxScale
+      CHF_ENDDO
+
+      return
+      end

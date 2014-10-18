@@ -1,0 +1,143 @@
+#ifndef _CYLINDRICALMAPF_F_H_
+#define _CYLINDRICALMAPF_F_H_
+
+#include "FORT_PROTO.H"
+#include "CH_Timer.H"
+#include "REAL.H"
+
+extern "C"
+{
+
+#ifndef GUARDCYLINDRICAL_FILL_PHYSCOOR 
+#define GUARDCYLINDRICAL_FILL_PHYSCOOR 
+// Prototype for Fortran procedure CYLINDRICAL_FILL_PHYSCOOR ...
+//
+void FORTRAN_NAME( CYLINDRICAL_FILL_PHYSCOOR ,cylindrical_fill_physcoor )(
+      CHFp_FRA1(dest)
+      ,CHFp_CONST_INT(mu)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INTVECT(destBoxType) );
+
+#define FORT_CYLINDRICAL_FILL_PHYSCOOR FORTRAN_NAME( inlineCYLINDRICAL_FILL_PHYSCOOR, inlineCYLINDRICAL_FILL_PHYSCOOR)
+#define FORTNT_CYLINDRICAL_FILL_PHYSCOOR FORTRAN_NAME( CYLINDRICAL_FILL_PHYSCOOR, cylindrical_fill_physcoor)
+
+inline void FORTRAN_NAME(inlineCYLINDRICAL_FILL_PHYSCOOR, inlineCYLINDRICAL_FILL_PHYSCOOR)(
+      CHFp_FRA1(dest)
+      ,CHFp_CONST_INT(mu)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INTVECT(destBoxType) )
+{
+ CH_TIMELEAF("FORT_CYLINDRICAL_FILL_PHYSCOOR");
+ FORTRAN_NAME( CYLINDRICAL_FILL_PHYSCOOR ,cylindrical_fill_physcoor )(
+      CHFt_FRA1(dest)
+      ,CHFt_CONST_INT(mu)
+      ,CHFt_CONST_REALVECT(dXi)
+      ,CHFt_BOX(destBox)
+      ,CHFt_CONST_INTVECT(destBoxType) );
+}
+#endif  // GUARDCYLINDRICAL_FILL_PHYSCOOR 
+
+#ifndef GUARDCYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS 
+#define GUARDCYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS 
+// Prototype for Fortran procedure CYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS ...
+//
+void FORTRAN_NAME( CYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS ,cylindrical_fill_physcoor_all_comps )(
+      CHFp_FRA(dest)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_CONST_REALVECT(mult)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INTVECT(destBoxType) );
+
+#define FORT_CYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS FORTRAN_NAME( inlineCYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS, inlineCYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS)
+#define FORTNT_CYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS FORTRAN_NAME( CYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS, cylindrical_fill_physcoor_all_comps)
+
+inline void FORTRAN_NAME(inlineCYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS, inlineCYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS)(
+      CHFp_FRA(dest)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_CONST_REALVECT(mult)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INTVECT(destBoxType) )
+{
+ CH_TIMELEAF("FORT_CYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS");
+ FORTRAN_NAME( CYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS ,cylindrical_fill_physcoor_all_comps )(
+      CHFt_FRA(dest)
+      ,CHFt_CONST_REALVECT(dXi)
+      ,CHFt_CONST_REALVECT(mult)
+      ,CHFt_BOX(destBox)
+      ,CHFt_CONST_INTVECT(destBoxType) );
+}
+#endif  // GUARDCYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS 
+
+#ifndef GUARDCYLINDRICAL_FILL_DXDXI 
+#define GUARDCYLINDRICAL_FILL_DXDXI 
+// Prototype for Fortran procedure CYLINDRICAL_FILL_DXDXI ...
+//
+void FORTRAN_NAME( CYLINDRICAL_FILL_DXDXI ,cylindrical_fill_dxdxi )(
+      CHFp_FRA1(dest)
+      ,CHFp_CONST_INT(mu)
+      ,CHFp_CONST_INT(nu)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_CONST_REAL(mult)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INTVECT(destBoxType) );
+
+#define FORT_CYLINDRICAL_FILL_DXDXI FORTRAN_NAME( inlineCYLINDRICAL_FILL_DXDXI, inlineCYLINDRICAL_FILL_DXDXI)
+#define FORTNT_CYLINDRICAL_FILL_DXDXI FORTRAN_NAME( CYLINDRICAL_FILL_DXDXI, cylindrical_fill_dxdxi)
+
+inline void FORTRAN_NAME(inlineCYLINDRICAL_FILL_DXDXI, inlineCYLINDRICAL_FILL_DXDXI)(
+      CHFp_FRA1(dest)
+      ,CHFp_CONST_INT(mu)
+      ,CHFp_CONST_INT(nu)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_CONST_REAL(mult)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INTVECT(destBoxType) )
+{
+ CH_TIMELEAF("FORT_CYLINDRICAL_FILL_DXDXI");
+ FORTRAN_NAME( CYLINDRICAL_FILL_DXDXI ,cylindrical_fill_dxdxi )(
+      CHFt_FRA1(dest)
+      ,CHFt_CONST_INT(mu)
+      ,CHFt_CONST_INT(nu)
+      ,CHFt_CONST_REALVECT(dXi)
+      ,CHFt_CONST_REAL(mult)
+      ,CHFt_BOX(destBox)
+      ,CHFt_CONST_INTVECT(destBoxType) );
+}
+#endif  // GUARDCYLINDRICAL_FILL_DXDXI 
+
+#ifndef GUARDCYLINDRICAL_FILL_J 
+#define GUARDCYLINDRICAL_FILL_J 
+// Prototype for Fortran procedure CYLINDRICAL_FILL_J ...
+//
+void FORTRAN_NAME( CYLINDRICAL_FILL_J ,cylindrical_fill_j )(
+      CHFp_FRA1(dest)
+      ,CHFp_CONST_REAL(dXi0)
+      ,CHFp_CONST_REAL(mult)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INT(destBoxType0) );
+
+#define FORT_CYLINDRICAL_FILL_J FORTRAN_NAME( inlineCYLINDRICAL_FILL_J, inlineCYLINDRICAL_FILL_J)
+#define FORTNT_CYLINDRICAL_FILL_J FORTRAN_NAME( CYLINDRICAL_FILL_J, cylindrical_fill_j)
+
+inline void FORTRAN_NAME(inlineCYLINDRICAL_FILL_J, inlineCYLINDRICAL_FILL_J)(
+      CHFp_FRA1(dest)
+      ,CHFp_CONST_REAL(dXi0)
+      ,CHFp_CONST_REAL(mult)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INT(destBoxType0) )
+{
+ CH_TIMELEAF("FORT_CYLINDRICAL_FILL_J");
+ FORTRAN_NAME( CYLINDRICAL_FILL_J ,cylindrical_fill_j )(
+      CHFt_FRA1(dest)
+      ,CHFt_CONST_REAL(dXi0)
+      ,CHFt_CONST_REAL(mult)
+      ,CHFt_BOX(destBox)
+      ,CHFt_CONST_INT(destBoxType0) );
+}
+#endif  // GUARDCYLINDRICAL_FILL_J 
+
+}
+
+#endif

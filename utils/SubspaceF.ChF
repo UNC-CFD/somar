@@ -1,0 +1,88 @@
+#include "CONSTANTS.H"
+#include "AddlFortranMacros.H"
+
+
+c ------------------------------------------------------------------------------
+c levelSum must be flat with a vertical coordinate of 0.
+c func must be defined over the full grid that overlies sum's grid.
+c region is the full grid.
+c ------------------------------------------------------------------------------
+      subroutine UnmappedVertIntegral (
+     &     CHF_FRA1[levelSum],
+     &     CHF_CONST_FRA1[func],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[dz])
+
+      integer CHF_DDECL[i;j;k]
+
+#ifndef NDEBUG
+      ! Make sure levelSum is flat and has 0 vertical index.
+# if CH_SPACEDIM == 2
+      CH_assert((CHF_LBOUND[levelSum;1] .eq. CHF_UBOUND[levelSum;1]))
+      CH_assert((CHF_LBOUND[levelSum;1] .eq. 0))
+# else
+      CH_assert((CHF_LBOUND[levelSum;2] .eq. CHF_UBOUND[levelSum;2]))
+      CH_assert((CHF_LBOUND[levelSum;2] .eq. 0))
+# endif
+#endif
+
+      CHF_MULTIDO[region; i; j; k]
+        levelSum(HORIZIX(i,j,k)) = levelSum(HORIZIX(i,j,k))
+     &                           + func(CHF_IX[i;j;k]) * dz
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c This extrudes src in the vertical, then adds result to dest.
+c This assumes dest has been initialized with data (or zeros).
+c src MUST be flat. Its vertical index can be anything.
+c ------------------------------------------------------------------------------
+      subroutine AddExtrusion (
+     &     CHF_FRA1[dest],
+     &     CHF_CONST_FRA1[src],
+     &     CHF_BOX[region])
+
+      integer k
+      REAL_T srcVal
+
+#if CH_SPACEDIM == 2
+      ! Is src properly bounded, flat?
+      CH_assert(((isrclo0.le.iregionlo0) .and. (iregionhi0.le.isrchi0)))
+      CH_assert((isrclo1.eq.isrchi1));
+
+      ! is dest properly bounded?
+      CH_assert(((idestlo0.le.iregionlo0) .and. (iregionhi0.le.idesthi0)))
+      CH_assert(((idestlo1.le.iregionlo1) .and. (iregionhi1.le.idesthi1)))
+
+      ! Compute
+      do k = iregionlo1, iregionhi1
+            dest(iregionlo0:iregionhi0, k)
+     &    = dest(iregionlo0:iregionhi0, k)
+     &    + src (iregionlo0:iregionhi0, isrclo1)
+      enddo
+
+#else
+      ! Is src properly bounded, flat?
+      CH_assert((isrclo0.le.iregionlo0 .and. iregionhi0.le.isrchi0))
+      CH_assert((isrclo1.le.iregionlo1 .and. iregionhi1.le.isrchi1))
+      CH_assert((isrclo2.eq.isrchi2));
+
+      ! is dest properly bounded?
+      CH_assert((idestlo0.le.iregionlo0 .and. iregionhi0.le.idesthi0))
+      CH_assert((idestlo1.le.iregionlo1 .and. iregionhi1.le.idesthi1))
+      CH_assert((idestlo2.le.iregionlo2 .and. iregionhi2.le.idesthi2))
+
+      ! Compute
+      do k = iregionlo2, iregionhi2
+            dest(iregionlo0:iregionhi0, iregionlo1:iregionhi1, k)
+     &    = dest(iregionlo0:iregionhi0, iregionlo1:iregionhi1, k)
+     &    + src (iregionlo0:iregionhi0, iregionlo1:iregionhi1, isrclo2)
+      enddo
+
+#endif
+
+      return
+      end

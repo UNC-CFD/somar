@@ -1,0 +1,408 @@
+#include "CONSTANTS.H"
+
+
+C     ------------------------------------------------------------------
+C     subroutine ELLIPTICCONSTDIRIBCGHOST
+C     ------------------------------------------------------------------
+      subroutine ELLIPTICCONSTDIRIBCGHOST (
+     &     CHF_FRA[state],
+     &     CHF_BOX[ghostBox],
+     &     CHF_CONST_REAL[bcval],
+     &     CHF_CONST_INT[fdir],
+     &     CHF_CONST_INT[fsign],
+     &     CHF_CONST_INT[order])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      integer n,ncomp
+
+#ifndef NDEBUG
+      if ((fdir .lt. 0) .or. (CH_SPACEDIM .le. fdir)) then
+        write(*,*) 'ELLIPTICCONSTDIRIBCGHOST: fdir is out of range ', fdir
+        call MAYDAYERROR()
+      endif
+
+      if ((fsign .ne. -1) .and. (fsign .ne. 1)) then
+        write(*,*) 'ELLIPTICCONSTDIRIBCGHOST: fsign must be +/-1 ', fsign
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ncomp = CHF_NCOMP[state]
+
+      CHF_AUTOID[ii;fdir]
+      if (fsign .eq. 1) then
+        CHF_DTERM[
+        ii0 = -ii0;
+        ii1 = -ii1;
+        ii2 = -ii2]
+      endif
+
+      if (order .eq. 0) then
+
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[ghostBox; i]
+            state(CHF_AUTOIX[i],n) = bcval
+          CHF_ENDDO
+        enddo
+
+      elseif (order .eq. 1) then
+
+        do n = 0, ncomp-1
+          if (bcval .eq. zero) then
+            CHF_AUTOMULTIDO[ghostBox; i]
+              state(CHF_AUTOIX[i],n) = -state(CHF_OFFSETIX[i;+ii],n)
+            CHF_ENDDO
+          else
+            CHF_AUTOMULTIDO[ghostBox; i]
+              state(CHF_AUTOIX[i],n) = two * bcval
+     &                               - state(CHF_OFFSETIX[i;+ii],n)
+            CHF_ENDDO
+          endif
+        enddo
+
+      elseif (order .eq. 2) then
+
+        do n = 0, ncomp-1
+          if (bcval .eq. zero) then
+            CHF_AUTOMULTIDO[ghostBox; i]
+              state(CHF_AUTOIX[i],n) = third * state(CHF_OFFSETIX[i;+2*ii],n)
+     &                               - two   * state(CHF_OFFSETIX[i;+  ii],n)
+            CHF_ENDDO
+          else
+            CHF_AUTOMULTIDO[ghostBox; i]
+              state(CHF_AUTOIX[i],n) = (  eight * bcval
+     &                                  - six   * state(CHF_OFFSETIX[i;+  ii],n)
+     &                                  +         state(CHF_OFFSETIX[i;+2*ii],n)  ) / three
+            CHF_ENDDO
+          endif
+        enddo
+
+      else
+        write(*,*) 'ELLIPTICCONSTDIRIBCGHOST: order is out of range ', order
+        call MAYDAYERROR()
+      endif
+
+      return
+      end
+
+
+C -----------------------------------------------------------------
+C subroutine ELLIPTICEXTRAPBCGHOST
+C This function does not care if state is CC or FC.
+C ------------------------------------------------------------------
+      subroutine ELLIPTICEXTRAPBCGHOST (
+     &     CHF_FRA[state],
+     &     CHF_BOX[toRegion],
+     &     CHF_CONST_INT[dir],
+     &     CHF_CONST_INT[sidesign],
+     &     CHF_CONST_INT[order])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      integer n,ncomp
+
+#ifndef NDEBUG
+      if ((dir .lt. 0) .or. (CH_SPACEDIM .le. dir)) then
+        write(*,*) 'ELLIPTICEXTRAPBCGHOST: dir is out of range ', dir
+        call MAYDAYERROR()
+      endif
+
+      if ((sidesign .ne. -1) .and. (sidesign .ne. 1)) then
+        write(*,*) 'ELLIPTICEXTRAPBCGHOST: sidesign must be +/-1 ', sidesign
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ncomp = CHF_NCOMP[state]
+
+      CHF_AUTOID[ii;dir]
+      if (sidesign .eq. 1) then
+        CHF_DTERM[
+        ii0 = -ii0;
+        ii1 = -ii1;
+        ii2 = -ii2]
+      endif
+
+      if (order .eq. 0) then
+
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            state(CHF_AUTOIX[i],n) = state(CHF_OFFSETIX[i;+ii],n)
+          CHF_ENDDO
+        enddo
+
+      elseif (order .eq. 1) then
+
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            state(CHF_AUTOIX[i],n) = two * state(CHF_OFFSETIX[i;+  ii],n)
+     &                             -       state(CHF_OFFSETIX[i;+2*ii],n)
+          CHF_ENDDO
+        enddo
+
+      elseif (order .eq. 2) then
+
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            state(CHF_AUTOIX[i],n) = three * (  state(CHF_OFFSETIX[i;+  ii],n)
+     &                                        - state(CHF_OFFSETIX[i;+2*ii],n)  )
+     &                             +         state(CHF_OFFSETIX[i;+3*ii],n)
+          CHF_ENDDO
+        enddo
+
+      else
+         print*, 'ELLIPTICEXTRAPBCGHOST: order is out of range ', order
+         call MAYDAYERROR()
+      endif
+
+      return
+      end
+
+
+C ------------------------------------------------------------------
+C subroutine ELLIPTICEXTRAPBCCELLTOFACE
+C dest and toRegion must be node-centered in dir.
+C src must be cell-centered in dir.
+C src, dest, and toRegion must have the same centering in other directions.
+C ------------------------------------------------------------------
+      subroutine ELLIPTICEXTRAPBCCELLTOFACE (
+     &     CHF_FRA[dest],
+     &     CHF_CONST_FRA[src],
+     &     CHF_BOX[toRegion],
+     &     CHF_CONST_INT[dir],
+     &     CHF_CONST_INT[sidesign],
+     &     CHF_CONST_INT[order])
+
+      integer CHF_AUTODECL[i]   ! dest FC idx
+      integer CHF_AUTODECL[o1]  ! near CC offset
+      integer CHF_AUTODECL[o2]  ! far CC offset
+      integer n,ncomp
+
+      ncomp = CHF_NCOMP[src]
+
+#ifndef NDEBUG
+      if ((dir .lt. 0) .or. (CH_SPACEDIM .le. dir)) then
+        write(*,*) 'ELLIPTICEXTRAPBCCELLTOFACE: dir is out of range ', dir
+        call MAYDAYERROR()
+      endif
+
+      if ((sidesign .ne. -1) .and. (sidesign .ne. 1)) then
+        write(*,*) 'ELLIPTICEXTRAPBCCELLTOFACE: sidesign must be +/-1 ', sidesign
+        call MAYDAYERROR()
+      endif
+
+      if (CHF_NCOMP[dest] .ne. ncomp) then
+        write(*,*) 'ELLIPTICEXTRAPBCCELLTOFACE: src and dest must have the same number of comps.'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ! Set the offsets
+      if (sidesign .eq. 1) then
+        CHF_DTERM[
+        o10 = -CHF_ID(dir,0);
+        o11 = -CHF_ID(dir,1);
+        o12 = -CHF_ID(dir,2)]
+
+        CHF_DTERM[
+        o20 = -2*CHF_ID(dir,0);
+        o21 = -2*CHF_ID(dir,1);
+        o22 = -2*CHF_ID(dir,2)]
+      else
+        CHF_DTERM[
+        o10 = 0;
+        o11 = 0;
+        o12 = 0]
+
+        CHF_AUTOID[o2;dir]
+      endif
+
+
+      if (order .eq. 0) then
+
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            dest(CHF_AUTOIX[i],n) = src(CHF_OFFSETIX[i;+o1],n)
+          CHF_ENDDO
+        enddo
+
+      elseif (order .eq. 1) then
+
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            dest(CHF_AUTOIX[i],n) = (three * src(CHF_OFFSETIX[i;+o1],n)
+     &                               -       src(CHF_OFFSETIX[i;+o2],n)) * half
+          CHF_ENDDO
+        enddo
+
+      else
+         print*, 'ELLIPTICEXTRAPBCCELLTOFACE: order is out of range ', order
+         call MAYDAYERROR()
+      endif
+
+      return
+      end
+
+
+C     -----------------------------------------------------------------
+C     subroutine ELLIPTICCONSTNEUMBCGHOST
+C     ------------------------------------------------------------------
+      subroutine ELLIPTICCONSTNEUMBCGHOST (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[extrap],
+     &     CHF_CONST_FRA[nhat],
+     &     CHF_BOX[ghostBox],
+     &     CHF_CONST_REAL[bcval],
+     &     CHF_CONST_INT[fdir],
+     &     CHF_CONST_INT[fsign],
+     &     CHF_CONST_REALVECT[dx])
+
+      integer CHF_DDECL[gi;gj;gk]    ! Ghost indices
+
+      integer foffset
+      integer CHF_DDECL[fio;fjo;fko] ! face offsets from ghosts
+      integer CHF_DDECL[fi;fj;fk]    ! face indices
+
+      integer CHF_DDECL[vio;vjo;vko] ! Valid offsets from ghosts
+      integer CHF_DDECL[vi;vj;vk]    ! Valid indices
+
+      integer CHF_DDECL[adir;bdir;cdir]
+      CHF_DTERM[;
+      integer D_DECL(bi,bj,bk);
+      integer D_DECL(ci,cj,ck)]
+
+      integer n,ncomp
+      REAL_T cross
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      if ((fdir .lt. 0) .or. (CH_SPACEDIM .le. fdir)) then
+        write(*,*) 'ELLIPTICCONSTNEUMBCGHOST: fdir is out of range ', fdir
+        call MAYDAYERROR()
+      endif
+
+      if ((fsign .ne. -1) .and. (fsign .ne. 1)) then
+        write(*,*) 'ELLIPTICCONSTNEUMBCGHOST: fsign must be +/-1 ', fsign
+        call MAYDAYERROR()
+      endif
+
+      if ((CHF_NCOMP[extrap] .ne. ncomp)) then
+        write(*,*) 'ELLIPTICCONSTNEUMBCGHOST: phi and extrap must have same number of comps'
+        call MAYDAYERROR()
+      endif
+
+      if ((CHF_NCOMP[nhat] .ne. CH_SPACEDIM)) then
+        write(*,*) 'ELLIPTICCONSTNEUMBCGHOST: nhat must have SpaceDim comps'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_DTERM[
+      adir = fdir;
+      bdir = mod((fdir + 1), CH_SPACEDIM);
+      cdir = mod((fdir + 2), CH_SPACEDIM)]
+
+      CHF_DTERM[
+      bi = CHF_ID(bdir, 0);
+      bj = CHF_ID(bdir, 1);
+      bk = CHF_ID(bdir, 2)]
+
+#     if CH_SPACEDIM == 3
+      CHF_DTERM[
+      ci = CHF_ID(cdir, 0);
+      cj = CHF_ID(cdir, 1);
+      ck = CHF_ID(cdir, 2)]
+#     endif
+
+      foffset = (1-fsign)/2
+
+      CHF_DTERM[
+      fio = foffset*CHF_ID(adir, 0);
+      fjo = foffset*CHF_ID(adir, 1);
+      fko = foffset*CHF_ID(adir, 2)]
+
+      CHF_DTERM[
+      vio = -fsign*CHF_ID(adir, 0);
+      vjo = -fsign*CHF_ID(adir, 1);
+      vko = -fsign*CHF_ID(adir, 2)]
+
+      do n = 0, ncomp-1
+        CHF_MULTIDO[ghostBox; gi; gj; gk]
+
+          CHF_DTERM[
+          fi = gi + fio;
+          fj = gj + fjo;
+          fk = gk + fko]
+
+          CHF_DTERM[
+          vi = gi + vio;
+          vj = gj + vjo;
+          vk = gk + vko]
+
+          cross = 0.25 * (CHF_DTERM[;
+     &          - (+ extrap(CHF_IX[gi+bi; gj+bj; gk+bk],n)
+     &             - extrap(CHF_IX[gi-bi; gj-bj; gk-bk],n)
+     &             + extrap(CHF_IX[vi+bi; vj+bj; vk+bk],n)
+     &             - extrap(CHF_IX[vi-bi; vj-bj; vk-bk],n)) * nhat(CHF_IX[fi;fj;fk],bdir) / dx(bdir);
+     &          - (+ extrap(CHF_IX[gi+ci; gj+cj; gk+ck],n)
+     &             - extrap(CHF_IX[gi-ci; gj-cj; gk-ck],n)
+     &             + extrap(CHF_IX[vi+ci; vj+cj; vk+ck],n)
+     &             - extrap(CHF_IX[vi-ci; vj-cj; vk-ck],n)) * nhat(CHF_IX[fi;fj;fk],cdir) / dx(cdir) ]);
+
+          phi(CHF_IX[gi;gj;gk],n) = phi(CHF_IX[vi;vj;vk],n)
+     &                            + (bcval - cross) * dx(adir) / nhat(CHF_IX[fi;fj;fk],adir)
+
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+C     ------------------------------------------------------------------
+C     subroutine ELLIPTICCONSTNEUMBCGHOSTORTHO
+C     This is the orthogonal metric version.
+C     ------------------------------------------------------------------
+      subroutine ELLIPTICCONSTNEUMBCGHOSTORTHO (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA1[nhat],
+     &     CHF_BOX[ghostBox],
+     &     CHF_CONST_REAL[bcval],
+     &     CHF_CONST_INT[fdir],
+     &     CHF_CONST_INT[fsign],
+     &     CHF_CONST_REAL[dxDir])
+
+      integer n,ncomp
+      REAL_T factor
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ai;aj;ak]
+      integer CHF_DDECL[fi;fj;fk]
+      integer foffset
+
+      ncomp = CHF_NCOMP[phi]
+      factor = bcval * dxDir
+
+      CHF_DTERM[
+      ai = fsign*CHF_ID(fdir, 0);
+      aj = fsign*CHF_ID(fdir, 1);
+      ak = fsign*CHF_ID(fdir, 2)]
+
+      foffset = (1-fsign)/2
+      CHF_DTERM[
+      fi = foffset*CHF_ID(fdir, 0);
+      fj = foffset*CHF_ID(fdir, 1);
+      fk = foffset*CHF_ID(fdir, 2)]
+
+      do n = 0, ncomp-1
+        CHF_MULTIDO[ghostBox; i; j; k]
+
+          phi(CHF_IX[i;j;k],n) = phi(CHF_IX[i-ai;j-aj;k-ak],n)
+     &                         + factor / nhat(CHF_IX[i+fi;j+fj;k+fk])
+
+        CHF_ENDDO
+      enddo
+
+      return
+      end

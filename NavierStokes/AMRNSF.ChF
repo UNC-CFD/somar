@@ -1,0 +1,345 @@
+#include "CONSTANTS.H"
+#include "LevelGeometry.H"
+
+
+c ----------------------------------------------------------------
+c ComputeNsqAndDinv2D
+C Sets Nsq = -db/dz and Dinv = 1/(1+dt^2*theta^2*Nsq)
+c ----------------------------------------------------------------
+      subroutine ComputeNsqAndDinv2D (
+     &      CHF_FRA1[Nsq],
+     &      CHF_FRA1[Dinv],
+     &      CHF_CONST_FRA1[bbar0],
+     &      CHF_CONST_FRA1[bbar1],
+     &      CHF_CONST_FRA[dXidz],
+     &      CHF_CONST_REAL[dt],
+     &      CHF_CONST_REAL[theta],
+     &      CHF_CONST_REALVECT[dx],
+     &      CHF_BOX[region])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T dtThetaSq, NsqVal
+
+      CH_assert((CH_SPACEDIM .eq. 2))
+      CH_assert((CHF_NCOMP[dXidz] .eq. CH_SPACEDIM))
+
+      dtThetaSq = (dt*theta)**2
+
+      CHF_MULTIDO[region;i;j;k]
+        NsqVal = CHF_DTERM[
+     &         - dXidz(CHF_IX[i;j;k],0) * (bbar0(CHF_IX[i+1;j  ;k  ]) - bbar0(CHF_IX[i  ;j  ;k  ])) / dx(0);
+     &         - dXidz(CHF_IX[i;j;k],1) * (bbar1(CHF_IX[i  ;j+1;k  ]) - bbar1(CHF_IX[i  ;j  ;k  ])) / dx(1);]
+
+        Nsq(CHF_IX[i;j;k]) = NsqVal
+        Dinv(CHF_IX[i;j;k]) = one / (one + dtThetaSq * NsqVal)
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c ComputeNsqAndDinv3D
+C Sets Nsq = -db/dz and Dinv = 1/(1+dt^2*theta^2*Nsq)
+c ----------------------------------------------------------------
+      subroutine ComputeNsqAndDinv3D (
+     &      CHF_FRA1[Nsq],
+     &      CHF_FRA1[Dinv],
+     &      CHF_CONST_FRA1[bbar0],
+     &      CHF_CONST_FRA1[bbar1],
+     &      CHF_CONST_FRA1[bbar2],
+     &      CHF_CONST_FRA[dXidz],
+     &      CHF_CONST_REAL[dt],
+     &      CHF_CONST_REAL[theta],
+     &      CHF_CONST_REALVECT[dx],
+     &      CHF_BOX[region])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T dtThetaSq, NsqVal
+
+      CH_assert((CH_SPACEDIM .eq. 3))
+      CH_assert((CHF_NCOMP[dXidz] .eq. CH_SPACEDIM))
+
+      dtThetaSq = (dt*theta)**2
+
+      CHF_MULTIDO[region;i;j;k]
+        NsqVal = CHF_DTERM[
+     &         - dXidz(CHF_IX[i;j;k],0) * (bbar0(CHF_IX[i+1;j  ;k  ]) - bbar0(CHF_IX[i  ;j  ;k  ])) / dx(0);
+     &         - dXidz(CHF_IX[i;j;k],1) * (bbar1(CHF_IX[i  ;j+1;k  ]) - bbar1(CHF_IX[i  ;j  ;k  ])) / dx(1);
+     &         - dXidz(CHF_IX[i;j;k],2) * (bbar2(CHF_IX[i  ;j  ;k+1]) - bbar2(CHF_IX[i  ;j  ;k  ])) / dx(2)]
+
+        Nsq(CHF_IX[i;j;k]) = NsqVal
+        Dinv(CHF_IX[i;j;k]) = one / (one + dtThetaSq * NsqVal)
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c ComputeMinBVDt
+c 1. c0^i = Max_j[c0 * dXi^i/dx^j)], j = horizontal dirs
+c 2. newMinDt = Min_i[dXi^i / (c0^i + |vel^i|)]
+c ----------------------------------------------------------------
+      subroutine ComputeMinBVDt (
+     &      CHF_REAL[minDt],
+     &      CHF_CONST_FRA[c0i],
+     &      CHF_CONST_FRA[vel],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_BOX[region])
+
+      integer CHF_AUTODECL[i]
+      REAL_T thisVel
+      REAL_T thisC0i
+      REAL_T totalVel(0:CH_SPACEDIM-1)
+
+      CH_assert((CHF_NCOMP[c0i] .eq. CH_SPACEDIM))
+      CH_assert((CHF_NCOMP[vel] .eq. CH_SPACEDIM))
+
+      CHF_AUTOMULTIDO[region;i]
+        ! Add the advecting velocity
+        CHF_DTERM[
+        thisVel = vel(CHF_AUTOIX[i],0)
+        thisC0i = c0i(CHF_AUTOIX[i],0)
+        totalVel(0) = Max(Abs(thisVel + thisC0i), Abs(thisVel - thisC0i));
+
+        thisVel = vel(CHF_AUTOIX[i],1)
+        thisC0i = c0i(CHF_AUTOIX[i],1)
+        totalVel(1) = Max(Abs(thisVel + thisC0i), Abs(thisVel - thisC0i));
+
+        thisVel = vel(CHF_AUTOIX[i],2)
+        thisC0i = c0i(CHF_AUTOIX[i],2)
+        totalVel(2) = Max(Abs(thisVel + thisC0i), Abs(thisVel - thisC0i))]
+
+        ! minDt = Min_i[dXi^i / totalVel]
+        CHF_DTERM[
+        if (totalVel(0) .ne. zero) then
+          minDt = Min(minDt, dXi(0) / totalVel(0))
+        endif;
+        if (totalVel(1) .ne. zero) then
+          minDt = Min(minDt, dXi(1) / totalVel(1))
+        endif;
+        if (totalVel(2) .ne. zero) then
+          minDt = Min(minDt, dXi(2) / totalVel(2))
+        endif]
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c WeightedAvg
+c Computes avgState = theta*state1 + (1-theta)*state2
+c ----------------------------------------------------------------
+      subroutine WeightedAvg (
+     &      CHF_FRA[avgState],
+     &      CHF_CONST_FRA[state1],
+     &      CHF_CONST_FRA[state2],
+     &      CHF_CONST_REAL[theta],
+     &      CHF_BOX[region])
+
+      integer CHF_AUTODECL[i]
+      integer ncomp, comp
+      REAL_T oneMinusTheta
+
+      ncomp = CHF_NCOMP[avgState]
+      CH_assert((CHF_NCOMP[state1] .eq. ncomp))
+      CH_assert((CHF_NCOMP[state2] .eq. ncomp))
+
+      oneMinusTheta = one - theta
+
+      do comp = 0, ncomp-1
+        CHF_AUTOMULTIDO[region;i]
+          avgState(CHF_AUTOIX[i],comp) = state1(CHF_AUTOIX[i],comp) * theta
+     &                                 + state2(CHF_AUTOIX[i],comp) * oneMinusTheta
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c  TWOFORMMAG
+c  Converts a two-form to a vector, then computes its magnitude.
+c  This can be used in-place if mag holder = twoform holder.
+c ----------------------------------------------------------------
+      subroutine TWOFORMMAG2D (
+     &      CHF_FRA1[mag],
+     &      CHF_CONST_FRA1[twoform],
+     &      CHF_CONST_FRA1[gdnzz],
+     &      CHF_CONST_FRA1[Jinv],
+     &      CHF_BOX[region])
+
+      integer CHF_AUTODECL[i]
+
+      CHF_AUTOMULTIDO[region;i]
+        mag(CHF_AUTOIX[i]) = twoform(CHF_AUTOIX[i]) * Jinv(CHF_AUTOIX[i]) * sqrt(gdnzz(CHF_AUTOIX[i]))
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c  POWFAB
+c  Simply replaces state with state**power
+c ----------------------------------------------------------------
+      subroutine POWFAB (
+     &      CHF_FRA[state],
+     &      CHF_BOX[region],
+     &      CHF_CONST_REAL[power])
+
+      integer CHF_AUTODECL[i]
+      integer ncomp, comp
+
+      ncomp = CHF_NCOMP[state]
+
+      if (power .eq. half) then
+        do comp = 0, ncomp-1
+          CHF_AUTOMULTIDO[region;i]
+            state(CHF_AUTOIX[i],comp) = sqrt(state(CHF_AUTOIX[i],comp))
+          CHF_ENDDO
+        enddo
+      else
+        do comp = 0, ncomp-1
+          CHF_AUTOMULTIDO[region;i]
+            state(CHF_AUTOIX[i],comp) = state(CHF_AUTOIX[i],comp)**power
+          CHF_ENDDO
+        enddo
+      endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c  COMPUTEENERGY
+c  utility function to compute total energy at each point
+c  E = 0.5*v^2 + h*b
+c ----------------------------------------------------------------
+      subroutine COMPUTEENERGY (
+     &      CHF_FRA1[energy],
+     &      CHF_CONST_FRA[vel],
+     &      CHF_CONST_FRA1[density],
+     &      CHF_BOX[region],
+     &      CHF_CONST_FRA[gdn],
+     &      CHF_CONST_REALVECT[physDx])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T velSq, height
+
+#ifndef NDEBUG
+      ! Sanity checks
+      if(CHF_NCOMP[vel] .ne. CH_SPACEDIM) then
+         print*, 'COMPUTEENERGY:vel has wrong number of comps, ', CHF_NCOMP[vel]
+         call MAYDAYERROR()
+      endif
+#endif
+
+#if CH_SPACEDIM == 2
+      do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+        height = (j + 0.5) * physDx(1)
+        do i=CHF_LBOUND[region; 0], CHF_UBOUND[region; 0]
+
+            velSq = vel(CHF_IX[i;j;k],0) * (  gdn(CHF_IX[i;j;k],xxSymComp) * vel(CHF_IX[i;j;k],0)
+     &                                      + gdn(CHF_IX[i;j;k],xySymComp) * vel(CHF_IX[i;j;k],1)  )
+     &
+     &            + vel(CHF_IX[i;j;k],1) * (  gdn(CHF_IX[i;j;k],yxSymComp) * vel(CHF_IX[i;j;k],0)
+     &                                      + gdn(CHF_IX[i;j;k],yySymComp) * vel(CHF_IX[i;j;k],1)  )
+
+            energy(CHF_IX[i;j;k]) = half * velSq + density(CHF_IX[i;j;k]) * height
+
+        enddo
+      enddo
+
+#elif CH_SPACEDIM == 3
+      do k=CHF_LBOUND[region; 2], CHF_UBOUND[region; 2]
+        height = (k + 0.5) * physDx(2)
+
+        do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+          do i=CHF_LBOUND[region; 0], CHF_UBOUND[region; 0]
+
+            velSq = vel(CHF_IX[i;j;k],0) * (  gdn(CHF_IX[i;j;k],xxSymComp) * vel(CHF_IX[i;j;k],0)
+     &                                      + gdn(CHF_IX[i;j;k],xySymComp) * vel(CHF_IX[i;j;k],1)
+     &                                      + gdn(CHF_IX[i;j;k],xzSymComp) * vel(CHF_IX[i;j;k],2)  )
+     &
+     &            + vel(CHF_IX[i;j;k],1) * (  gdn(CHF_IX[i;j;k],yxSymComp) * vel(CHF_IX[i;j;k],0)
+     &                                      + gdn(CHF_IX[i;j;k],yySymComp) * vel(CHF_IX[i;j;k],1)
+     &                                      + gdn(CHF_IX[i;j;k],yzSymComp) * vel(CHF_IX[i;j;k],2)  )
+     &
+     &            + vel(CHF_IX[i;j;k],2) * (  gdn(CHF_IX[i;j;k],zxSymComp) * vel(CHF_IX[i;j;k],0)
+     &                                      + gdn(CHF_IX[i;j;k],zySymComp) * vel(CHF_IX[i;j;k],1)
+     &                                      + gdn(CHF_IX[i;j;k],zzSymComp) * vel(CHF_IX[i;j;k],2)  )
+            energy(CHF_IX[i;j;k]) = half * velSq + density(CHF_IX[i;j;k]) * height
+
+          enddo
+        enddo
+      enddo
+#else
+#  error Bad SPACEDIM
+#endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c  COMPUTEKINETICENERGY
+c  utility function to compute kinetic energy at each point
+c  E = 0.5*v^2
+c ----------------------------------------------------------------
+      subroutine COMPUTEKINETICENERGY (
+     &      CHF_FRA1[energy],
+     &      CHF_CONST_FRA[vel],
+     &      CHF_BOX[region],
+     &      CHF_CONST_FRA[gdn],
+     &      CHF_CONST_REALVECT[physDx])
+
+      integer CHF_AUTODECL[i]
+      REAL_T velSq
+
+#ifndef NDEBUG
+      ! Sanity checks
+      if(CHF_NCOMP[vel] .ne. CH_SPACEDIM) then
+         print*, 'COMPUTEENERGY:vel has wrong number of comps, ', CHF_NCOMP[vel]
+         call MAYDAYERROR()
+      endif
+#endif
+
+
+#if CH_SPACEDIM == 2
+      CHF_AUTOMULTIDO[region;i]
+        velSq = vel(CHF_AUTOIX[i],0) * (  gdn(CHF_AUTOIX[i],xxSymComp) * vel(CHF_AUTOIX[i],0)
+     &                                  + gdn(CHF_AUTOIX[i],xySymComp) * vel(CHF_AUTOIX[i],1)  )
+     &
+     &        + vel(CHF_AUTOIX[i],1) * (  gdn(CHF_AUTOIX[i],yxSymComp) * vel(CHF_AUTOIX[i],0)
+     &                                  + gdn(CHF_AUTOIX[i],yySymComp) * vel(CHF_AUTOIX[i],1)  )
+
+        energy(CHF_AUTOIX[i]) = half * velSq
+      CHF_ENDDO
+
+#elif CH_SPACEDIM == 3
+      CHF_AUTOMULTIDO[region;i]
+        velSq = vel(CHF_AUTOIX[i],0) * (  gdn(CHF_AUTOIX[i],xxSymComp) * vel(CHF_AUTOIX[i],0)
+     &                                  + gdn(CHF_AUTOIX[i],xySymComp) * vel(CHF_AUTOIX[i],1)
+     &                                  + gdn(CHF_AUTOIX[i],xzSymComp) * vel(CHF_AUTOIX[i],2)  )
+     &
+     &        + vel(CHF_AUTOIX[i],1) * (  gdn(CHF_AUTOIX[i],yxSymComp) * vel(CHF_AUTOIX[i],0)
+     &                                  + gdn(CHF_AUTOIX[i],yySymComp) * vel(CHF_AUTOIX[i],1)
+     &                                  + gdn(CHF_AUTOIX[i],yzSymComp) * vel(CHF_AUTOIX[i],2)  )
+     &
+     &        + vel(CHF_AUTOIX[i],2) * (  gdn(CHF_AUTOIX[i],zxSymComp) * vel(CHF_AUTOIX[i],0)
+     &                                  + gdn(CHF_AUTOIX[i],zySymComp) * vel(CHF_AUTOIX[i],1)
+     &                                  + gdn(CHF_AUTOIX[i],zzSymComp) * vel(CHF_AUTOIX[i],2)  )
+
+        energy(CHF_AUTOIX[i]) = half * velSq
+      CHF_ENDDO
+
+#else
+#  error Bad SPACEDIM
+#endif
+
+      return
+      end

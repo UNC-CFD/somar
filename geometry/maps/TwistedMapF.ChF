@@ -1,0 +1,409 @@
+#include "CONSTANTS.H"
+
+
+c ----------------------------------------------------------------
+c TWISTED_FILL_PHYSCOOR
+c ----------------------------------------------------------------
+      subroutine TWISTED0_FILL_PHYSCOOR (CHF_FRA1[dest],
+     &                                   CHF_CONST_INT[mu],
+     &                                   CHF_CONST_REALVECT[dXi],
+     &                                   CHF_CONST_REAL[pert],
+     &                                   CHF_BOX[destBox],
+     &                                   CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[Xi]
+      REAL_T CHF_AUTODECL[offset]
+      REAL_T scaledDXi(0:CH_SPACEDIM-1)
+
+      CHF_DTERM[
+      offset0 = (one - destBoxType(0)) * half;
+      offset1 = (one - destBoxType(1)) * half;
+      offset2 = (one - destBoxType(2)) * half]
+
+      CHF_DTERM[
+      scaledDXi(0) = two * Pi * dXi(0);
+      scaledDXi(1) = two * Pi * dXi(1);
+      scaledDXi(2) = two * Pi * dXi(2)]
+      scaledDXi(mu) = dXi(mu)
+
+#if CH_SPACEDIM == 2
+      if (mu .eq. 0) then
+        CHF_AUTOMULTIDO[destBox;i]
+          Xi0 = scaledDXi(0) * (i0 + offset0)
+          Xi1 = scaledDXi(1) * (i1 + offset1)
+          dest(CHF_AUTOIX[i]) = Xi0 + pert * sin(Xi1)
+        CHF_ENDDO
+      else
+        if (mu .eq. 1) then
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi0 = scaledDXi(0) * (i0 + offset0)
+            Xi1 = scaledDXi(1) * (i1 + offset1)
+            dest(CHF_AUTOIX[i]) = Xi1 + pert * sin(Xi0)
+          CHF_ENDDO
+        else
+          write(*,*) 'TWISTED_FILL_PHYSCOOR: Bad mu, ', mu
+          call MAYDAYERROR()
+        endif
+      endif
+#elif CH_SPACEDIM == 3
+      if (mu .eq. 0) then
+        CHF_AUTOMULTIDO[destBox;i]
+          Xi0 = scaledDXi(0) * (i0 + offset0)
+          Xi1 = scaledDXi(1) * (i1 + offset1)
+          Xi2 = scaledDXi(2) * (i2 + offset2)
+          dest(CHF_AUTOIX[i]) = Xi0 + pert * sin(Xi1) * sin(Xi2)
+        CHF_ENDDO
+      else
+        if (mu .eq. 1) then
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi0 = scaledDXi(0) * (i0 + offset0)
+            Xi1 = scaledDXi(1) * (i1 + offset1)
+            Xi2 = scaledDXi(2) * (i2 + offset2)
+            dest(CHF_AUTOIX[i]) = Xi1 + pert * sin(Xi2) * sin(Xi0)
+          CHF_ENDDO
+        else
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi0 = scaledDXi(0) * (i0 + offset0)
+            Xi1 = scaledDXi(1) * (i1 + offset1)
+            Xi2 = scaledDXi(2) * (i2 + offset2)
+            dest(CHF_AUTOIX[i]) = Xi2 + pert * sin(Xi0) * sin(Xi1)
+          CHF_ENDDO
+        endif
+      endif
+#else
+#  error Bad SPACEDIM
+#endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c TWISTED_FILL_PHYSCOOR_ALL_COMPS
+c ----------------------------------------------------------------
+      subroutine TWISTED0_FILL_PHYSCOOR_ALL_COMPS (CHF_FRA[dest],
+     &                                             CHF_CONST_REALVECT[dXi],
+     &                                             CHF_CONST_REALVECT[pert],
+     &                                             CHF_CONST_REALVECT[mult],
+     &                                             CHF_BOX[destBox],
+     &                                             CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[Xi]
+      REAL_T CHF_AUTODECL[offset]
+      REAL_T CHF_AUTODECL[sinTwoPiXi]
+      REAL_T twoPi
+
+      CHF_DTERM[
+      offset0 = (one - destBoxType(0)) * half;
+      offset1 = (one - destBoxType(1)) * half;
+      offset2 = (one - destBoxType(2)) * half]
+
+      twoPi = two * Pi
+
+#if CH_SPACEDIM > 2
+      do i2=CHF_LBOUND[destBox; 2], CHF_UBOUND[destBox; 2]
+        Xi2 = dXi(2) * (i2 + offset2)
+        sinTwoPiXi2 = sin(twoPi * Xi2)
+#endif
+        do i1=CHF_LBOUND[destBox; 1], CHF_UBOUND[destBox; 1]
+          Xi1 = dXi(1) * (i1 + offset1)
+          sinTwoPiXi1 = sin(twoPi * Xi1)
+
+          do i0=CHF_LBOUND[destBox; 0], CHF_UBOUND[destBox; 0]
+            Xi0 = dXi(0) * (i0 + offset0)
+            sinTwoPiXi0 = sin(twoPi * Xi0)
+
+#if CH_SPACEDIM == 2
+            dest(CHF_AUTOIX[i],0) = mult(0) * (Xi0 + pert(0) * sinTwoPiXi1)
+            dest(CHF_AUTOIX[i],1) = mult(1) * (Xi1 + pert(1) * sinTwoPiXi0)
+#elif CH_SPACEDIM == 3
+            dest(CHF_AUTOIX[i],0) = mult(0) * (Xi0 + pert(0) * sinTwoPiXi1 * sinTwoPiXi2)
+            dest(CHF_AUTOIX[i],1) = mult(1) * (Xi1 + pert(1) * sinTwoPiXi2 * sinTwoPiXi0)
+            dest(CHF_AUTOIX[i],2) = mult(2) * (Xi2 + pert(2) * sinTwoPiXi0 * sinTwoPiXi1)
+#else
+#  error Bad SPACEDIM
+#endif
+          enddo
+        enddo
+#if CH_SPACEDIM > 2
+      enddo
+#endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c TWISTED_FILL_DXDXI
+c ----------------------------------------------------------------
+      subroutine TWISTED0_FILL_DXDXI (CHF_FRA1[dest],
+     &                                CHF_CONST_INT[mu],
+     &                                CHF_CONST_INT[nu],
+     &                                CHF_CONST_REALVECT[dXi],
+     &                                CHF_CONST_REAL[pert],
+     &                                CHF_CONST_REAL[mult],
+     &                                CHF_BOX[destBox],
+     &                                CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[twoPiDXi]
+      REAL_T CHF_AUTODECL[offset]
+      REAL_T twoPi, scaledPert, cosVal, sinVal, val
+
+#ifndef NDEBUG
+      if (mu .eq. nu) then
+        print *, 'TWISTED_FILL_DXDXI: Use setVal for mu equals nu case'
+        call MAYDAYERROR()
+      endif
+#endif
+      twoPi = two * Pi
+
+      CHF_DTERM[
+      offset0 = (one - destBoxType(0)) * half;
+      offset1 = (one - destBoxType(1)) * half;
+      offset2 = (one - destBoxType(2)) * half]
+
+      CHF_DTERM[
+      twoPiDXi0 = twoPi * dXi(0);
+      twoPiDXi1 = twoPi * dXi(1);
+      twoPiDXi2 = twoPi * dXi(2)]
+
+      scaledPert = twoPi * mult * pert;
+
+#if CH_SPACEDIM == 2
+
+      if (mu .eq. 0) then
+        ! mu = 0, nu = 1
+        CHF_AUTOMULTIDO[destBox;i]
+          dest(CHF_AUTOIX[i]) = scaledPert * cos(twoPiDXi1 * (i1 + offset1))
+        CHF_ENDDO
+      else
+        ! mu = 1, nu = 0
+        CHF_AUTOMULTIDO[destBox;i]
+          dest(CHF_AUTOIX[i]) = scaledPert * cos(twoPiDXi0 * (i0 + offset0))
+        CHF_ENDDO
+      endif
+
+#elif CH_SPACEDIM == 3
+
+      if (mu .eq. 0) then
+        if (nu .eq. 1) then
+          ! mu = 0, nu = 1
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = scaledPert * cos(twoPiDXi1 * (i1 + offset1)) * sin(twoPiDXi2 * (i2 + offset2))
+          CHF_ENDDO
+        else
+          ! mu = 0, nu = 2
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = scaledPert * cos(twoPiDXi2 * (i2 + offset2)) * sin(twoPiDXi1 * (i1 + offset1))
+          CHF_ENDDO
+        endif
+      else
+        if (mu .eq. 1) then
+          if (nu .eq. 0) then
+            ! mu = 1, nu = 0
+            CHF_AUTOMULTIDO[destBox;i]
+              dest(CHF_AUTOIX[i]) = scaledPert * cos(twoPiDXi0 * (i0 + offset0)) * sin(twoPiDXi2 * (i2 + offset2))
+            CHF_ENDDO
+          else
+            ! mu = 1, nu = 2
+            CHF_AUTOMULTIDO[destBox;i]
+              dest(CHF_AUTOIX[i]) = scaledPert * cos(twoPiDXi2 * (i2 + offset2)) * sin(twoPiDXi0 * (i0 + offset0))
+            CHF_ENDDO
+          endif
+        else
+          if (nu .eq. 0) then
+            ! mu = 2, nu = 0
+            CHF_AUTOMULTIDO[destBox;i]
+              dest(CHF_AUTOIX[i]) = scaledPert * cos(twoPiDXi0 * (i0 + offset0)) * sin(twoPiDXi1 * (i1 + offset1))
+            CHF_ENDDO
+          else
+            ! mu = 2, nu = 1
+            CHF_AUTOMULTIDO[destBox;i]
+              dest(CHF_AUTOIX[i]) = scaledPert * cos(twoPiDXi1 * (i1 + offset1)) * sin(twoPiDXi0 * (i0 + offset0))
+            CHF_ENDDO
+          endif
+        endif
+      endif
+
+#else
+#  error Bad SPACEDIM
+#endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c TWISTED_FILL_J
+c ----------------------------------------------------------------
+      subroutine TWISTED0_FILL_J (CHF_FRA1[dest],
+     &                            CHF_CONST_REALVECT[dXi],
+     &                            CHF_CONST_REALVECT[pert],
+     &                            CHF_CONST_REAL[mult],
+     &                            CHF_BOX[destBox],
+     &                            CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[Xi]
+      REAL_T CHF_AUTODECL[twoPiDXi]
+      REAL_T CHF_AUTODECL[CosXi]
+      REAL_T CHF_AUTODECL[SinXi]
+      REAL_T CHF_AUTODECL[Sin2Xi]
+      REAL_T CHF_AUTODECL[offset]
+      REAL_T scaledDXi(0:CH_SPACEDIM-1)
+      REAL_T twoPi,twoPiPi, pertProd, SinProd, CosProd, twobCos1, aSin22, cCos2
+
+      twoPi = two * Pi
+      twoPiPi = twoPi * Pi
+      pertProd = CHF_DTERM[Pi*pert(0);*pert(1);*pert(2)]
+
+      CHF_DTERM[
+      offset0 = (one - destBoxType(0)) * half;
+      offset1 = (one - destBoxType(1)) * half;
+      offset2 = (one - destBoxType(2)) * half]
+
+      CHF_DTERM[
+      twoPiDXi0 = twoPi * dXi(0);
+      twoPiDXi1 = twoPi * dXi(1);
+      twoPiDXi2 = twoPi * dXi(2)]
+
+#if CH_SPACEDIM == 2
+      do i1=CHF_LBOUND[destBox; 1], CHF_UBOUND[destBox; 1]
+        Xi1 = twoPiDXi1 * (i1 + offset1)
+        twobCos1 = twoPi*pert(0)*twoPi*pert(1)*cos(Xi1)
+
+        do i0=CHF_LBOUND[destBox; 0], CHF_UBOUND[destBox; 0]
+          Xi0 = twoPiDXi0 * (i0 + offset0)
+
+          dest(CHF_AUTOIX[i]) = mult * (one - twobCos1 * cos(Xi0))
+        enddo
+      enddo
+#elif CH_SPACEDIM == 3
+      do i2=CHF_LBOUND[destBox; 2], CHF_UBOUND[destBox; 2]
+        Xi2 = twoPiDXi2 * (i2 + offset2)
+        cCos2 = pert(2)*cos(Xi2)
+        SinXi2 = sin(Xi2)
+        Sin2Xi2 = sin(two*Xi2)
+        aSin22 = pert(0)*SinXi2**2
+        do i1=CHF_LBOUND[destBox; 1], CHF_UBOUND[destBox; 1]
+          Xi1 = twoPiDXi1 * (i1 + offset1)
+          CosXi1 = cos(Xi1)
+          SinXi1 = sin(Xi1)
+          Sin2Xi1 = sin(two*Xi1)
+          SinProd = PertProd*Sin2Xi1*Sin2Xi2
+          CosProd = -two*pert(0)*cCos2*SinXi1**2
+          twobCos1 = -two*pert(1)*CosXi1
+
+          do i0=CHF_LBOUND[destBox; 0], CHF_UBOUND[destBox; 0]
+            Xi0 = twoPiDXi0 * (i0 + offset0)
+            CosXi0 = cos(Xi0)
+            SinXi0 = sin(Xi0)
+            Sin2Xi0 = sin(two*Xi0)
+
+            dest(CHF_AUTOIX[i]) = mult
+     &       * (one + twoPiPi * (twobCos1 * (cCos2*SinXi0**2 + CosXi0*aSin22) + (CosXi0*CosProd + Sin2Xi0*SinProd)))
+          enddo
+        enddo
+      enddo
+#else
+#  error Bad SPACEDIM
+#endif
+
+      return
+      end
+
+
+
+
+
+
+c ----------------------------------------------------------------
+c TWISTED1_FILL_PHYSCOOR
+c ----------------------------------------------------------------
+      subroutine TWISTED1_FILL_PHYSCOOR (CHF_FRA1[dest],
+     &                                   CHF_CONST_INT[mu],
+     &                                   CHF_CONST_REALVECT[dXi],
+     &                                   CHF_CONST_REALVECT[domLen],
+     &                                   CHF_CONST_REAL[pert],
+     &                                   CHF_BOX[destBox],
+     &                                   CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[Xi]
+      REAL_T CHF_AUTODECL[offset]
+      REAL_T CHF_AUTODECL[k]
+      REAL_T CHF_AUTODECL[phi]
+
+      CHF_DTERM[
+      offset0 = (one - destBoxType(0)) * half;
+      offset1 = (one - destBoxType(1)) * half;
+      offset2 = (one - destBoxType(2)) * half]
+
+      CHF_DTERM[
+      k0 = Pi / domLen(0);
+      k1 = Pi / domLen(1);
+      k2 = Pi / domLen(2)]
+
+      CHF_DTERM[
+      phi0 = fourth * Pi;
+      phi1 = fourth * Pi;
+      phi2 = fourth * Pi]
+
+#if CH_SPACEDIM == 2
+      if (mu .eq. 0) then
+        CHF_AUTOMULTIDO[destBox;i]
+          Xi0 = dXi(0) * (i0 + offset0)
+          Xi1 = dXi(1) * (i1 + offset1)
+          dest(CHF_AUTOIX[i]) = Xi0 + pert * sin(k0*Xi0) * cos(two*k1*Xi1+phi1)
+        CHF_ENDDO
+      else
+        if (mu .eq. 1) then
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi0 = dXi(0) * (i0 + offset0)
+            Xi1 = dXi(1) * (i1 + offset1)
+            dest(CHF_AUTOIX[i]) = Xi1 + pert * cos(two*k0*Xi0+phi0) * sin(k1*Xi1)
+          CHF_ENDDO
+        else
+          write(*,*) 'TWISTED_FILL_PHYSCOOR: Bad mu, ', mu
+          call MAYDAYERROR()
+        endif
+      endif
+#elif CH_SPACEDIM == 3
+      if (mu .eq. 0) then
+        CHF_AUTOMULTIDO[destBox;i]
+          Xi0 = dXi(0) * (i0 + offset0)
+          Xi1 = dXi(1) * (i1 + offset1)
+          Xi2 = dXi(2) * (i2 + offset2)
+          dest(CHF_AUTOIX[i]) = Xi0 + pert * sin(k0*Xi0) * cos(two*k1*Xi1+phi1) * cos(two*k2*Xi2+phi2)
+        CHF_ENDDO
+      else
+        if (mu .eq. 1) then
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi0 = dXi(0) * (i0 + offset0)
+            Xi1 = dXi(1) * (i1 + offset1)
+            Xi2 = dXi(2) * (i2 + offset2)
+            dest(CHF_AUTOIX[i]) = Xi1 + pert * cos(two*k0*Xi0+phi0) * sin(k1*Xi1) * cos(two*k2*Xi2+phi2)
+          CHF_ENDDO
+        else
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi0 = dXi(0) * (i0 + offset0)
+            Xi1 = dXi(1) * (i1 + offset1)
+            Xi2 = dXi(2) * (i2 + offset2)
+            dest(CHF_AUTOIX[i]) = Xi2 + pert * cos(two*k0*Xi0+phi0) * cos(two*k1*Xi1+phi1) * sin(k2*Xi2)
+          CHF_ENDDO
+        endif
+      endif
+#else
+#  error Bad SPACEDIM
+#endif
+
+      return
+      end

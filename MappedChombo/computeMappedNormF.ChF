@@ -1,0 +1,82 @@
+#include "CONSTANTS.H"
+
+
+C     ------------------------------------------------------------------
+C     COMPUTEMAPPEDNORMPOW
+C     Simply adds (phi**p)*vol to sum.
+C     ------------------------------------------------------------------
+      subroutine COMPUTEMAPPEDNORMPOW (
+     &     CHF_REAL[sum],
+     &     CHF_CONST_FRA1[phi],
+     &     CHF_CONST_FRA1[J],
+     &     CHF_BOX[stateBox],
+     &     CHF_CONST_REAL[dxScale],
+     &     CHF_CONST_INT[p])
+
+      integer CHF_AUTODECL[i]
+      REAL_T phiVal
+
+      if (p .eq. 0) then
+        CHF_AUTOMULTIDO[stateBox;i]
+          sum = max( sum, abs(phi(CHF_AUTOIX[i])) )
+        CHF_ENDDO
+
+      else if (p .eq. 1) then
+        CHF_AUTOMULTIDO[stateBox;i]
+          sum = sum + abs( phi(CHF_AUTOIX[i]) * J(CHF_AUTOIX[i]) * dxScale )
+        CHF_ENDDO
+
+      else if (p .eq. 2) then
+        CHF_AUTOMULTIDO[stateBox;i]
+          phiVal = phi(CHF_AUTOIX[i])
+          sum = sum + phiVal * phiVal * J(CHF_AUTOIX[i]) * dxScale
+        CHF_ENDDO
+
+      else
+        CHF_AUTOMULTIDO[stateBox;i]
+          sum = sum + abs( phi(CHF_AUTOIX[i])**DBLE(p) * J(CHF_AUTOIX[i]) * dxScale )
+        CHF_ENDDO
+      endif
+
+      return
+      end
+
+
+C     ------------------------------------------------------------------
+C     COMPUTEUNMAPPEDNORMPOW
+C     Simply adds (phi**p)*vol to sum.
+C     ------------------------------------------------------------------
+      subroutine COMPUTEUNMAPPEDNORMPOW (
+     &     CHF_REAL[sum],
+     &     CHF_CONST_FRA1[phi],
+     &     CHF_BOX[stateBox],
+     &     CHF_CONST_REAL[dxScale],
+     &     CHF_CONST_INT[p])
+
+      integer CHF_AUTODECL[i]
+      REAL_T phiVal
+
+      if (p .eq. 0) then
+        CHF_AUTOMULTIDO[stateBox;i]
+          sum = max( sum, abs(phi(CHF_AUTOIX[i])) )
+        CHF_ENDDO
+
+      else if (p .eq. 1) then
+        CHF_AUTOMULTIDO[stateBox;i]
+          sum = sum + abs( phi(CHF_AUTOIX[i]) * dxScale )
+        CHF_ENDDO
+
+      else if (p .eq. 2) then
+        CHF_AUTOMULTIDO[stateBox;i]
+          phiVal = phi(CHF_AUTOIX[i])
+          sum = sum + phiVal * phiVal * dxScale
+        CHF_ENDDO
+
+      else
+        CHF_AUTOMULTIDO[stateBox;i]
+          sum = sum + abs( phi(CHF_AUTOIX[i])**DBLE(p) * dxScale )
+        CHF_ENDDO
+      endif
+
+      return
+      end

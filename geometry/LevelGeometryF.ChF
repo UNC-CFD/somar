@@ -1,0 +1,292 @@
+#include "CONSTANTS.H"
+#include "LevelGeometry.H"
+
+
+c ----------------------------------------------------------------
+c ----------------------------------------------------------------
+      subroutine FILLMAPPINGDISP (
+     &    CHF_FRA[disp],
+     &    CHF_CONST_FRA[pos],
+     &    CHF_CONST_REALVECT[dXi],
+     &    CHF_BOX[region],
+     &    CHF_CONST_INTVECT[boxType])
+
+      integer CHF_AUTOIX[i]
+      REAL_T CHF_AUTOIX[offset]
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[disp] .ne. CH_SPACEDIM) then
+        print*, 'FILLMAPPINGDISP: disp must have SpaceDim comps, not ', CHF_NCOMP[disp]
+        call MAYDAYERROR()
+      endif
+
+      if (CHF_NCOMP[pos] .ne. CH_SPACEDIM) then
+        print*, 'FILLMAPPINGDISP: pos must have SpaceDim comps, not ', CHF_NCOMP[disp]
+        call MAYDAYERROR()
+      endif
+
+      CHF_DTERM[
+      if ((boxType(0) .ne. 0) .and. (boxType(0) .ne. 1)) then
+        print*, 'FILLMAPPINGDISP: Bad boxType(0) = ', boxType(0)
+        call MAYDAYERROR()
+      endif;
+
+      if ((boxType(1) .ne. 0) .and. (boxType(1) .ne. 1)) then
+        print*, 'FILLMAPPINGDISP: Bad boxType(1) = ', boxType(1)
+        call MAYDAYERROR()
+      endif;
+
+      if ((boxType(2) .ne. 0) .and. (boxType(2) .ne. 1)) then
+        print*, 'FILLMAPPINGDISP: Bad boxType(2) = ', boxType(2)
+        call MAYDAYERROR()
+      endif]
+#endif
+
+      CHF_DTERM[
+      offset0 = half * DBLE(1 - boxType(0));
+      offset1 = half * DBLE(1 - boxType(1));
+      offset2 = half * DBLE(1 - boxType(2))]
+
+      CHF_AUTOMULTIDO[region;i]
+        CHF_DTERM[
+        disp(CHF_AUTOIX[i],0) = pos(CHF_AUTOIX[i],0) - (DBLE(i0) + offset0) * dXi(0);
+        disp(CHF_AUTOIX[i],1) = pos(CHF_AUTOIX[i],1) - (DBLE(i1) + offset1) * dXi(1);
+        disp(CHF_AUTOIX[i],2) = pos(CHF_AUTOIX[i],2) - (DBLE(i2) + offset2) * dXi(2)]
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c CONTRACTMATRIXVECTORCC
+c Contract a matrix with a vector in-place.
+c ----------------------------------------------------------------
+      subroutine CONTRACTMATRIXVECTORCC (CHF_FRA[vector],
+     &                                   CHF_CONST_FRA[matrix],
+     &                                   CHF_BOX[region])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[src]
+
+#ifndef NDEBUG
+      ! Sanity checks
+      if (CHF_NCOMP[vector] .ne. CH_SPACEDIM) then
+        write(*,*) 'CONTRACTMATRIXVECTORCC: vector has bad number of comps ', CHF_NCOMP[vector]
+        call MAYDAYERROR()
+      endif
+
+      if (CHF_NCOMP[matrix] .ne. CH_SPACEDIM**2) then
+        write(*,*) 'CONTRACTMATRIXVECTORCC: matrix has bad number of comps ', CHF_NCOMP[matrix]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ! Loop through this grid and do calculation
+      CHF_AUTOMULTIDO[region; i]
+#       if CH_SPACEDIM == 2
+
+            ! 2D version
+            src0 = vector(CHF_AUTOIX[i],0);
+            src1 = vector(CHF_AUTOIX[i],1);
+
+            vector(CHF_AUTOIX[i],0) = matrix(CHF_AUTOIX[i],xxComp) * src0
+     &                              + matrix(CHF_AUTOIX[i],xyComp) * src1
+
+            vector(CHF_AUTOIX[i],1) = matrix(CHF_AUTOIX[i],yxComp) * src0
+     &                              + matrix(CHF_AUTOIX[i],yyComp) * src1
+
+#       elif CH_SPACEDIM == 3
+
+            ! 3D version
+            src0 = vector(CHF_AUTOIX[i],0);
+            src1 = vector(CHF_AUTOIX[i],1);
+            src2 = vector(CHF_AUTOIX[i],2);
+
+            vector(CHF_AUTOIX[i],0) = matrix(CHF_AUTOIX[i],xxComp) * src0
+     &                              + matrix(CHF_AUTOIX[i],xyComp) * src1
+     &                              + matrix(CHF_AUTOIX[i],xzComp) * src2
+
+            vector(CHF_AUTOIX[i],1) = matrix(CHF_AUTOIX[i],yxComp) * src0
+     &                              + matrix(CHF_AUTOIX[i],yyComp) * src1
+     &                              + matrix(CHF_AUTOIX[i],yzComp) * src2
+
+            vector(CHF_AUTOIX[i],2) = matrix(CHF_AUTOIX[i],zxComp) * src0
+     &                              + matrix(CHF_AUTOIX[i],zyComp) * src1
+     &                              + matrix(CHF_AUTOIX[i],zzComp) * src2
+
+#       else
+#           error Bad CH_SPACEDIM
+#       endif
+      CHF_ENDDO
+
+      return
+      end
+
+
+
+c ----------------------------------------------------------------
+c Contract a vector/one-form with the covariant/contravariant metric.
+c ----------------------------------------------------------------
+      subroutine CONTRACTWITHMETRIC (CHF_FRA[dest],
+     &                               CHF_CONST_FRA[src],
+     &                               CHF_BOX[region],
+     &                               CHF_CONST_FRA[metric])
+
+      ! Declare variables
+      integer CHF_DDECL[i; j; k]
+
+      ! Sanity checks
+      if (CHF_NCOMP[dest] .ne. CH_SPACEDIM) then
+        write(*,*) 'CONTRACTWITHMETRIC: dest has bad number of comps ', CHF_NCOMP[dest]
+        call MAYDAYERROR()
+      endif
+
+      if (CHF_NCOMP[src] .ne. CH_SPACEDIM) then
+        write(*,*) 'CONTRACTWITHMETRIC: src has bad number of comps ', CHF_NCOMP[src]
+        call MAYDAYERROR()
+      endif
+
+      ! Loop through this grid and do calculation
+      CHF_MULTIDO[region; i; j; k]
+#       if CH_SPACEDIM == 2
+
+            ! 2D version
+            dest(CHF_IX[i;j;k],0) = metric(CHF_IX[i;j;k],xxSymComp) * src(CHF_IX[i;j;k],0)
+     &                            + metric(CHF_IX[i;j;k],xySymComp) * src(CHF_IX[i;j;k],1)
+
+            dest(CHF_IX[i;j;k],1) = metric(CHF_IX[i;j;k],yxSymComp) * src(CHF_IX[i;j;k],0)
+     &                            + metric(CHF_IX[i;j;k],yySymComp) * src(CHF_IX[i;j;k],1)
+
+#       elif CH_SPACEDIM == 3
+
+            ! 3D version
+            dest(CHF_IX[i;j;k],0) = metric(CHF_IX[i;j;k],xxSymComp) * src(CHF_IX[i;j;k],0)
+     &                            + metric(CHF_IX[i;j;k],xySymComp) * src(CHF_IX[i;j;k],1)
+     &                            + metric(CHF_IX[i;j;k],xzSymComp) * src(CHF_IX[i;j;k],2)
+
+            dest(CHF_IX[i;j;k],1) = metric(CHF_IX[i;j;k],yxSymComp) * src(CHF_IX[i;j;k],0)
+     &                            + metric(CHF_IX[i;j;k],yySymComp) * src(CHF_IX[i;j;k],1)
+     &                            + metric(CHF_IX[i;j;k],yzSymComp) * src(CHF_IX[i;j;k],2)
+
+            dest(CHF_IX[i;j;k],2) = metric(CHF_IX[i;j;k],zxSymComp) * src(CHF_IX[i;j;k],0)
+     &                            + metric(CHF_IX[i;j;k],zySymComp) * src(CHF_IX[i;j;k],1)
+     &                            + metric(CHF_IX[i;j;k],zzSymComp) * src(CHF_IX[i;j;k],2)
+
+#       else
+#           error Bad CH_SPACEDIM
+#       endif
+      CHF_ENDDO
+
+      return
+      end
+
+
+
+c ----------------------------------------------------------------
+c Contracts two contravariant vectors.
+c ----------------------------------------------------------------
+      subroutine CONTRACTVECTORS (CHF_FRA1[res],
+     &                            CHF_CONST_FRA[vec1],
+     &                            CHF_CONST_FRA[vec2],
+     &                            CHF_BOX[region],
+     &                            CHF_CONST_FRA[gdn])
+
+      ! Declare variables
+      integer CHF_DDECL[i; j; k]
+
+      ! Sanity checks
+      if (CHF_NCOMP[vec1] .ne. CH_SPACEDIM) then
+        write(*,*) 'CONTRACTVECTORS: vec1 has bad number of comps ', CHF_NCOMP[vec1]
+        call MAYDAYERROR()
+      endif
+
+      if (CHF_NCOMP[vec2] .ne. CH_SPACEDIM) then
+        write(*,*) 'CONTRACTVECTORS: vec2 has bad number of comps ', CHF_NCOMP[vec2]
+        call MAYDAYERROR()
+      endif
+
+      ! Loop through this grid and do calculation
+      CHF_MULTIDO[region; i; j; k]
+#       if CH_SPACEDIM == 2
+
+            ! 2D version
+            res(CHF_IX[i;j;k]) = gdn(CHF_IX[i;j;k],xxSymComp) * vec1(CHF_IX[i;j;k],0) * vec2(CHF_IX[i;j;k],0)
+     &                         + gdn(CHF_IX[i;j;k],xySymComp) * vec1(CHF_IX[i;j;k],0) * vec2(CHF_IX[i;j;k],1)
+
+     &                         + gdn(CHF_IX[i;j;k],yxSymComp) * vec1(CHF_IX[i;j;k],1) * vec2(CHF_IX[i;j;k],0)
+     &                         + gdn(CHF_IX[i;j;k],yySymComp) * vec1(CHF_IX[i;j;k],1) * vec2(CHF_IX[i;j;k],1)
+
+#       elif CH_SPACEDIM == 3
+
+            ! 3D version
+            res(CHF_IX[i;j;k]) = gdn(CHF_IX[i;j;k],xxSymComp) * vec1(CHF_IX[i;j;k],0) * vec2(CHF_IX[i;j;k],0)
+     &                         + gdn(CHF_IX[i;j;k],xySymComp) * vec1(CHF_IX[i;j;k],0) * vec2(CHF_IX[i;j;k],1)
+     &                         + gdn(CHF_IX[i;j;k],xzSymComp) * vec1(CHF_IX[i;j;k],0) * vec2(CHF_IX[i;j;k],2)
+
+     &                         + gdn(CHF_IX[i;j;k],yxSymComp) * vec1(CHF_IX[i;j;k],1) * vec2(CHF_IX[i;j;k],0)
+     &                         + gdn(CHF_IX[i;j;k],yySymComp) * vec1(CHF_IX[i;j;k],1) * vec2(CHF_IX[i;j;k],1)
+     &                         + gdn(CHF_IX[i;j;k],yzSymComp) * vec1(CHF_IX[i;j;k],1) * vec2(CHF_IX[i;j;k],2)
+
+     &                         + gdn(CHF_IX[i;j;k],zxSymComp) * vec1(CHF_IX[i;j;k],2) * vec2(CHF_IX[i;j;k],0)
+     &                         + gdn(CHF_IX[i;j;k],zySymComp) * vec1(CHF_IX[i;j;k],2) * vec2(CHF_IX[i;j;k],1)
+     &                         + gdn(CHF_IX[i;j;k],zzSymComp) * vec1(CHF_IX[i;j;k],2) * vec2(CHF_IX[i;j;k],2)
+
+#       else
+#           error Bad CH_SPACEDIM
+#       endif
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c SYMPROD
+c Computes the symmetric product vec1^{a} vec2^{b} + vec1^{b} vec2^{a}
+c ----------------------------------------------------------------
+      subroutine SYMPROD (CHF_FRA1[res],
+     &                    CHF_CONST_FRA[vec1],
+     &                    CHF_CONST_FRA[vec2],
+     &                    CHF_BOX[region],
+     &                    CHF_CONST_INT[adir],
+     &                    CHF_CONST_INT[bdir])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]       ! position
+
+#ifndef NDEBUG
+      ! Sanity checks
+      if (CHF_NCOMP[vec1] .ne. CH_SPACEDIM) then
+        write(*,*) 'SYMPROD: vec1 has bad number of comps, ', CHF_NCOMP[vec1]
+        call MAYDAYERROR()
+      endif
+
+      if (CHF_NCOMP[vec2] .ne. CH_SPACEDIM) then
+        write(*,*) 'SYMPROD: vec2 has bad number of comps, ', CHF_NCOMP[vec2]
+        call MAYDAYERROR()
+      endif
+
+      if ((adir .lt. 0) .or. (CH_SPACEDIM .le. adir)) then
+        write(*,*) 'SYMPROD: adir is out of range, ', adir
+        call MAYDAYERROR()
+      endif
+
+      if ((bdir .lt. 0) .or. (CH_SPACEDIM .le. bdir)) then
+        write(*,*) 'SYMPROD: bdir is out of range, ', bdir
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ! Loop through this grid and do calculation
+      CHF_AUTOMULTIDO[region;i]
+
+        res(CHF_AUTOIX[i]) = vec1(CHF_AUTOIX[i],adir) * vec2(CHF_AUTOIX[i],bdir)
+     &                     + vec1(CHF_AUTOIX[i],bdir) * vec2(CHF_AUTOIX[i],adir)
+
+      CHF_ENDDO
+
+      return
+      end
+

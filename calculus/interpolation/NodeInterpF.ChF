@@ -1,0 +1,97 @@
+c ----------------------------------------------------------------
+c Piecewise linear interpolation of node centered data.
+c ----------------------------------------------------------------
+      subroutine LinearNodeInterp (
+     &      CHF_FRA[fine],
+     &      CHF_CONST_FRA[crse],
+     &      CHF_BOX[crseBox],
+     &      CHF_CONST_INTVECT[ref],
+     &      CHF_BOX[refBox])
+
+      ! Declare variables
+      integer ncomp, n
+      integer CHF_AUTODECL[ci]
+      integer CHF_AUTODECL[fi]
+      integer CHF_AUTODECL[dir]
+      integer foffset
+      REAL_T left, right, dLeft
+
+      ncomp = CHF_NCOMP[fine]
+
+      do n = 0, ncomp-1
+        ! Copy existing nodes
+        CHF_AUTOMULTIDO[crseBox; ci]
+          CHF_DTERM[
+          fi0 = ci0 * ref(0);
+          fi1 = ci1 * ref(1);
+          fi2 = ci2 * ref(2)]
+
+          fine(CHF_AUTOIX[fi],n) = crse(CHF_AUTOIX[ci],n)
+        CHF_ENDDO
+
+        ! X sweep...
+        CHF_AUTOID[dir;0]
+
+#if CH_SPACEDIM > 2
+        do ci2 = CHF_LBOUND[crseBox;2], CHF_UBOUND[crseBox;2]
+#endif
+        do ci1 = CHF_LBOUND[crseBox;1], CHF_UBOUND[crseBox;1]
+        do ci0 = CHF_LBOUND[crseBox;0], CHF_UBOUND[crseBox;0]-1
+          CHF_DTERM[
+          fi0 = ci0 * ref(0);
+          fi1 = ci1 * ref(1);
+          fi2 = ci2 * ref(2)]
+
+          do foffset = 0, ref(0)-1
+            left = fine(CHF_AUTOIX[fi],n)
+            right = fine(CHF_OFFSETIX[fi;+ref(0)*dir],n)
+            dLeft = (right - left) * DBLE(foffset) / DBLE(ref(0))
+
+            fine(CHF_OFFSETIX[fi;+foffset*dir],n) = left + dLeft
+          enddo
+        CHF_ENDDO
+
+        ! Y sweep...
+        CHF_AUTOID[dir;1]
+
+#if CH_SPACEDIM > 2
+        do ci2 = CHF_LBOUND[crseBox;2], CHF_UBOUND[crseBox;2]
+#endif
+        do ci1 = CHF_LBOUND[crseBox;1], CHF_UBOUND[crseBox;1]-1
+        do fi0 = CHF_LBOUND[crseBox;0]*ref(0), CHF_UBOUND[crseBox;0]*ref(0)
+          CHF_DTERM[;
+          fi1 = ci1 * ref(1);
+          fi2 = ci2 * ref(2)]
+
+          do foffset = 0, ref(1)-1
+            left = fine(CHF_AUTOIX[fi],n)
+            right = fine(CHF_OFFSETIX[fi;+ref(1)*dir],n)
+            dLeft = (right - left) * DBLE(foffset) / DBLE(ref(1))
+
+            fine(CHF_OFFSETIX[fi;+foffset*dir],n) = left + dLeft
+          enddo
+        CHF_ENDDO
+
+#if CH_SPACEDIM > 2
+        ! Z sweep...
+        CHF_AUTOID[dir;2]
+
+        do ci2 = CHF_LBOUND[crseBox;2], CHF_UBOUND[crseBox;2]-1
+        do fi1 = CHF_LBOUND[crseBox;1]*ref(1), CHF_UBOUND[crseBox;1]*ref(1)
+        do fi0 = CHF_LBOUND[crseBox;0]*ref(0), CHF_UBOUND[crseBox;0]*ref(0)
+          CHF_DTERM[;;
+          fi2 = ci2 * ref(2)]
+
+          do foffset = 0, ref(2)-1
+            left = fine(CHF_AUTOIX[fi],n)
+            right = fine(CHF_OFFSETIX[fi;+ref(2)*dir],n)
+            dLeft = (right - left) * DBLE(foffset) / DBLE(ref(2))
+
+            fine(CHF_OFFSETIX[fi;+foffset*dir],n) = left + dLeft
+          enddo
+        CHF_ENDDO
+#endif
+      enddo
+
+      return
+      end

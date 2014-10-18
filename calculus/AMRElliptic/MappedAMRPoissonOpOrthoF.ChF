@@ -1,0 +1,67 @@
+#if 0
+C      _______              __
+C     / ___/ /  ___  __ _  / /  ___
+C    / /__/ _ \/ _ \/  V \/ _ \/ _ \
+C    \___/_//_/\___/_/_/_/_.__/\___/
+C    Please refer to Copyright.txt, in Chombo's root directory.
+#endif
+
+#include "CONSTANTS.H"
+#include "AddlFortranMacros.H"
+
+
+C     -----------------------------------------------------------------
+C     MAPPEDGETFLUXORTHO
+C     Computes the fluxes at faces between valid cells of phi.
+C       flux^a = J g^{a a} D_a[phi]
+C     ------------------------------------------------------------------
+      subroutine MAPPEDGETFLUXORTHO (
+     &    CHF_FRA[flux],
+     &    CHF_CONST_FRA[phi],
+     &    CHF_CONST_FRA1[Jgaa],
+     &    CHF_BOX[FCRegion],
+     &    CHF_CONST_REAL[beta_dx],
+     &    CHF_CONST_INT[adir])
+
+      INTEGER ncomp, n
+      integer CHF_DDECL[i ; j ; k ]
+      integer CHF_DDECL[ai; aj; ak]
+
+      CHF_DTERM[
+      ai = CHF_ID(adir, 0);
+      aj = CHF_ID(adir, 1);
+      ak = CHF_ID(adir, 2)]
+
+      ncomp = CHF_NCOMP[flux]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[phi]) then
+         print*, 'MAPPEDGETFLUXORTHO: flux and phi incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(flux,0,0,0, FCRegion,0,0,0)) then
+        print*, 'MAPPEDGETFLUXORTHO: flux does not contain FCRegion'
+        call MAYDAYERROR()
+      endif
+
+      ! phi is not currently tested!
+
+      ! Since Jgaa and FCRegion are both FC, this hack should work...
+      if (.not. CHECK_CONTAINS(Jgaa,0,0,0, FCRegion,0,0,0)) then
+        print*, 'MAPPEDGETFLUXORTHO: Jgaa does not contain FCRegion'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+          flux(CHF_IX[iFCRegionlo0   :iFCRegionhi0   ; iFCRegionlo1   :iFCRegionhi1   ; iFCRegionlo2   :iFCRegionhi2   ], n)
+     &  = Jgaa(CHF_IX[iFCRegionlo0   :iFCRegionhi0   ; iFCRegionlo1   :iFCRegionhi1   ; iFCRegionlo2   :iFCRegionhi2   ]   ) * beta_dx
+     &  * (phi(CHF_IX[iFCRegionlo0   :iFCRegionhi0   ; iFCRegionlo1   :iFCRegionhi1   ; iFCRegionlo2   :iFCRegionhi2   ], n)
+     &  -  phi(CHF_IX[iFCRegionlo0-ai:iFCRegionhi0-ai; iFCRegionlo1-aj:iFCRegionhi1-aj; iFCRegionlo2-ak:iFCRegionhi2-ak], n))
+      enddo
+
+      return
+      end

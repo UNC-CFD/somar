@@ -1,0 +1,572 @@
+#include "AddlFortranMacros.H"
+
+
+C     -----------------------------------------------------------------
+C     subroutine SUBTRACTOP
+C     Performs sub = a1 - a2.
+C     The OP stands for out of place, not operation.
+C
+C     Warning: subres, a1, and a2 must have the same number
+C     of components and span region.
+C
+C     TODO: This function should be in a utility file.
+C     -----------------------------------------------------------------
+      subroutine SUBTRACTOP(
+     &     CHF_FRA[subres],
+     &     CHF_CONST_FRA[a1],
+     &     CHF_CONST_FRA[a2],
+     &     CHF_BOX[region])
+
+      integer n,ncomp
+      integer CHF_DDECL[i;j;k]
+
+      ncomp = CHF_NCOMP[a1]
+
+      do n = 0, ncomp-1
+         CHF_MULTIDO[region; i; j; k]
+            subres(CHF_IX[i;j;k],n) = a1(CHF_IX[i;j;k],n) - a2(CHF_IX[i;j;k],n)
+         CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+
+C     -----------------------------------------------------------------
+C     subroutine AXBYIP
+C     Performs lhs = alpha*phi + beta*lhs.
+C     The IP stands for in place.
+C     -----------------------------------------------------------------
+      subroutine AXBYIP(
+     &     CHF_FRA[lhs],
+     &     CHF_CONST_FRA[phi],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_BOX[region])
+
+      integer n,ncomp
+      integer CHF_DDECL[i;j;k]
+
+      ncomp = CHF_NCOMP[lhs]
+
+      do n = 0, ncomp-1
+         CHF_MULTIDO[region; i; j; k]
+
+            lhs(CHF_IX[i;j;k],n) = alpha * phi(CHF_IX[i;j;k],n)
+     &                           + beta * lhs(CHF_IX[i;j;k],n)
+
+         CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+C     ------------------------------------------------------------------
+C     subroutine FILLMAPPEDLAPDIAG*D
+C     Computes the diagonal matrix elements for the mapped Laplacian
+C     ------------------------------------------------------------------
+      subroutine FILLMAPPEDLAPDIAG1D (
+     &     CHF_FRA1[lapDiag],
+     &     CHF_CONST_FRA1[Jgxx],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[dx])
+
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp
+      REAL_T dxScale
+
+#ifndef NDEBUG
+#     if CH_SPACEDIM == 1
+        ! No problem here !
+#     else
+#       if CH_SPACEDIM == 2
+          ! 2D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;1] .ne. 0) .or. (CHF_UBOUND[region;1] .ne. 0)) then
+            print*, "FILLMAPPEDLAPDIAG1D: Called 1D function while CH_SPACEDIM = 2 and region is not flat"
+            call MAYDAYERROR()
+          endif
+#       else
+          ! 3D code should never call this function.
+          ! 5D is right out.
+          print*, "FILLMAPPEDLAPDIAG1D: Called 1D function while CH_SPACEDIM = ", CH_SPACEDIM
+          call MAYDAYERROR()
+#       endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG1D: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgxx,1,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG1D: Jgxx does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG1D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      dxScale = one / (dx*dx)
+
+      CHF_MULTIDO[region; i; j; k]
+          lapdiag(CHF_IX[i;j;k]) = -Jinv(CHF_IX[i;j;k]) * dxScale
+     &                           * (Jgxx(CHF_IX[i+1;j;k]) + Jgxx(CHF_IX[i;j;k]))
+      CHF_ENDDO
+
+      return
+      end
+
+C     ------------------------------------------------------------------
+      subroutine FILLMAPPEDLAPDIAG2D (
+     &     CHF_FRA1[lapDiag],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA[Jg1],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx])
+
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp
+      REAL_T dxScale0, dxScale1
+
+#ifndef NDEBUG
+#     if CH_SPACEDIM == 2
+        ! No problem here !
+#     else
+#       if CH_SPACEDIM == 3
+          ! 3D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;2] .ne. 0) .or. (CHF_UBOUND[region;2] .ne. 0)) then
+            print*, "FILLMAPPEDLAPDIAG2D: Called 2D function while CH_SPACEDIM = 3 and region is not flat"
+            call MAYDAYERROR()
+          endif
+#       else
+          ! 1D code should never call this function.
+          ! 5D is right out.
+          print*, "FILLMAPPEDLAPDIAG2D: Called 2D function while CH_SPACEDIM = ", CH_SPACEDIM
+          call MAYDAYERROR()
+#       endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG2D: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg0,1,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG2D: Jg0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg1,0,1,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG2D: Jg1 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG2D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      dxScale0 = one / (dx(0)*dx(0))
+      dxScale1 = one / (dx(1)*dx(1))
+
+      CHF_MULTIDO[region; i; j; k]
+          lapdiag(CHF_IX[i;j;k]) = -Jinv(CHF_IX[i;j;k])
+     &                           * (  (Jg0(CHF_IX[i+1;j  ;k  ],0) + Jg0(CHF_IX[i  ;j  ;k  ],0)) * dxScale0
+     &                              + (Jg1(CHF_IX[i  ;j+1;k  ],1) + Jg1(CHF_IX[i  ;j  ;k  ],1)) * dxScale1  )
+      CHF_ENDDO
+
+      return
+      end
+
+C     ------------------------------------------------------------------
+      subroutine FILLMAPPEDLAPDIAG3D (
+     &     CHF_FRA1[lapDiag],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA[Jg1],
+     &     CHF_CONST_FRA[Jg2],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx])
+
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp
+      REAL_T dxScale0, dxScale1, dxScale2
+
+#ifndef NDEBUG
+      if (CH_SPACEDIM .ne. 3) then
+        print*, "FILLMAPPEDLAPDIAG3D: Called 2D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG3D: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg0,1,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG3D: Jg0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg1,0,1,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG3D: Jg1 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg2,0,0,1, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG3D: Jg2 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'FILLMAPPEDLAPDIAG3D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_DTERM[
+      dxScale0 = one / (dx(0)*dx(0));
+      dxScale1 = one / (dx(1)*dx(1));
+      dxScale2 = one / (dx(2)*dx(2))]
+
+      CHF_MULTIDO[region; i; j; k]
+          lapdiag(CHF_IX[i;j;k]) = -Jinv(CHF_IX[i;j;k])
+     &                           * (  (Jg0(CHF_IX[i+1;j  ;k  ],0) + Jg0(CHF_IX[i  ;j  ;k  ],0)) * dxScale0
+     &                              + (Jg1(CHF_IX[i  ;j+1;k  ],1) + Jg1(CHF_IX[i  ;j  ;k  ],1)) * dxScale1
+     &                              + (Jg2(CHF_IX[i  ;j  ;k+1],2) + Jg2(CHF_IX[i  ;j  ;k  ],2)) * dxScale2  )
+      CHF_ENDDO
+
+      return
+      end
+
+
+
+C     -----------------------------------------------------------------
+C     subroutine DIAGPRECOND
+C     preconditioner -- phi = rhs / (diag of op matrix)
+C
+C     Warning: phi, rhs must have the same number
+C     of components and span region.
+C     ------------------------------------------------------------------
+      subroutine DIAGPRECOND (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA1[lapDiag],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta])
+
+      integer n,ncomp
+      integer CHF_DDECL[i;j;k]
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      ! Check comps
+      if (ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'DIAGPRECOND: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,0,0,0)) then
+        print*, 'DIAGPRECOND: phi does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(rhs,0,0,0, region,0,0,0)) then
+        print*, 'DIAGPRECOND: rhs does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'DIAGPRECOND: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+        CHF_MULTIDO[region; i; j; k]
+          phi(CHF_IX[i;j;k],n) = rhs(CHF_IX[i;j;k],n) / (alpha + beta * lapDiag(CHF_IX[i;j;k]))
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+C     -----------------------------------------------------------------
+C     subroutine MAPPEDGETFLUX
+C     Computes the fluxes at faces between valid cells of phi.
+C       flux^a = J g^{a b} D_b[phi]
+C     ------------------------------------------------------------------
+      subroutine MAPPEDGETFLUX(
+     &    CHF_FRA[flux],
+     &    CHF_CONST_FRA[phi],
+     &    CHF_CONST_FRA[extrap],
+     &    CHF_CONST_FRA[Jga],
+     &    CHF_BOX[FCRegion],
+     &    CHF_CONST_REAL[beta],
+     &    CHF_CONST_REALVECT[dx],
+     &    CHF_CONST_INT[adir])
+
+      INTEGER ncomp, n, bdir, cdir
+      integer CHF_DDECL[i ; j ; k ]
+      integer CHF_DDECL[ai; aj; ak]
+      integer CHF_DDECL[bi; bj; bk]
+#if CH_SPACEDIM > 2
+      integer CHF_DDECL[ci; cj; ck]
+#endif
+      REAL_T CHF_DDECL[aScale; bScale; cScale]
+
+      CHF_DTERM[;
+                bdir = mod((adir + 1), CH_SPACEDIM);
+                cdir = mod((adir + 2), CH_SPACEDIM)]
+
+      CHF_DTERM[
+      ai = CHF_ID(adir, 0);
+      aj = CHF_ID(adir, 1);
+      ak = CHF_ID(adir, 2)]
+
+      CHF_DTERM[
+      bi = CHF_ID(bdir, 0);
+      bj = CHF_ID(bdir, 1);
+      bk = CHF_ID(bdir, 2)]
+
+#if CH_SPACEDIM > 2
+      CHF_DTERM[
+      ci = CHF_ID(cdir, 0);
+      cj = CHF_ID(cdir, 1);
+      ck = CHF_ID(cdir, 2)]
+#endif
+
+      ncomp = CHF_NCOMP[flux]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[phi]) then
+         print*, 'MAPPEDGETFLUX: flux and phi incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if(ncomp .ne. CHF_NCOMP[extrap]) then
+         print*, 'MAPPEDGETFLUX: flux and extrap incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(flux,0,0,0, FCRegion,0,0,0)) then
+        print*, 'MAPPEDGETFLUX: flux does not contain FCRegion'
+        call MAYDAYERROR()
+      endif
+
+      ! phi and extrap are not currently tested!
+
+      ! Since Jga and FCRegion are both FC, this hack should work...
+      if (.not. CHECK_CONTAINS(Jga,0,0,0, FCRegion,0,0,0)) then
+        print*, 'MAPPEDGETFLUX: Jga does not contain FCRegion'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_DTERM[
+      aScale = beta / dx(adir);
+      bScale = fourth * beta / dx(bdir);
+      cScale = fourth * beta / dx(cdir)]
+
+      do n = 0, ncomp-1
+          CHF_MULTIDO[FCRegion; i; j; k]
+
+            flux(CHF_IX[i;j;k],n) =
+     &        CHF_DTERM[
+     &            aScale * Jga(CHF_IX[i;j;k],adir)
+     &            * (phi(CHF_IX[i;j;k],n) - phi(CHF_IX[i-ai;j-aj;k-ak],n));
+     &          + bScale * Jga(CHF_IX[i;j;k],bdir)
+     &            * (  extrap(CHF_IX[i+bi   ;j+bj   ;k+bk   ],n) - extrap(CHF_IX[i-bi   ;j-bj   ;k-bk   ],n)
+     &               + extrap(CHF_IX[i+bi-ai;j+bj-aj;k+bk-ak],n) - extrap(CHF_IX[i-bi-ai;j-bj-aj;k-bk-ak],n)  );
+     &          + cScale * Jga(CHF_IX[i;j;k],cdir)
+     &            * (  extrap(CHF_IX[i+ci   ;j+cj   ;k+ck   ],n) - extrap(CHF_IX[i-ci   ;j-cj   ;k-ck   ],n)
+     &               + extrap(CHF_IX[i+ci-ai;j+cj-aj;k+ck-ak],n) - extrap(CHF_IX[i-ci-ai;j-cj-aj;k-ck-ak],n)  )]
+
+          CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+C     -----------------------------------------------------------------
+C     subroutine MAPPEDGETFLATFLUX2D
+C     Computes the fluxes at faces between valid cells of phi.
+C       flux^a = J g^{a a} D_a[phi] (a = x-dir only)
+C     ------------------------------------------------------------------
+      subroutine MAPPEDGETFLATFLUX2D(
+     &    CHF_FRA[flux],
+     &    CHF_CONST_FRA[phi],
+     &    CHF_CONST_FRA1[Jgxx],
+     &    CHF_BOX[FCRegion],
+     &    CHF_CONST_REAL[beta],
+     &    CHF_CONST_REAL[dx])
+
+      INTEGER ncomp, n
+      integer CHF_DDECL[i;j;k]
+      REAL_T dxScale
+
+      ncomp = CHF_NCOMP[flux]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[phi]) then
+         print*, 'MAPPEDGETFLATFLUX2D: flux and phi incompatible'
+         call MAYDAYERROR()
+      endif
+
+#if CH_SPACEDIM == 2
+      ! Check if input paramaters are flat
+      if ((CHF_LBOUND[FCregion;1] .ne. 0) .or. (CHF_UBOUND[FCregion;1] .ne. 0)) then
+        print*, 'MAPPEDGETFLATFLUX2D: FC region must be flat in the vertical'
+        call MAYDAYERROR()
+      endif
+#else
+      print*, 'MAPPEDGETFLATFLUX2D canot be called if CH_SPACEDIM = ', CH_SPACEDIM
+      call MAYDAYERROR()
+#endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(flux,0,0,0, FCRegion,0,0,0)) then
+        print*, 'MAPPEDGETFLATFLUX2D: flux does not contain FCRegion'
+        call MAYDAYERROR()
+      endif
+
+      ! phi and extrap are not currently tested!
+
+      ! Since Jgxx and FCRegion are both FC, this hack should work...
+      if (.not. CHECK_CONTAINS(Jgxx,0,0,0, FCRegion,0,0,0)) then
+        print*, 'MAPPEDGETFLATFLUX2D: Jgxx does not contain FCRegion'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      dxScale = beta / dx
+
+      do n = 0, ncomp-1
+          CHF_MULTIDO[FCRegion; i; j; k]
+            flux(CHF_IX[i;j;k],n) = dxScale * Jgxx(CHF_IX[i;j;k])
+     &            * (phi(CHF_IX[i;j;k],n) - phi(CHF_IX[i-1;j;k],n))
+          CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+C     -----------------------------------------------------------------
+C     subroutine MAPPEDGETFLATFLUX3D
+C     Computes the fluxes at faces between valid cells of phi.
+C       flux^a = J g^{a b} D_b[phi] (b = horizontal dirs only)
+C     ------------------------------------------------------------------
+      subroutine MAPPEDGETFLATFLUX3D(
+     &    CHF_FRA[flux],
+     &    CHF_CONST_FRA[phi],
+     &    CHF_CONST_FRA[extrap],
+     &    CHF_CONST_FRA[Jga],
+     &    CHF_BOX[FCRegion],
+     &    CHF_CONST_REAL[beta],
+     &    CHF_CONST_REALVECT[dx],
+     &    CHF_CONST_INT[adir])
+
+      INTEGER ncomp, n, bdir, cdir
+      integer CHF_DDECL[i ; j ; k ]
+      integer CHF_DDECL[ai; aj; ak]
+      integer CHF_DDECL[bi; bj; bk]
+      REAL_T aScale, bScale
+
+      bdir = mod((adir + 1), CH_SPACEDIM-1);
+
+      CHF_DTERM[
+      ai = CHF_ID(adir, 0);
+      aj = CHF_ID(adir, 1);
+      ak = CHF_ID(adir, 2)]
+
+      CHF_DTERM[
+      bi = CHF_ID(bdir, 0);
+      bj = CHF_ID(bdir, 1);
+      bk = CHF_ID(bdir, 2)]
+
+      ncomp = CHF_NCOMP[flux]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[phi]) then
+         print*, 'MAPPEDGETFLATFLUX3D: flux and phi incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if(ncomp .ne. CHF_NCOMP[extrap]) then
+         print*, 'MAPPEDGETFLATFLUX3D: flux and extrap incompatible'
+         call MAYDAYERROR()
+      endif
+
+#if CH_SPACEDIM == 3
+      ! Check if input paramaters are flat
+      if ((CHF_LBOUND[FCregion;2] .ne. 0) .or. (CHF_UBOUND[FCregion;2] .ne. 0)) then
+        print*, 'MAPPEDGETFLATFLUX3D: FC region must be flat in the vertical'
+        call MAYDAYERROR()
+      endif
+#else
+      print*, 'MAPPEDGETFLATFLUX3D canot be called if CH_SPACEDIM = ', CH_SPACEDIM
+      call MAYDAYERROR()
+#endif
+
+      if ((adir .lt. 0) .or. (CH_SPACEDIM-1 .le. adir)) then
+        print*, 'MAPPEDGETFLATFLUX3D: bad adir = ', adir
+        call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(flux,0,0,0, FCRegion,0,0,0)) then
+        print*, 'MAPPEDGETFLATFLUX3D: flux does not contain FCRegion'
+        call MAYDAYERROR()
+      endif
+
+      ! phi and extrap are not currently tested!
+
+      ! Since Jga and FCRegion are both FC, this hack should work...
+      if (.not. CHECK_CONTAINS(Jga,0,0,0, FCRegion,0,0,0)) then
+        print*, 'MAPPEDGETFLATFLUX3D: Jga does not contain FCRegion'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      aScale = beta / dx(adir)
+      bScale = fourth * beta / dx(bdir)
+
+      do n = 0, ncomp-1
+          CHF_MULTIDO[FCRegion; i; j; k]
+
+            flux(CHF_IX[i;j;k],n) =
+     &            aScale * Jga(CHF_IX[i;j;k],adir)
+     &            * (phi(CHF_IX[i;j;k],n) - phi(CHF_IX[i-ai;j-aj;k-ak],n))
+     &          + bScale * Jga(CHF_IX[i;j;k],bdir)
+     &            * (  extrap(CHF_IX[i+bi   ;j+bj   ;k+bk   ],n) - extrap(CHF_IX[i-bi   ;j-bj   ;k-bk   ],n)
+     &               + extrap(CHF_IX[i+bi-ai;j+bj-aj;k+bk-ak],n) - extrap(CHF_IX[i-bi-ai;j-bj-aj;k-bk-ak],n)  )
+
+          CHF_ENDDO
+      enddo
+
+      return
+      end
+

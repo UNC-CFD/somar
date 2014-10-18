@@ -1,0 +1,252 @@
+#include "CONSTANTS.H"
+
+#define XVEL0 zero
+
+c ----------------------------------------------------------------
+c FILL_CARTVELSOLN
+c solComp = 0 for u solution, 1 for v solution.
+c ----------------------------------------------------------------
+      subroutine FILL_CARTVELSOLN (CHF_FRA1[vel],
+     &                             CHF_CONST_INT[solComp],
+     &                             CHF_CONST_FRA1[xOfXi],
+     &                             CHF_CONST_FRA1[yOfXi],
+     &                             CHF_CONST_REAL[kx],
+     &                             CHF_CONST_REAL[ky],
+     &                             CHF_CONST_REAL[FofT],
+     &                             CHF_CONST_REAL[time],
+     &                             CHF_BOX[destBox])
+
+      integer CHF_AUTODECL[i]
+      REAL_T argX, argY
+
+      if (solComp .eq. 0) then
+        CHF_AUTOMULTIDO[destBox;i]
+          argX = kx * (xOfXi(CHF_AUTOIX[i]) - XVEL0*time)
+          argY = ky * yOfXi(CHF_AUTOIX[i])
+          vel(CHF_AUTOIX[i]) = sin(argX) * cos(argY) * FofT + XVEL0
+        CHF_ENDDO
+
+      else if (solComp .eq. 1) then
+        CHF_AUTOMULTIDO[destBox;i]
+          argX = kx * (xOfXi(CHF_AUTOIX[i]) - XVEL0*time)
+          argY = ky * yOfXi(CHF_AUTOIX[i])
+          vel(CHF_AUTOIX[i]) = -cos(argX) * sin(argY) * FofT
+        CHF_ENDDO
+
+      else
+        CHF_AUTOMULTIDO[destBox;i]
+          vel(CHF_AUTOIX[i]) = zero
+        CHF_ENDDO
+      endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c FILL_PRESSURESOLN
+c ----------------------------------------------------------------
+      subroutine FILL_PRESSURESOLN (CHF_FRA1[pressure],
+     &                              CHF_CONST_FRA1[xOfXi],
+     &                              CHF_CONST_FRA1[yOfXi],
+     &                              CHF_CONST_REAL[kx],
+     &                              CHF_CONST_REAL[ky],
+     &                              CHF_CONST_REAL[FofT],
+     &                              CHF_CONST_REAL[time],
+     &                              CHF_BOX[destBox])
+
+      integer CHF_AUTODECL[i]
+      REAL_T argX, argY, scale
+
+      scale = fourth * FofT * FofT
+
+      CHF_AUTOMULTIDO[destBox;i]
+        argX = two * kx * (xOfXi(CHF_AUTOIX[i]) - XVEL0*time)
+        argY = two * ky * yOfXi(CHF_AUTOIX[i])
+        pressure(CHF_AUTOIX[i]) = scale * (cos(argX) + cos(argY))
+      CHF_ENDDO
+
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c TAYLORGREENCCBC
+c
+c  u = sin(k*x) * cos(l*y) * F(t)
+c  v = -cos(k*x) * sin(l*y) * F(t)
+c  F(t) = exp(2*nu*t) * scaling
+c
+c  dir = FC direction
+c  velDir = 0 for u, 1 for v, 2 for w
+c ----------------------------------------------------------------
+      subroutine TAYLORGREENCCBC (CHF_FRA[state],
+     &                            CHF_BOX[ghostBox],
+     &                            CHF_CONST_INTVECT[boxType],
+     &                            CHF_CONST_INT[dir],
+     &                            CHF_CONST_INT[side],
+     &                            CHF_CONST_REALVECT[dx],
+     &                            CHF_CONST_REALVECT[k],
+     &                            CHF_CONST_INT[velDir],
+     &                            CHF_CONST_REAL[FofT])
+
+      integer ncomp, comp
+      integer CHF_AUTODECL[i]
+      REAL_T offset(0:CH_SPACEDIM-1)
+      REAL_T CHF_AUTODECL[x]
+
+      if (side .eq. -1) then
+        CHF_DTERM[
+        offset(0) = half * (one-boxType(0));
+        offset(1) = half * (one-boxType(1));
+        offset(2) = half * (one-boxType(2))]
+        offset(dir) = one
+      else
+        CHF_DTERM[
+        offset(0) = half * (one-boxType(0));
+        offset(1) = half * (one-boxType(1));
+        offset(2) = half * (one-boxType(2))]
+        offset(dir) = zero
+      endif
+
+      ncomp = CHF_NCOMP[state]
+
+      if (velDir .eq. dir) then
+        return
+      else if (velDir .eq. 0) then
+        ! u comp
+        if (dir .eq. 1) then
+          do comp = 0, ncomp-1
+            CHF_AUTOMULTIDO[ghostBox;i]
+              x0 = (i0 + offset(0)) * dx(0) * k(0)
+              state(CHF_AUTOIX[i],comp) = state(CHF_AUTOIX[i],comp)
+     &                                  + two * sin(x0) * FofT
+            CHF_ENDDO
+          enddo
+        else
+          do comp = 0, ncomp-1
+            CHF_AUTOMULTIDO[ghostBox;i]
+              x0 = (i0 + offset(0)) * dx(0) * k(0)
+              x1 = (i1 + offset(1)) * dx(1) * k(1)
+              state(CHF_AUTOIX[i],comp) = state(CHF_AUTOIX[i],comp)
+     &                                  + two * sin(x0) * cos(x1) * FofT
+            CHF_ENDDO
+          enddo
+        endif
+      else if (velDir .eq. 1) then
+        ! v comp
+        if (dir .eq. 0) then
+          do comp = 0, ncomp-1
+            CHF_AUTOMULTIDO[ghostBox;i]
+              x1 = (i1 + offset(1)) * dx(1) * k(1)
+              state(CHF_AUTOIX[i],comp) = state(CHF_AUTOIX[i],comp)
+     &                                  - two * sin(x1) * FofT
+            CHF_ENDDO
+          enddo
+        else
+          do comp = 0, ncomp-1
+            CHF_AUTOMULTIDO[ghostBox;i]
+              x0 = (i0 + offset(0)) * dx(0) * k(0)
+              x1 = (i1 + offset(1)) * dx(1) * k(1)
+              state(CHF_AUTOIX[i],comp) = state(CHF_AUTOIX[i],comp)
+     &                                  - two * cos(x0) * sin(x1) * FofT
+            CHF_ENDDO
+          enddo
+        endif
+      else
+        ! w comp
+        ! Do nothing
+      endif
+
+      return
+      end
+
+
+
+c ----------------------------------------------------------------
+c TAYLORGREENFCBC
+c
+c  u = sin(k*x) * cos(l*y) * F(t)
+c  v = -cos(k*x) * sin(l*y) * F(t)
+c  F(t) = exp(2*nu*t) * scaling
+c
+c
+c  dir = FC direction
+c  velDir = 0 for u, 1 for v, 2 for w
+c ----------------------------------------------------------------
+      subroutine TAYLORGREENFCBC (CHF_FRA[state],
+     &                            CHF_BOX[faceBox],
+     &                            CHF_CONST_INT[dir],
+     &                            CHF_CONST_INT[side],
+     &                            CHF_CONST_REAL[dx],
+     &                            CHF_CONST_REALVECT[k],
+     &                            CHF_CONST_INT[velDir],
+     &                            CHF_CONST_REAL[FofT])
+
+      integer ncomp, comp
+      integer CHF_AUTODECL[i]
+      REAL_T offset(0:CH_SPACEDIM-1)
+      REAL_T CHF_AUTODECL[x]
+
+      CHF_DTERM[
+      offset(0) = half;
+      offset(1) = half;
+      offset(2) = half]
+      offset(dir) = zero
+
+      ncomp = CHF_NCOMP[state]
+
+      if (velDir .eq. dir) then
+        do comp = 0, ncomp-1
+          CHF_AUTOMULTIDO[faceBox;i]
+            state(CHF_AUTOIX[i],comp) = zero
+          CHF_ENDDO
+        enddo
+      else if (velDir .eq. 0) then
+        ! u comp
+        if (dir .eq. 1) then
+          do comp = 0, ncomp-1
+            CHF_AUTOMULTIDO[faceBox;i]
+              x0 = (i0 + offset(0)) * dx * k(0)
+              state(CHF_AUTOIX[i],comp) = sin(x0) * FofT
+            CHF_ENDDO
+          enddo
+        else
+          do comp = 0, ncomp-1
+            CHF_AUTOMULTIDO[faceBox;i]
+              x0 = (i0 + offset(0)) * dx * k(0)
+              x1 = (i1 + offset(1)) * dx * k(1)
+              state(CHF_AUTOIX[i],comp) = sin(x0) * cos(x1) * FofT
+            CHF_ENDDO
+          enddo
+        endif
+      else if (velDir .eq. 1) then
+        ! v comp
+        if (dir .eq. 0) then
+          do comp = 0, ncomp-1
+            CHF_AUTOMULTIDO[faceBox;i]
+              x1 = (i1 + offset(1)) * dx * k(1)
+              state(CHF_AUTOIX[i],comp) = -sin(x1) * FofT
+            CHF_ENDDO
+          enddo
+        else
+          do comp = 0, ncomp-1
+            CHF_AUTOMULTIDO[faceBox;i]
+              x0 = (i0 + offset(0)) * dx * k(0)
+              x1 = (i1 + offset(1)) * dx * k(1)
+              state(CHF_AUTOIX[i],comp) = -cos(x0) * sin(x1) * FofT
+            CHF_ENDDO
+          enddo
+        endif
+      else
+        ! w comp
+        do comp = 0, ncomp-1
+          CHF_AUTOMULTIDO[faceBox;i]
+            state(CHF_AUTOIX[i],comp) = zero
+          CHF_ENDDO
+        enddo
+      endif
+
+      return
+      end

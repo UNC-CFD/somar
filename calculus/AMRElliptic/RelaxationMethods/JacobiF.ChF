@@ -1,0 +1,39 @@
+#include "CONSTANTS.H"
+
+
+C     -----------------------------------------------------------------
+C     subroutine JACOBIITER
+C     preconditioner -- phi = phi + 0.5 * res / (diag of op matrix)
+C
+C     Warning: phi, res must have the same number
+C     of components and span region.
+C     ------------------------------------------------------------------
+      subroutine JACOBIITER (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[res],
+     &     CHF_CONST_FRA1[lapDiag],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta])
+
+      integer n,ncomp
+      integer CHF_DDECL[i;j;k]
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      if(ncomp .ne. CHF_NCOMP[res]) then
+         print*, 'JACOBIITER: phi and res incompatible'
+         call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+        CHF_MULTIDO[region; i; j; k]
+          phi(CHF_IX[i;j;k],n) = phi(CHF_IX[i;j;k],n)
+     &                         + half * res(CHF_IX[i;j;k],n) / (alpha + beta * lapDiag(CHF_IX[i;j;k]))
+        CHF_ENDDO
+      enddo
+
+      return
+      end

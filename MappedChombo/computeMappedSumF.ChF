@@ -1,0 +1,136 @@
+#include "CONSTANTS.H"
+
+
+C     ------------------------------------------------------------------
+C     COMPUTEMAPPEDSUM
+C     Adds Sum[phi*J*dxScale] to sum and adds Sum[J*dxScale] to vol.
+C     ------------------------------------------------------------------
+      subroutine COMPUTEMAPPEDSUM (
+     &     CHF_REAL[sum],
+     &     CHF_REAL[vol],
+     &     CHF_CONST_FRA1[phi],
+     &     CHF_CONST_FRA1[J],
+     &     CHF_CONST_FIA1[mask],
+     &     CHF_BOX[stateBox],
+     &     CHF_CONST_REAL[dxScale])
+
+      integer CHF_AUTODECL[i]
+      REAL_T scaleVal
+
+      CHF_AUTOMULTIDO[stateBox;i]
+        if (mask(CHF_AUTOIX[i]) .eq. 1) then
+          scaleVal = J(CHF_AUTOIX[i]) * dxScale
+          sum = sum + scaleVal * phi(CHF_AUTOIX[i])
+          vol = vol + scaleVal
+        endif
+      CHF_ENDDO
+
+      return
+      end
+
+
+C     ------------------------------------------------------------------
+C     COMPUTEMAPPEDSUMINV
+C     Adds Sum[phi*dxScale/Jinv] to sum and adds Sum[dxScale/Jinv] to vol.
+C     ------------------------------------------------------------------
+      subroutine COMPUTEMAPPEDSUMINV (
+     &     CHF_REAL[sum],
+     &     CHF_REAL[vol],
+     &     CHF_CONST_FRA1[phi],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_CONST_FIA1[mask],
+     &     CHF_BOX[stateBox],
+     &     CHF_CONST_REAL[dxScale])
+
+      integer CHF_AUTODECL[i]
+      REAL_T scaleVal
+
+      CHF_AUTOMULTIDO[stateBox;i]
+        if (mask(CHF_AUTOIX[i]) .eq. 1) then
+          scaleVal = dxScale / Jinv(CHF_AUTOIX[i])
+          sum = sum + scaleVal * phi(CHF_AUTOIX[i])
+          vol = vol + scaleVal
+        endif
+      CHF_ENDDO
+
+      return
+      end
+
+
+C     ------------------------------------------------------------------
+C     COMPUTEUNMAPPEDSUM
+C     Adds Sum[phi*dxScale] to sum and adds Sum[J*dxScale] to vol.
+C     ------------------------------------------------------------------
+      subroutine COMPUTEUNMAPPEDSUM (
+     &     CHF_REAL[sum],
+     &     CHF_REAL[vol],
+     &     CHF_CONST_FRA1[phi],
+     &     CHF_CONST_FRA1[J],
+     &     CHF_CONST_FIA1[mask],
+     &     CHF_BOX[stateBox],
+     &     CHF_CONST_REAL[dxScale])
+
+      integer CHF_AUTODECL[i]
+
+      CHF_AUTOMULTIDO[stateBox;i]
+        if (mask(CHF_AUTOIX[i]) .eq. 1) then
+          sum = sum + dxScale * phi(CHF_AUTOIX[i])
+          vol = vol + dxScale * J(CHF_AUTOIX[i])
+        endif
+      CHF_ENDDO
+
+      return
+      end
+
+
+C     ------------------------------------------------------------------
+C     COMPUTEUNMAPPEDSUMINV
+C     Adds Sum[phi*dxScale] to sum and adds Sum[dxScale/Jinv] to vol.
+C     ------------------------------------------------------------------
+      subroutine COMPUTEUNMAPPEDSUMINV (
+     &     CHF_REAL[sum],
+     &     CHF_REAL[vol],
+     &     CHF_CONST_FRA1[phi],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_CONST_FIA1[mask],
+     &     CHF_BOX[stateBox],
+     &     CHF_CONST_REAL[dxScale])
+
+      integer CHF_AUTODECL[i]
+
+      CHF_AUTOMULTIDO[stateBox;i]
+        if (mask(CHF_AUTOIX[i]) .eq. 1) then
+          sum = sum + dxScale * phi(CHF_AUTOIX[i])
+          vol = vol + dxScale / Jinv(CHF_AUTOIX[i])
+        endif
+      CHF_ENDDO
+
+      return
+      end
+
+
+C     ------------------------------------------------------------------
+C     COMPUTEMAPPEDFLUXSUM
+C     Adds Sum[flux*areaScale] to sum and adds Sum[J*areaScale] to area.
+C     ------------------------------------------------------------------
+      subroutine COMPUTEMAPPEDFLUXSUM (
+     &     CHF_REAL[sum],
+     &     CHF_REAL[area],
+     &     CHF_CONST_FRA1[flux],
+     &     CHF_CONST_FRA1[J],
+     &     CHF_CONST_FIA1[mask],
+     &     CHF_BOX[stateBox],
+     &     CHF_CONST_REAL[areaScale])
+
+      integer CHF_AUTODECL[i]
+      REAL_T scaleVal
+
+      CHF_AUTOMULTIDO[stateBox;i]
+        if (mask(CHF_AUTOIX[i]) .eq. 1) then
+          sum  = sum  + areaScale * flux(CHF_AUTOIX[i])
+          area = area + areaScale * J(CHF_AUTOIX[i])
+        endif
+      CHF_ENDDO
+
+      return
+      end

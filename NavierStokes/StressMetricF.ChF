@@ -1,0 +1,80 @@
+#include "CONSTANTS.H"
+#include "LevelGeometry.H"
+
+
+c ----------------------------------------------------------------
+c This is an idealized version of the eddy viscosity produced by
+c Masoud's LES beam simulation.
+c ----------------------------------------------------------------
+      subroutine ApplyViscousFactor (
+     &      CHF_FRA1[stress],
+     &      CHF_CONST_FRA[physCoor],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REAL[dynVisc],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INTVECT[destBoxType])
+
+      integer CHF_DDECL[i; j; k]
+      REAL_T CHF_DDECL[x; y; z]
+      REAL_T CHF_DDECL[ioff; joff; koff]
+      REAL_T eta
+      REAL_T rx, ry
+      REAL_T hillTopVisc, beamViscL, beamViscR
+      REAL_T hillBaseVisc
+      REAL_T turbVisc
+
+      REAL_T magTurbVisc, magTurbViscBase, beta, h
+      PARAMETER (magTurbVisc     = 0.005)
+      PARAMETER (magTurbViscBase = 0.001)
+      PARAMETER (beta = 15.0 * Pi / 180.0)
+      PARAMETER (h = 328.0)
+
+      CHF_DTERM[
+      ioff = half * (one - dble(destBoxType(0)));
+      joff = half * (one - dble(destBoxType(1)));
+      koff = half * (one - dble(destBoxType(2)))]
+
+
+      CHF_MULTIDO[destBox;i;j;k]
+        CHF_DTERM[
+        x = physCoor(CHF_IX[i;j;k],0);
+        y = physCoor(CHF_IX[i;j;k],1) - h;
+        z = physCoor(CHF_IX[i;j;k],2)]
+
+        eta = (DBLE(j) * joff) * dXi(1)
+
+        ! Hill top
+        hillTopVisc = magTurbVisc * fourth
+     &              * (tanh((330.0-x)/100.0) + tanh((330.0+x)/100.0))
+     &              * (tanh((140.0-y)/50.0) + one)
+
+        ! Left beam
+        rx =  x*cos(beta) + y*sin(beta);
+        ry = -x*sin(beta) + y*cos(beta);
+        beamViscL = magTurbVisc * fourth
+     &            * (one - tanh((0.0-rx)/50.0))
+     &            * (tanh((80.0-ry)/40.0) + tanh((80.0+ry)/40.0))
+
+        ! Right beam
+        rx = x*cos(beta) - y*sin(beta);
+        ry = x*sin(beta) + y*cos(beta);
+        beamViscR = magTurbVisc * fourth
+     &            * (one - tanh((0.0+rx)/50.0))
+     &            * (tanh((80.0-ry)/40.0) + tanh((80.0+ry)/40.0))
+
+        ! Hill base
+        hillBaseVisc = magTurbViscBase * fourth
+     &               * (tanh((2000.0-x)/200.0) + tanh((2000.0+x)/200.0))
+     &               * (tanh((35.0-eta)/10.0) + one)
+
+        ! Complete viscosity profile
+        turbVisc = min(magTurbVisc, hillTopVisc + beamViscL + beamViscR)
+        turbVisc = max(turbVisc, hillBaseVisc)
+
+        stress(CHF_IX[i;j;k]) = stress(CHF_IX[i;j;k])
+     &                        * (one + turbVisc/dynVisc)
+
+      CHF_ENDDO
+
+      return
+      end

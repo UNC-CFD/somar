@@ -1,0 +1,212 @@
+#include "CONSTANTS.H"
+#include "AddlFortranMacros.H"
+
+
+c ----------------------------------------------------------------
+c CONVERTFAB
+c Averages src data and sends to dest with a different centering.
+c ----------------------------------------------------------------
+      subroutine CONVERTFAB (
+     &      CHF_FRA1[dest],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INTVECT[destBoxType],
+     &      CHF_CONST_FRA1[src],
+     &      CHF_CONST_INTVECT[srcBoxType])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      integer CHF_AUTODECL[jj]
+      integer srcTypeSum, destTypeSum, numAvgs
+      REAL_T scale
+
+#if CH_SPACEDIM == 3
+      integer CHF_AUTODECL[kk]
+#endif
+
+      destTypeSum = CHF_DTERM[destBoxType(0); +destBoxType(1); +destBoxType(2)]
+      srcTypeSum  = CHF_DTERM[ srcBoxType(0); + srcBoxType(1); + srcBoxType(2)]
+
+#ifndef NDEBUG
+      if ((destTypeSum .lt. 0) .or. (destTypeSum .gt. CH_SPACEDIM)) then
+        print*, 'CONVERTFAB: Bad destBoxType, (', CHF_DTERM[destBoxType(0);,destBoxType(1);,destBoxType(2)], ')'
+        call MAYDAYERROR()
+      endif
+
+      if ((srcTypeSum .lt. 0) .or. (srcTypeSum .gt. CH_SPACEDIM)) then
+        print*, 'CONVERTFAB: Bad srcBoxType, (', CHF_DTERM[srcBoxType(0);,srcBoxType(1);,srcBoxType(2)], ')'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_DTERM[
+      ii0 = srcBoxType(0) - destBoxType(0);
+      ii1 = 0;
+      ii2 = 0]
+
+      CHF_DTERM[
+      jj0 = 0;
+      jj1 = srcBoxType(1) - destBoxType(1);
+      jj2 = 0]
+
+#if CH_SPACEDIM == 3
+      CHF_DTERM[
+      kk0 = 0;
+      kk1 = 0;
+      kk2 = srcBoxType(2) - destBoxType(2)]
+#endif
+
+      numAvgs = CHF_DTERM[abs(ii0); +abs(jj1); +abs(kk2)]
+
+      if (numAvgs .eq. 0) then
+        ! Average in 0 directions
+        CHF_AUTOMULTIDO[destBox;i]
+          dest(CHF_AUTOIX[i]) = src(CHF_AUTOIX[i])
+        CHF_ENDDO
+
+      else if (numAvgs .eq. 1) then
+        CHF_DTERM[
+        if (ii0 .gt. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = FAVG1IX0(src,i)
+          CHF_ENDDO
+        else if (ii0 .lt. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = BAVG1IX0(src,i)
+          CHF_ENDDO;
+        else if (jj1 .gt. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = FAVG1IX1(src,i)
+          CHF_ENDDO
+        else if (jj1 .lt. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = BAVG1IX1(src,i)
+          CHF_ENDDO;
+        else if (kk2 .gt. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = FAVG1IX2(src,i)
+          CHF_ENDDO
+        else
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = BAVG1IX2(src,i)
+          CHF_ENDDO]
+        endif
+
+#if CH_SPACEDIM == 3
+      else if (numAvgs .eq. 2) then
+        ! Average in 2 directions
+        CHF_DTERM[
+        if (ii0 .eq. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = AVG2IX(src,i,jj,kk)
+          CHF_ENDDO;
+        else if (jj1 .eq. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = AVG2IX(src,i,kk,ii)
+          CHF_ENDDO;
+        else
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = AVG2IX(src,i,ii,jj)
+          CHF_ENDDO]
+        endif
+#endif
+
+      else
+        ! Average in all directions
+#if CH_SPACEDIM == 3
+        CHF_AUTOMULTIDO[destBox;i]
+          dest(CHF_AUTOIX[i]) = AVG3IX(src,i,ii,jj,kk)
+        CHF_ENDDO
+#else
+        if (ii0 .gt. 0 .and. jj1 .gt. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = FFAVG2IX(src,i)
+          CHF_ENDDO
+        else if (ii0 .gt. 0 .and. jj1 .lt. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = FBAVG2IX(src,i)
+          CHF_ENDDO
+        else if (ii0 .lt. 0 .and. jj1 .gt. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = BFAVG2IX(src,i)
+          CHF_ENDDO
+        else
+          CHF_AUTOMULTIDO[destBox;i]
+            dest(CHF_AUTOIX[i]) = BBAVG2IX(src,i)
+          CHF_ENDDO
+        endif
+#endif
+      endif
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c CellToEdge4th
+c  Converts CC data to FC using an explicit, 4th-order interpolant.
+c  All input boxes are FC.
+c ------------------------------------------------------------------------------
+      subroutine CellToEdge4th (
+     &     CHF_FRA[Wface],
+     &     CHF_CONST_FRA[W],
+     &     CHF_CONST_INT[idir],
+     &     CHF_BOX[loBox],
+     &     CHF_CONST_INT[hasLo],
+     &     CHF_BOX[hiBox],
+     &     CHF_CONST_INT[hasHi],
+     &     CHF_BOX[centerBox])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[f2cL]
+      integer CHF_AUTODECL[f2cLL]
+      integer CHF_AUTODECL[f2cLLL]
+      integer CHF_AUTODECL[f2cR]
+      integer CHF_AUTODECL[f2cRR]
+      integer CHF_AUTODECL[f2cRRR]
+      integer lvar
+      real_t WL, WR, WLL, WRR, WLLL, WRRR
+
+!     +f2cL from face to adjacent cell on low side (index is 1 lower)
+      CHF_AUTOID[f2cL  ; idir; -1]
+      CHF_AUTOID[f2cLL ; idir; -2]
+      CHF_AUTOID[f2cLLL; idir; -3]
+
+!     +f2cR from face to adjacent cell on high side (index is same)
+      CHF_AUTOID[f2cR  ; idir; 0]
+      CHF_AUTOID[f2cRR ; idir; 1]
+      CHF_AUTOID[f2cRRR; idir; 2]
+
+      do lvar = 0, CHF_NCOMP[W]-1
+        CHF_AUTOMULTIDO[centerBox; i]
+          WLL = W(CHF_OFFSETIX[i; +f2cLL], lvar)
+          WL  = W(CHF_OFFSETIX[i; +f2cL ], lvar)
+          WR  = W(CHF_OFFSETIX[i; +f2cR ], lvar)
+          WRR = W(CHF_OFFSETIX[i; +f2cRR], lvar)
+          Wface(CHF_AUTOIX[i], lvar) =
+     &          (nine*(WL+WR) - (WLL+WRR)) / sixteen
+        CHF_ENDDO
+        if (hasLo .ne. 0) then
+          CHF_AUTOMULTIDO[loBox; i]
+            WL   = W(CHF_OFFSETIX[i; +f2cL  ], lvar)
+            WR   = W(CHF_OFFSETIX[i; +f2cR  ], lvar)
+            WRR  = W(CHF_OFFSETIX[i; +f2cRR ], lvar)
+            WRRR = W(CHF_OFFSETIX[i; +f2cRRR], lvar)
+            Wface(CHF_AUTOIX[i], lvar) =
+     &            (five*(WL-WRR) + fifteen*WR + WRRR) / sixteen
+          CHF_ENDDO
+        endif
+        if (hasHi .ne. 0) then
+          CHF_AUTOMULTIDO[hiBox; i]
+            WR   = W(CHF_OFFSETIX[i; +f2cR  ], lvar)
+            WL   = W(CHF_OFFSETIX[i; +f2cL  ], lvar)
+            WLL  = W(CHF_OFFSETIX[i; +f2cLL ], lvar)
+            WLLL = W(CHF_OFFSETIX[i; +f2cLLL], lvar)
+            Wface(CHF_AUTOIX[i], lvar) =
+     &            (five*(WR-WLL) + fifteen*WL + WLLL) / sixteen
+          CHF_ENDDO
+        endif
+      enddo
+
+      return
+      end
+

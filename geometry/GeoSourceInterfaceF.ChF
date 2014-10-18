@@ -1,0 +1,264 @@
+#include "CONSTANTS.H"
+#include "LevelGeometry.H"
+
+
+#if CH_SPACEDIM == 2
+c ----------------------------------------------------------------
+c DEFAULT_FILL_J_2D
+c xn is x(Xi) face-centered in the nth dir.
+c ----------------------------------------------------------------
+      subroutine DEFAULT_FILL_J_2D (CHF_FRA1[J],
+     &                              CHF_CONST_FRA[x0],
+     &                              CHF_CONST_FRA[x1],
+     &                              CHF_BOX[destBox])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii0]
+      integer CHF_AUTODECL[ii1]
+      REAL_T xXi, xNu
+      REAL_T yXi, yNu
+
+      CHF_AUTOID[ii0;0]
+      CHF_AUTOID[ii1;1]
+
+      CHF_AUTOMULTIDO[destBox;i]
+        xXi = x0(CHF_OFFSETIX[i;+ii0],0) - x0(CHF_AUTOIX[i],0)
+        yXi = x0(CHF_OFFSETIX[i;+ii0],1) - x0(CHF_AUTOIX[i],1)
+
+        xNu = x1(CHF_OFFSETIX[i;+ii1],0) - x1(CHF_AUTOIX[i],0)
+        yNu = x1(CHF_OFFSETIX[i;+ii1],1) - x1(CHF_AUTOIX[i],1)
+
+        J(CHF_AUTOIX[i]) = xXi * yNu - xNu * yXi
+      CHF_ENDDO
+
+      return
+      end
+
+
+#elif CH_SPACEDIM == 3
+c ----------------------------------------------------------------
+c DEFAULT_FILL_J_3D
+c xn is x(Xi) face-centered in the nth dir.
+c ----------------------------------------------------------------
+      subroutine DEFAULT_FILL_J_3D (CHF_FRA1[J],
+     &                              CHF_CONST_FRA[x0],
+     &                              CHF_CONST_FRA[x1],
+     &                              CHF_CONST_FRA[x2],
+     &                              CHF_BOX[destBox])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii0]
+      integer CHF_AUTODECL[ii1]
+      integer CHF_AUTODECL[ii2]
+      REAL_T xXi, xNu, xZeta
+      REAL_T yXi, yNu, yZeta
+      REAL_T zXi, zNu, zZeta
+
+      CHF_AUTOID[ii0;0]
+      CHF_AUTOID[ii1;1]
+      CHF_AUTOID[ii2;2]
+
+      CHF_AUTOMULTIDO[destBox;i]
+        xXi = x0(CHF_OFFSETIX[i;+ii0],0) - x0(CHF_AUTOIX[i],0)
+        yXi = x0(CHF_OFFSETIX[i;+ii0],1) - x0(CHF_AUTOIX[i],1)
+        zXi = x0(CHF_OFFSETIX[i;+ii0],2) - x0(CHF_AUTOIX[i],2)
+
+        xNu = x1(CHF_OFFSETIX[i;+ii1],0) - x1(CHF_AUTOIX[i],0)
+        yNu = x1(CHF_OFFSETIX[i;+ii1],1) - x1(CHF_AUTOIX[i],1)
+        zNu = x1(CHF_OFFSETIX[i;+ii1],2) - x1(CHF_AUTOIX[i],2)
+
+        xZeta = x2(CHF_OFFSETIX[i;+ii2],0) - x2(CHF_AUTOIX[i],0)
+        yZeta = x2(CHF_OFFSETIX[i;+ii2],1) - x2(CHF_AUTOIX[i],1)
+        zZeta = x2(CHF_OFFSETIX[i;+ii2],2) - x2(CHF_AUTOIX[i],2)
+
+        J(CHF_AUTOIX[i]) = xXi * (yNu * zZeta - yZeta * zNu)
+     &                   + xNu * (yZeta * zXi - yXi * zZeta)
+     &                   + xZeta * (yXi * zNu - yNu * zXi)
+      CHF_ENDDO
+
+      return
+      end
+
+#else
+#  error Bad SPACEDIM
+#endif
+
+
+c ----------------------------------------------------------------
+c DEFAULT_FILL_GAMMA
+c Calculates gamma^{a}_{b,c} = 0.5*gup^{a,d}*(D_{b}gdn_{c,d} + D_{c}gdn_{b,d} - D_{d}gdn_{b,c})
+c Assumes everything is CC
+c ----------------------------------------------------------------
+      subroutine DEFAULT_FILL_GAMMA (CHF_FRA1[gamma],
+     &                               CHF_CONST_FRA[gup],
+     &                               CHF_CONST_FRA[gdn],
+     &                               CHF_CONST_INT[a],
+     &                               CHF_CONST_INT[b],
+     &                               CHF_CONST_INT[c],
+     &                               CHF_CONST_REALVECT[dXi],
+     &                               CHF_CONST_REAL[multiplier],
+     &                               CHF_BOX[destBox])
+
+      integer symc(0:CH_SPACEDIM-1,0:CH_SPACEDIM-1)
+      REAL_T CHF_AUTODECL[scale]
+      REAL_T CHF_AUTODECL[dEntry]
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[bb]
+      integer CHF_AUTODECL[cc]
+      integer CHF_AUTODECL[d0]
+      integer CHF_AUTODECL[d1]
+      integer CHF_AUTODECL[d2]
+
+      CHF_AUTOID[bb;b]
+      CHF_AUTOID[cc;c]
+      CHF_AUTOID[d0;0]
+      CHF_AUTOID[d1;1]
+      CHF_AUTOID[d2;2]
+
+      CHF_DTERM[
+      symc(0,0) = xxSymComp;
+      symc(0,1) = xySymComp;
+      symc(0,2) = xzSymComp]
+
+      CHF_DTERM[
+      symc(1,0) = yxSymComp;
+      symc(1,1) = yySymComp;
+      symc(1,2) = yzSymComp]
+
+#if CH_SPACEDIM > 2
+      CHF_DTERM[
+      symc(2,0) = zxSymComp;
+      symc(2,1) = zySymComp;
+      symc(2,2) = zzSymComp]
+#endif
+
+      CHF_DTERM[
+      scale0 = multiplier * fourth / dXi(0);
+      scale1 = multiplier * fourth / dXi(1);
+      scale2 = multiplier * fourth / dXi(2)]
+
+      CHF_AUTOMULTIDO[destBox;i]
+        CHF_DTERM[
+        dEntry0 = gdn(CHF_OFFSETIX[i;+bb],symc(c,0)) - gdn(CHF_OFFSETIX[i;-bb],symc(c,0))
+     &          + gdn(CHF_OFFSETIX[i;+cc],symc(b,0)) - gdn(CHF_OFFSETIX[i;-cc],symc(b,0))
+     &          - gdn(CHF_OFFSETIX[i;+d0],symc(b,c)) - gdn(CHF_OFFSETIX[i;-d0],symc(b,c));
+
+        dEntry1 = gdn(CHF_OFFSETIX[i;+bb],symc(c,1)) - gdn(CHF_OFFSETIX[i;-bb],symc(c,1))
+     &          + gdn(CHF_OFFSETIX[i;+cc],symc(b,1)) - gdn(CHF_OFFSETIX[i;-cc],symc(b,1))
+     &          - gdn(CHF_OFFSETIX[i;+d1],symc(b,c)) - gdn(CHF_OFFSETIX[i;-d1],symc(b,c));
+
+        dEntry2 = gdn(CHF_OFFSETIX[i;+bb],symc(c,2)) - gdn(CHF_OFFSETIX[i;-bb],symc(c,2))
+     &          + gdn(CHF_OFFSETIX[i;+cc],symc(b,2)) - gdn(CHF_OFFSETIX[i;-cc],symc(b,2))
+     &          - gdn(CHF_OFFSETIX[i;+d2],symc(b,c)) - gdn(CHF_OFFSETIX[i;-d2],symc(b,c))]
+
+        gamma(CHF_AUTOIX[i]) = CHF_DTERM[
+     &                         scale0 * gup(CHF_AUTOIX[i],0) * dEntry0;
+     &                       + scale1 * gup(CHF_AUTOIX[i],1) * dEntry1;
+     &                       + scale2 * gup(CHF_AUTOIX[i],2) * dEntry2]
+
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c SIMPLECCDERIV
+c Calculates dest_i = (src_{i+.5} - src_{i-.5}) * scale
+c ----------------------------------------------------------------
+      subroutine SIMPLECCDERIV (CHF_FRA1[dest],
+     &                          CHF_CONST_FRA1[src],
+     &                          CHF_CONST_REAL[scale],
+     &                          CHF_CONST_INT[dir],
+     &                          CHF_BOX[destBox])
+
+      ! Declare variables
+      integer CHF_AUTODECL[ii]
+      CHF_AUTOID[ii;dir]
+
+#if CH_SPACEDIM > 2
+        dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+     &  = (  src(idestBoxlo0+ii0:idestBoxhi0+ii0, idestBoxlo1+ii1:idestBoxhi1+ii1, idestBoxlo2+ii2:idestBoxhi2+ii2)
+     &     - src(idestBoxlo0    :idestBoxhi0    , idestBoxlo1    :idestBoxhi1    , idestBoxlo2    :idestBoxhi2    )  ) * scale
+#else
+        dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+     &  = (  src(idestBoxlo0+ii0:idestBoxhi0+ii0, idestBoxlo1+ii1:idestBoxhi1+ii1)
+     &     - src(idestBoxlo0    :idestBoxhi0    , idestBoxlo1    :idestBoxhi1    )  ) * scale
+#endif
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c SIMPLEFCDERIV
+c Calculates dest_{i+.5} = (src_{i+1} - src_{i}) * scale
+c ----------------------------------------------------------------
+      subroutine SIMPLEFCDERIV (CHF_FRA1[dest],
+     &                          CHF_CONST_FRA1[src],
+     &                          CHF_CONST_REAL[scale],
+     &                          CHF_CONST_INT[dir],
+     &                          CHF_BOX[destBox])
+
+      ! Declare variables
+      integer CHF_AUTODECL[ii]
+      CHF_AUTOID[ii;dir]
+
+#if CH_SPACEDIM > 2
+        dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+     &  = (  src(idestBoxlo0    :idestBoxhi0    , idestBoxlo1    :idestBoxhi1    , idestBoxlo2:    idestBoxhi2    )
+     &     - src(idestBoxlo0-ii0:idestBoxhi0-ii0, idestBoxlo1-ii1:idestBoxhi1-ii1, idestBoxlo2-ii2:idestBoxhi2-ii2)  ) * scale
+#else
+        dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+     &  = (  src(idestBoxlo0    :idestBoxhi0    , idestBoxlo1:    idestBoxhi1    )
+     &     - src(idestBoxlo0-ii0:idestBoxhi0-ii0, idestBoxlo1-ii1:idestBoxhi1-ii1)  ) * scale
+#endif
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c ADDPROD2
+c Calculates dest = dest + p0 * p1
+c ----------------------------------------------------------------
+      subroutine ADDPROD2 (CHF_FRA1[dest],
+     &                     CHF_CONST_FRA1[p0],
+     &                     CHF_CONST_FRA1[p1],
+     &                     CHF_BOX[destBox])
+
+#if CH_SPACEDIM > 2
+          dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+     &  = dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+     &  +   p0(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+     &  *   p1(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+#else
+          dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+     &  = dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+     &  +   p0(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+     &  *   p1(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+#endif
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c SUBPROD2
+c Calculates dest = dest - p0 * p1
+c ----------------------------------------------------------------
+      subroutine SUBPROD2 (CHF_FRA1[dest],
+     &                     CHF_CONST_FRA1[p0],
+     &                     CHF_CONST_FRA1[p1],
+     &                     CHF_BOX[destBox])
+
+#if CH_SPACEDIM > 2
+          dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+     &  = dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+     &  -   p0(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+     &  *   p1(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1, idestBoxlo2:idestBoxhi2)
+#else
+          dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+     &  = dest(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+     &  -   p0(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+     &  *   p1(idestBoxlo0:idestBoxhi0, idestBoxlo1:idestBoxhi1)
+#endif
+      return
+      end

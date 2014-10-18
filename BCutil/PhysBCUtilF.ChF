@@ -1,0 +1,56 @@
+#include "CONSTANTS.H"
+#include "LevelGeometry.H"
+
+
+c ----------------------------------------------------------------
+c Computes the square Brunt-Väisälä frequency at cell-centers.
+c
+c Nsq      <=  CC destination holder.
+c buoyancy  => CC reduced gravity.
+c dXidz     => CC Jacobian elements.
+c dXi       => grid spacing in curvilinear coordinates.
+c destBox   => CC computation region
+c ----------------------------------------------------------------
+      subroutine COMPUTE_CCNSQ(
+     &      CHF_FRA1[Nsq],
+     &      CHF_CONST_FRA1[buoyancy],
+     &      CHF_CONST_FRA[dXidz],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_BOX[destBox])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      REAL_T scale
+
+      ! Initialize with xi^0 derivative term.
+      CHF_AUTOID[ii;0]
+      scale = half / dXi(0)
+      CHF_AUTOMULTIDO[destBox;i]
+        Nsq(CHF_AUTOIX[i]) = -dXidz(CHF_AUTOIX[i],0)
+     &                     * scale * (buoyancy(CHF_OFFSETIX[i;+ii]) - buoyancy(CHF_OFFSETIX[i;-ii]))
+      CHF_ENDDO
+
+      ! Add xi^1 derivative term
+      CHF_AUTOID[ii;1]
+      scale = half / dXi(1)
+      CHF_AUTOMULTIDO[destBox;i]
+        Nsq(CHF_AUTOIX[i]) = Nsq(CHF_AUTOIX[i])
+     &                     - dXidz(CHF_AUTOIX[i],1)
+     &                     * scale * (buoyancy(CHF_OFFSETIX[i;+ii]) - buoyancy(CHF_OFFSETIX[i;-ii]))
+      CHF_ENDDO
+
+#if CH_SPACEDIM > 2
+      ! Add xi^2 derivative term
+      CHF_AUTOID[ii;2]
+      scale = half / dXi(2)
+      CHF_AUTOMULTIDO[destBox;i]
+        Nsq(CHF_AUTOIX[i]) = Nsq(CHF_AUTOIX[i])
+     &                     - dXidz(CHF_AUTOIX[i],2)
+     &                     * scale * (buoyancy(CHF_OFFSETIX[i;+ii]) - buoyancy(CHF_OFFSETIX[i;-ii]))
+      CHF_ENDDO
+#endif
+
+      return
+      end
+
+

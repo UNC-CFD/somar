@@ -1,0 +1,311 @@
+#include "CONSTANTS.H"
+#define IMPLEMENT_HOEXTRAP
+
+
+C     ------------------------------------------------------------------
+      subroutine ExtrapolateDiagEdgeF (
+     &     CHF_FRA[dest],
+     &     CHF_CONST_FRA[src],
+     &     CHF_BOX[toRegion],
+     &     CHF_CONST_INT[dir1],
+     &     CHF_CONST_INT[sidesign1],
+     &     CHF_CONST_INT[dir2],
+     &     CHF_CONST_INT[sidesign2],
+     &     CHF_CONST_INT[order])
+
+      integer n,ncomp,tmp
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[dest] .ne. ncomp) then
+         print*, 'ExtrapolateDiagEdgeF: src and dest are incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if (dir1 .lt. 0 .or. CH_SPACEDIM .le. dir1) then
+         print*, 'ExtrapolateDiagEdgeF: bad dir1 = ', dir1
+         call MAYDAYERROR()
+      endif
+
+      if (dir2 .lt. 0 .or. CH_SPACEDIM .le. dir2) then
+         print*, 'ExtrapolateDiagEdgeF: bad dir2 = ', dir2
+         call MAYDAYERROR()
+      endif
+
+      if (dir1 .eq. dir2) then
+         print*, 'ExtrapolateDiagEdgeF: dir1 cannot equal dir2'
+         call MAYDAYERROR()
+      endif
+#endif
+
+      ! Set dir1 < dir2
+      if (dir1.gt.dir2) then
+        tmp = dir1
+        dir1 = dir2
+        dir2 = tmp
+
+        tmp = sidesign1
+        sidesign1 = sidesign2
+        sidesign2 = tmp
+      endif
+
+      ! Set ii to point in direction of toRegion from valid cells
+      if (dir1.eq.0 .and. dir2.eq.1) then
+        CHF_DTERM[
+        ii0 = sidesign1;
+        ii1 = sidesign2;
+        ii2 = 0]
+      else if (dir1.eq.0 .and. dir2.eq.2) then
+        CHF_DTERM[
+        ii0 = sidesign1;
+        ii1 = 0;
+        ii2 = sidesign2]
+      else
+        CHF_DTERM[
+        ii0 = 0;
+        ii1 = sidesign1;
+        ii2 = sidesign2]
+      endif
+
+      if (order .eq. 0) then
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            dest(CHF_AUTOIX[i],n)
+     &        = src(CHF_OFFSETIX[i;-ii],n)
+          CHF_ENDDO
+        enddo
+
+      else if (order .eq. 1) then
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            dest(CHF_AUTOIX[i],n)
+     &        = two * src(CHF_OFFSETIX[i;-  ii],n)
+     &        -       src(CHF_OFFSETIX[i;-2*ii],n)
+          CHF_ENDDO
+        enddo
+
+      else if (order .eq. 2) then
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            dest(CHF_AUTOIX[i],n)
+     &        = three * ( src(CHF_OFFSETIX[i;-  ii],n)
+     &                   -src(CHF_OFFSETIX[i;-2*ii],n) )
+     &        + src(CHF_OFFSETIX[i;-3*ii],n)
+          CHF_ENDDO
+        enddo
+
+      else
+         print*, 'ExtrapolateDiagEdgeF: order is invalid'
+         call MAYDAYERROR()
+      endif
+
+      return
+      end
+
+
+
+C     ------------------------------------------------------------------
+C     subroutine EXTRAPOLATEFACENOEV
+C     Extrapolation BCs for a side, specified component interval
+C     ------------------------------------------------------------------
+      subroutine EXTRAPOLATEFACENOEV (
+     &     CHF_FRA[dest],
+     &     CHF_CONST_FRA[src],
+     &     CHF_BOX[toRegion],
+     &     CHF_CONST_INT[dir],
+     &     CHF_CONST_INT[sidesign],
+     &     CHF_CONST_INT[order])
+
+      integer n,ncomp
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii;jj;kk]
+
+      ncomp = CHF_NCOMP[src]
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[dest] .ne. ncomp) then
+         print*, 'EXTRAPOLATEFACENOEV: src and dest are incompatible'
+         call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_DTERM[
+      ii = sidesign * CHF_ID(dir,0) ;
+      jj = sidesign * CHF_ID(dir,1) ;
+      kk = sidesign * CHF_ID(dir,2) ]
+
+      if (order .eq. 0) then
+
+        do n = 0, ncomp-1
+          CHF_MULTIDO[toRegion; i; j; k]
+
+            dest(CHF_IX[i;j;k],n)
+     &        = src(CHF_IX[i-ii;j-jj;k-kk],n)
+
+          CHF_ENDDO
+        enddo
+
+      elseif (order .eq. 1) then
+
+        do n = 0, ncomp-1
+          CHF_MULTIDO[toRegion; i; j; k]
+
+            dest(CHF_IX[i;j;k],n)
+     &        = two * src(CHF_IX[i-  ii;j-  jj;k-  kk],n)
+     &        -       src(CHF_IX[i-2*ii;j-2*jj;k-2*kk],n)
+
+          CHF_ENDDO
+        enddo
+
+      elseif (order .eq. 2) then
+
+        do n = 0, ncomp-1
+          CHF_MULTIDO[toRegion; i; j; k]
+
+            dest(CHF_IX[i;j;k],n)
+     &        = three * (  src(CHF_IX[i-  ii;j-  jj;k-  kk],n)
+     &                   - src(CHF_IX[i-2*ii;j-2*jj;k-2*kk],n)  )
+     &        + src(CHF_IX[i-3*ii;j-3*jj;k-3*kk],n)
+
+          CHF_ENDDO
+        enddo
+
+#ifdef IMPLEMENT_HOEXTRAP
+      elseif (order .eq. 3) then
+
+        do n = 0, ncomp-1
+          CHF_MULTIDO[toRegion; i; j; k]
+
+            dest(CHF_IX[i;j;k],n)
+     &        = four * (  src(CHF_IX[i-  ii;j-  jj;k-  kk],n)
+     &                  + src(CHF_IX[i-3*ii;j-3*jj;k-3*kk],n)  )
+     &        - six * src(CHF_IX[i-2*ii;j-2*jj;k-2*kk],n)
+     &        -       src(CHF_IX[i-4*ii;j-4*jj;k-4*kk],n)
+
+          CHF_ENDDO
+        enddo
+
+      elseif (order .eq. 4) then
+
+        do n = 0, ncomp-1
+          CHF_MULTIDO[toRegion; i; j; k]
+
+            dest(CHF_IX[i;j;k],n)
+     &        = five * (  src(CHF_IX[i-  ii;j-  jj;k-  kk],n)
+     &                  - src(CHF_IX[i-4*ii;j-4*jj;k-4*kk],n)  )
+     &        + ten  * (  src(CHF_IX[i-3*ii;j-3*jj;k-3*kk],n)
+     &                  - src(CHF_IX[i-2*ii;j-2*jj;k-2*kk],n)  )
+     &        + src(CHF_IX[i-5*ii;j-5*jj;k-5*kk],n)
+
+          CHF_ENDDO
+        enddo
+#endif //IMPLEMENT_HOEXTRAP
+
+      else
+         print*, 'EXTRAPOLATEFACENOEV: order is invalid'
+         call MAYDAYERROR()
+      endif
+
+      return
+      end
+
+
+
+C     -----------------------------------------------------------------
+C     subroutine EXTRAPOLATEFACEFROMCC
+C     Extrapolation BCs for a fluxes derived from CC data
+C     ------------------------------------------------------------------
+      subroutine EXTRAPOLATEFACEFROMCC (
+     &     CHF_FRA[dest],
+     &     CHF_CONST_FRA[src],
+     &     CHF_BOX[toRegion],
+     &     CHF_CONST_INT[dir],
+     &     CHF_CONST_INT[sidesign],
+     &     CHF_CONST_INT[order])
+
+      integer n,ncomp
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii;jj;kk]
+
+      ncomp = CHF_NCOMP[src]
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[dest] .ne. ncomp) then
+         print*, 'EXTRAPOLATEFACEFROMCC: src and dest are incompatible'
+         call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_DTERM[
+      ii = sidesign * CHF_ID(dir,0) ;
+      jj = sidesign * CHF_ID(dir,1) ;
+      kk = sidesign * CHF_ID(dir,2) ]
+
+      if (order .eq. 0) then
+
+        if (sidesign .eq. 1) then
+          do n = 0, ncomp-1
+            CHF_MULTIDO[toRegion; i; j; k]
+              dest(CHF_IX[i;j;k],n)
+     &          = src(CHF_IX[i-ii;j-jj;k-kk],n)
+            CHF_ENDDO
+          enddo
+        else
+          do n = 0, ncomp-1
+            CHF_MULTIDO[toRegion; i; j; k]
+              dest(CHF_IX[i;j;k],n)
+     &          = src(CHF_IX[i;j;k],n)
+            CHF_ENDDO
+          enddo
+        endif
+
+      elseif (order .eq. 1) then
+
+        if (sidesign .eq. 1) then
+          do n = 0, ncomp-1
+            CHF_MULTIDO[toRegion; i; j; k]
+              dest(CHF_IX[i;j;k],n)
+     &          = three * src(CHF_IX[i-  ii;j-  jj;k-  kk],n)
+     &          -   two * src(CHF_IX[i-2*ii;j-2*jj;k-2*kk],n)
+            CHF_ENDDO
+          enddo
+        else
+          do n = 0, ncomp-1
+            CHF_MULTIDO[toRegion; i; j; k]
+              dest(CHF_IX[i;j;k],n)
+     &          = three * src(CHF_IX[i   ;j   ;k   ],n)
+     &          -   two * src(CHF_IX[i-ii;j-jj;k-kk],n)
+            CHF_ENDDO
+          enddo
+        endif
+
+      elseif (order .eq. 2) then
+
+        if (sidesign .eq. 1) then
+          do n = 0, ncomp-1
+            CHF_MULTIDO[toRegion; i; j; k]
+              dest(CHF_IX[i;j;k],n)
+     &          = (  fifteen * src(CHF_IX[i-  ii;j-  jj;k-  kk],n)
+     &             -     ten * src(CHF_IX[i-2*ii;j-2*jj;k-2*kk],n)
+     &             +   three * src(CHF_IX[i-3*ii;j-3*jj;k-3*kk],n)  ) / eight
+            CHF_ENDDO
+          enddo
+        else
+          do n = 0, ncomp-1
+            CHF_MULTIDO[toRegion; i; j; k]
+              dest(CHF_IX[i;j;k],n)
+     &          = (  fifteen * src(CHF_IX[i     ;j     ;k     ],n)
+     &             -     ten * src(CHF_IX[i-  ii;j-  jj;k-  kk],n)
+     &             +   three * src(CHF_IX[i-2*ii;j-2*jj;k-2*kk],n)  ) / eight
+            CHF_ENDDO
+          enddo
+        endif
+
+      else
+         print*, 'EXTRAPOLATEFACEFROMCC:order is invalid'
+         call MAYDAYERROR()
+      endif
+
+      return
+      end

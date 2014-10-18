@@ -1,0 +1,176 @@
+#include "CONSTANTS.H"
+
+
+c ----------------------------------------------------------------
+c TWISTED_FILL_PHYSCOOR
+c ----------------------------------------------------------------
+      subroutine CYLINDRICAL_FILL_PHYSCOOR (
+     &    CHF_FRA1[dest],
+     &    CHF_CONST_INT[mu],
+     &    CHF_CONST_REALVECT[dXi],
+     &    CHF_BOX[destBox],
+     &    CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[Xi]
+      REAL_T CHF_AUTODECL[offset]
+
+      CHF_DTERM[
+      offset0 = (one - destBoxType(0)) * half;
+      offset1 = (one - destBoxType(1)) * half;
+      offset2 = (one - destBoxType(2)) * half]
+
+      if (mu .eq. 0) then
+        ! x = r*cos(theta)
+        CHF_AUTOMULTIDO[destBox;i]
+          Xi0 = dXi(0) * (i0 + offset0)
+          Xi1 = dXi(1) * (i1 + offset1)
+          dest(CHF_AUTOIX[i]) = Xi0 * cos(Xi1)
+        CHF_ENDDO
+
+      else if (mu .eq. 1) then
+        ! y = r*sin(theta)
+        CHF_AUTOMULTIDO[destBox;i]
+          Xi0 = dXi(0) * (i0 + offset0)
+          Xi1 = dXi(1) * (i1 + offset1)
+          dest(CHF_AUTOIX[i]) = Xi0 * sin(Xi1)
+        CHF_ENDDO
+
+#if CH_SPACEDIM > 2
+      else if (mu .eq. 2) then
+        ! z = z
+        CHF_AUTOMULTIDO[destBox;i]
+          dest(CHF_AUTOIX[i]) = dXi(2) * (i2 + offset2)
+        CHF_ENDDO
+#endif
+      else
+        write(*,*) 'CYLINDRICAL_FILL_PHYSCOOR: Bad mu, ', mu
+        call MAYDAYERROR()
+      endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c CYLINDTICAL_FILL_PHYSCOOR_ALL_COMPS
+c ----------------------------------------------------------------
+      subroutine CYLINDRICAL_FILL_PHYSCOOR_ALL_COMPS (
+     &    CHF_FRA[dest],
+     &    CHF_CONST_REALVECT[dXi],
+     &    CHF_CONST_REALVECT[mult],
+     &    CHF_BOX[destBox],
+     &    CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[Xi]
+      REAL_T CHF_AUTODECL[offset]
+
+      CHF_DTERM[
+      offset0 = (one - destBoxType(0)) * half;
+      offset1 = (one - destBoxType(1)) * half;
+      offset2 = (one - destBoxType(2)) * half]
+
+      ! x = r*cos(theta)
+      ! y = r*sin(theta)
+      ! z = z
+      CHF_AUTOMULTIDO[destBox;i]
+        Xi0 = dXi(0) * (i0 + offset0)
+        Xi1 = dXi(1) * (i1 + offset1)
+
+        CHF_DTERM[
+        dest(CHF_AUTOIX[i],0) = Xi0 * cos(Xi1);
+        dest(CHF_AUTOIX[i],1) = Xi0 * sin(Xi1);
+        dest(CHF_AUTOIX[i],2) = dXi(2) * (i2 + offset2)]
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c CYLINDTICAL_FILL_DXDXI
+c ----------------------------------------------------------------
+      subroutine CYLINDRICAL_FILL_DXDXI (
+     &    CHF_FRA1[dest],
+     &    CHF_CONST_INT[mu],
+     &    CHF_CONST_INT[nu],
+     &    CHF_CONST_REALVECT[dXi],
+     &    CHF_CONST_REAL[mult],
+     &    CHF_BOX[destBox],
+     &    CHF_CONST_INTVECT[destBoxType])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[Xi]
+      REAL_T CHF_AUTODECL[offset]
+
+      CH_assert(0 .le. mu)
+      CH_assert(mu .lt. 2)
+      CH_assert(0 .le. nu)
+      CH_assert(nu .lt. 2)
+
+      CHF_DTERM[
+      offset0 = (one - destBoxType(0)) * half;
+      offset1 = (one - destBoxType(1)) * half;
+      offset2 = (one - destBoxType(2)) * half]
+
+      if (mu .eq. 0) then
+        if (nu .eq. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi1 = dXi(1) * (i1 + offset1)
+            dest(CHF_AUTOIX[i]) = mult * cos(xi1)
+          CHF_ENDDO
+        else
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi0 = dXi(0) * (i0 + offset0)
+            Xi1 = dXi(1) * (i1 + offset1)
+            dest(CHF_AUTOIX[i]) = -mult * Xi0 * sin(Xi1)
+          CHF_ENDDO
+        endif
+      else
+        if (nu .eq. 0) then
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi1 = dXi(1) * (i1 + offset1)
+            dest(CHF_AUTOIX[i]) = mult * sin(xi1)
+          CHF_ENDDO
+        else
+          CHF_AUTOMULTIDO[destBox;i]
+            Xi0 = dXi(0) * (i0 + offset0)
+            Xi1 = dXi(1) * (i1 + offset1)
+            dest(CHF_AUTOIX[i]) = mult * Xi0 * cos(Xi1)
+          CHF_ENDDO
+        endif
+      endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c CYLINDRICAL_FILL_J
+c dXi and destBoxType correspond to direction 0.
+c ----------------------------------------------------------------
+      subroutine CYLINDRICAL_FILL_J (
+     &    CHF_FRA1[dest],
+     &    CHF_CONST_REAL[dXi0],
+     &    CHF_CONST_REAL[mult],
+     &    CHF_BOX[destBox],
+     &    CHF_CONST_INT[destBoxType0])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T offset0, scaleDXi0
+
+      offset0 = (one - destBoxType0) * half
+      scaleDXi0 = mult * dXi0
+
+      CHF_AUTOMULTIDO[destBox;i]
+        dest(CHF_AUTOIX[i]) = scaleDXi0 * (i0 + offset0)
+      CHF_ENDDO
+
+      return
+      end
+

@@ -1,0 +1,106 @@
+#include "CONSTANTS.H"
+
+
+c ---------------------------------------------------------------------------------
+c Sets CCu = CCA * d[FCphi]/dz
+c and  CCv = -CCphi * d[FCA]/dx
+c ---------------------------------------------------------------------------------
+      subroutine SOLITARYWAVE_SETVELIC (
+     &     CHF_FRA[vel],
+     &     CHF_CONST_INT[velDir],
+     &     CHF_CONST_FRA1[CCA],
+     &     CHF_CONST_FRA1[FCA],
+     &     CHF_CONST_FRA1[CCphi],
+     &     CHF_BOX[valid],
+     &     CHF_BOX[horizCCBox],
+     &     CHF_BOX[vertCCBox],
+     &     CHF_CONST_REALVECT[physDx])
+
+#if CH_SPACEDIM == 2
+      integer CHF_AUTODECL[i]
+      integer hi1
+      integer vi0
+      REAL_T scale
+
+      hi1 = CHF_LBOUND[horizCCBox;1];
+      vi0 = CHF_LBOUND[vertCCBox;0];
+
+#ifndef NDEBUG
+      if (hi1 .ne. CHF_UBOUND[horizCCBox;1]) then
+        print*, 'SOLITARYWAVE_SETVELIC: horizCCBox must be flat in the vertical'
+        call MAYDAYERROR()
+      endif
+
+      if (vi0 .ne. CHF_UBOUND[vertCCBox;0]) then
+        print*, 'SOLITARYWAVE_SETVELIC: vertCCBox must be flat in the horizontal'
+        call MAYDAYERROR()
+      endif
+#endif
+
+
+      if (velDir .eq. 0) then
+        scale = half / physDx(1)
+        CHF_AUTOMULTIDO[valid;i]
+          vel(i0,i1,0) = CCA(i0,hi1) * (CCphi(vi0,i1+1) - CCphi(vi0,i1-1)) * scale
+        CHF_ENDDO
+      else if (velDir .eq. 1) then
+        scale = -one / physDx(0)
+        CHF_AUTOMULTIDO[valid;i]
+          vel(i0,i1,1) = CCphi(vi0,i1) * (FCA(i0+1,hi1) - FCA(i0,hi1)) * scale
+        CHF_ENDDO
+      endif
+#else
+      print*, 'SOLITARYWAVE_SETVELIC: SpaceDim cannot be ', CH_SPACEDIM
+      call MAYDAYERROR()
+#endif
+
+      return
+      end
+
+
+c ---------------------------------------------------------------------------------
+c Sets CCB = CCBbg + CCA * CCphi * Nsq/c0
+c ---------------------------------------------------------------------------------
+      subroutine SOLITARYWAVE_SETSCALARIC (
+     &     CHF_FRA1[CCB],
+     &     CHF_CONST_FRA1[CCBbg],
+     &     CHF_CONST_FRA1[CCA],
+     &     CHF_CONST_FRA1[CCphi],
+     &     CHF_CONST_FRA1[CCNsq],
+     &     CHF_CONST_REAL[c0],
+     &     CHF_BOX[valid],
+     &     CHF_BOX[horizCCBox],
+     &     CHF_BOX[vertCCBox])
+
+#if CH_SPACEDIM == 2
+      integer CHF_AUTODECL[i]
+      integer hi1
+      integer vi0
+      REAL_T scale
+
+      hi1 = CHF_LBOUND[horizCCBox;1];
+      vi0 = CHF_LBOUND[vertCCBox;0];
+
+# ifndef NDEBUG
+      if (hi1 .ne. CHF_UBOUND[horizCCBox;1]) then
+        print*, 'SOLITARYWAVE_SETSCALARIC: horizCCBox must be flat in the vertical'
+        call MAYDAYERROR()
+      endif
+
+      if (vi0 .ne. CHF_UBOUND[vertCCBox;0]) then
+        print*, 'SOLITARYWAVE_SETSCALARIC: vertCCBox must be flat in the horizontal'
+        call MAYDAYERROR()
+      endif
+# endif
+
+      CHF_AUTOMULTIDO[valid;i]
+        CCB(i0,i1) = CCBbg(i0,i1) + CCA(i0,hi1) * CCphi(vi0,i1) * CCNsq(vi0,i1) / c0
+      CHF_ENDDO
+
+#else
+      print*, 'SOLITARYWAVE_SETSCALARIC: SpaceDim cannot be ', CH_SPACEDIM
+      call MAYDAYERROR()
+#endif
+
+      return
+      end

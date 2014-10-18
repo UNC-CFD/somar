@@ -1,0 +1,139 @@
+c ------------------------------------------------------------------------------
+c Solves the homogeneous 1D Poisson problem using a tridiagonal algo
+c that is tweaked to deal with Neum-Neum BCs.
+c region must be a 1D line of cells in any direction and have a smallEnd of 0.
+c ------------------------------------------------------------------------------
+      subroutine TriDiagPoissonNN1D (
+     &     CHF_VR[x],
+     &     CHF_CONST_VR[a],
+     &     CHF_CONST_VR[b],
+     &     CHF_CONST_VR[c],
+     &     CHF_VR[gam])
+
+      REAL_T bet, avg
+      integer r, maxr
+
+      maxr = iahi0
+      CH_assert(ixhi0 .ge. maxr)
+      CH_assert(ibhi0 .ge. maxr)
+      CH_assert(ichi0 .ge. maxr-1)
+      CH_assert(igamhi0 .ge. maxr-1)
+
+      ! Begin decomposition and forward substitution.
+      bet = b(0)
+      CH_assert(bet .ne. zero)
+      x(0) = x(0) / bet;
+      gam(0) = c(0) / bet;
+
+      do r = 1, maxr-1
+        bet = b(r) - a(r)*gam(r-1);
+        CH_assert(bet .ne. zero);
+        x(r) = (x(r) - a(r)*x(r-1)) / bet;
+        gam(r) = c(r) / bet;
+      enddo
+
+      ! Last index is a special case
+      CH_assert(r .eq. maxr);
+      x(r) = (x(r) - a(r-1)*x(r-1)) / b(r);
+      avg = x(r);
+
+      ! Backsubstitution.
+      do r = maxr-1, 0, -1
+        x(r) = x(r) - gam(r)*x(r+1);
+        avg = avg + x(r);
+      enddo
+
+      ! Set the average of the solution to zero.
+      avg = avg / DBLE(maxr+1)
+      do r = 0, maxr
+        x(r) = x(r) - avg
+      enddo
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c This is a simple utility that is the same as calling TriDiagPoissonNN1D along
+c every line in phi, but MUCH faster.
+c ------------------------------------------------------------------------------
+      subroutine TriDiagPoissonNN1DFAB (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA1[sigma],
+     &     CHF_BOX[bottomBox],
+     &     CHF_CONST_INT[Nx],
+     &     CHF_CONST_REAL[dx],
+     &     CHF_CONST_INT[dir])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      integer n, r
+      REAL_T dxsq, bet, avg
+      REAL_T x(0:Nx-1)   ! rhs & solution
+      REAL_T c(0:Nx-2)   ! Superdiagonal [0 ... Nx-2]
+      REAL_T b(0:Nx-1)   ! Diagonal      [0 ... Nx-1]
+      REAL_T a(0:Nx-1)   ! Subdiagonal   [1 ... Nx-1]
+      REAL_T gam(0:Nx-2)
+
+      CHF_AUTOID[ii;dir]
+      dxsq = dx * dx
+
+      do n = 0, CHF_NCOMP[phi]-1
+        CHF_AUTOMULTIDO[bottomBox;i]
+
+          ! Fill matrix elements...
+          c(0) = sigma(CHF_OFFSETIX[i;+ii])
+          a(0) = 1.2345e10
+          b(0) = -c(0);
+          x(0) = rhs(CHF_AUTOIX[i],n) * dxsq;
+
+          do r = 1, Nx-2
+            a(r) =  sigma(CHF_OFFSETIX[i;+r*ii]);
+            c(r) =  sigma(CHF_OFFSETIX[i;+(r+1)*ii]);
+            b(r) = -(a(r)+c(r));
+            x(r) = rhs(CHF_OFFSETIX[i;+r*ii],n) * dxsq;
+          enddo
+
+          CH_assert(r .eq. Nx-1)
+          a(Nx-1) = sigma(CHF_OFFSETIX[i;+r*ii]);
+          b(Nx-1) = -a(Nx-1);
+          x(Nx-1) = rhs(CHF_OFFSETIX[i;+r*ii],n) * dxsq;
+
+
+          ! Begin decomposition and forward substitution.
+          bet = b(0)
+          CH_assert(bet .ne. zero)
+          x(0) = x(0) / bet;
+          gam(0) = c(0) / bet;
+
+          do r = 1, Nx-2
+            bet = b(r) - a(r)*gam(r-1);
+            CH_assert(bet .ne. zero);
+            x(r) = (x(r) - a(r)*x(r-1)) / bet;
+            gam(r) = c(r) / bet;
+          enddo
+
+          ! Last index is a special case
+          CH_assert(r .eq. Nx-1);
+          x(r) = (x(r) - a(r-1)*x(r-1)) / b(r);
+          avg = x(r);
+
+          ! Backsubstitution.
+          do r = Nx-2, 0, -1
+            x(r) = x(r) - gam(r)*x(r+1);
+            avg = avg + x(r);
+          enddo
+
+          ! Set the average of the solution to zero.
+          ! This puts the solution in its final holder
+          avg = avg / DBLE(Nx)
+          do r = 0, Nx-1
+            phi(CHF_OFFSETIX[i;+r*ii],n) = x(r) - avg
+          enddo
+
+        CHF_ENDDO
+      enddo
+
+      return
+      end

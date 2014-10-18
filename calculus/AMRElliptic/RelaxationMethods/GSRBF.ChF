@@ -1,0 +1,1878 @@
+#include "CONSTANTS.H"
+#include "AddlFortranMacros.H"
+#include "BCDescriptor.H"
+
+
+C     -----------------------------------------------------------------
+C     subroutine GSRBITER*D(ORTHO)
+C     Applies either a red or black sweep of Gauss-Seidel
+C        with non-7-point terms on rhs
+C
+C     extrap is the initial phi with ghosts extrapolated. This lets us
+C     perform one-sided derivatives while using a standard stencil.
+C
+C     Warning: phi, extrap, rhs must have the same number
+C     of components and span region.  Phi, extrap needs one more cell
+C     on all sides
+C     ------------------------------------------------------------------
+      subroutine GSRBITER1D (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA[JgDir],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_CONST_FRA1[lapDiag],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[lineDir],
+     &     CHF_CONST_INT[redBlack])
+
+      REAL_T scale, lphi, JD
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp,idir,indtot,imin,imax
+
+      scale = one / (dx(lineDir)*dx(lineDir))
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBITER1D: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check dims
+#     if CH_SPACEDIM == 2
+        if (lineDir .eq. 0) then
+          ! 2D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;1] .ne. 0) .or. (CHF_UBOUND[region;1] .ne. 0)) then
+            print*, "GSRBITER1D: Called 1D function while CH_SPACEDIM = 2 and region is not flat"
+            call MAYDAYERROR()
+          endif
+        else
+          ! 2D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;0] .ne. 0) .or. (CHF_UBOUND[region;0] .ne. 0)) then
+            print*, "GSRBITER1D: Called 1D function while CH_SPACEDIM = 2 and region is not flat"
+            call MAYDAYERROR()
+          endif
+        endif
+#     else
+        ! 3D code should never call this function.
+        print*, "GSRBITER1D: Called 1D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER1D: phi does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(JgDir,1,0,0, region,0,0,0)) then
+        print*, 'GSRBITER1D: Jgdir does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER1D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER1D: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      if (lineDir .eq. 0) then
+        do n = 0, ncomp - 1
+          j = CHF_LBOUND[region; 1]
+          imin = CHF_LBOUND[region; 0]
+          indtot = imin + j
+          imin = imin + abs(mod(indtot + redBlack, 2))
+          imax = CHF_UBOUND[region; 0]
+          do i = imin, imax, 2
+
+              JD = JgDir(CHF_IX[i+1;j;0],0) * phi(CHF_IX[i+1;j;0],n)
+     &           + JgDir(CHF_IX[i  ;j;0],0) * phi(CHF_IX[i-1;j;0],n)
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;0]) * JD * scale
+              phi(CHF_IX[i;j;0],n) = (rhs(CHF_IX[i;j;0],n) - lphi) / (alpha + beta*lapDiag(CHF_IX[i;j;0]))
+
+          enddo ! (i)
+        enddo ! (n)
+      else
+        do n = 0, ncomp - 1
+          i = CHF_LBOUND[region; 0]
+          imin = CHF_LBOUND[region; 1]
+          indtot = imin + i
+          imin = imin + abs(mod(indtot + redBlack, 2))
+          imax = CHF_UBOUND[region; 1]
+          do j = imin, imax, 2
+
+              JD = JgDir(CHF_IX[i;j+1;0],0) * phi(CHF_IX[i;j+1;0],n)
+     &           + JgDir(CHF_IX[i;j  ;0],0) * phi(CHF_IX[i;j-1;0],n)
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;0]) * JD * scale
+              phi(CHF_IX[i;j;0],n) = (rhs(CHF_IX[i;j;0],n) - lphi) / (alpha + beta*lapDiag(CHF_IX[i;j;0]))
+
+          enddo ! (j)
+        enddo ! (n)
+      endif
+
+      return
+      end
+
+
+      subroutine GSRBITER2D (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[extrap],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA[Jg1],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_CONST_FRA1[lapDiag],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[redBlack])
+
+      REAL_T xxScale, xyScale, yyScale, lphi
+      REAL_T JDxx, JDxy
+      REAL_T JDyx, JDyy
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp,idir,indtot,imin,imax
+
+      xxScale = one / (dx(0)*dx(0))
+      xyScale = fourth / (dx(0)*dx(1))
+      yyScale = one / (dx(1)*dx(1))
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[extrap]) then
+         print*, 'GSRBITER2D: phi and extrap incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBITER2D: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check dims
+#     if CH_SPACEDIM == 2
+        ! No problem here !
+#     else
+#       if CH_SPACEDIM == 3
+          ! 3D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;2] .ne. 0) .or. (CHF_UBOUND[region;2] .ne. 0)) then
+            print*, "GSRBITER2D: Called 2D function while CH_SPACEDIM = 3 and region is not flat"
+            call MAYDAYERROR()
+          endif
+#       else
+          ! 1D code should never call this function.
+          print*, "GSRBITER2D: Called 2D function while CH_SPACEDIM = ", CH_SPACEDIM
+          call MAYDAYERROR()
+#       endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER2D: phi does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(extrap,0,0,0, region,1,1,0)) then
+        print*, 'GSRBITER2D: extrap does not contain region +1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg0,1,0,0, region,0,0,0)) then
+        print*, 'GSRBITER2D: Jg0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg1,0,1,0, region,0,0,0)) then
+        print*, 'GSRBITER2D: Jg1 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER2D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER2D: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp - 1
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+            imin = CHF_LBOUND[region; 0]
+            indtot = imin + j
+C     add 0 or 1 to imin, so that imin+j has same parity as redBlack
+C     petermc, 26 april 2001
+            imin = imin + abs(mod(indtot + redBlack, 2))
+            imax = CHF_UBOUND[region; 0]
+            do i = imin, imax, 2
+
+              JDxx = Jg0(CHF_IX[i+1;j;0],0) * phi(CHF_IX[i+1;j;0],n)
+     &             + Jg0(CHF_IX[i  ;j;0],0) * phi(CHF_IX[i-1;j;0],n)
+
+              JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0],n) - extrap(CHF_IX[i+1;j-1;0],n)
+     &                                         + extrap(CHF_IX[i  ;j+1;0],n) - extrap(CHF_IX[i  ;j-1;0],n)  )
+     &             - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0],n) - extrap(CHF_IX[i  ;j-1;0],n)
+     &                                         + extrap(CHF_IX[i-1;j+1;0],n) - extrap(CHF_IX[i-1;j-1;0],n)  )
+
+              JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0],n) - extrap(CHF_IX[i-1;j+1;0],n)
+     &                                         + extrap(CHF_IX[i+1;j  ;0],n) - extrap(CHF_IX[i-1;j  ;0],n)  )
+     &             - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0],n) - extrap(CHF_IX[i-1;j  ;0],n)
+     &                                         + extrap(CHF_IX[i+1;j-1;0],n) - extrap(CHF_IX[i-1;j-1;0],n)  )
+
+              JDyy = Jg1(CHF_IX[i;j+1;0],1) * phi(CHF_IX[i;j+1;0],n)
+     &             + Jg1(CHF_IX[i;j  ;0],1) * phi(CHF_IX[i;j-1;0],n)
+
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;0])
+     &             * (JDxx * xxScale + JDyy * yyScale + (JDxy + JDyx) * xyScale)
+              phi(CHF_IX[i;j;0],n) = (rhs(CHF_IX[i;j;0],n) - lphi) / (alpha + beta*lapDiag(CHF_IX[i;j;0]))
+
+            enddo
+          enddo
+      enddo
+
+      return
+      end
+
+
+      subroutine GSRBITER3D (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[extrap],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA[Jg1],
+     &     CHF_CONST_FRA[Jg2],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_CONST_FRA1[lapDiag],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[redBlack])
+
+      REAL_T lphi
+      REAL_T xxScale, yyScale, zzScale
+      REAL_T yzScale, zxScale, xyScale
+      REAL_T JDxx, JDxy, JDxz
+      REAL_T JDyx, JDyy, JDyz
+      REAL_T JDzx, JDzy, JDzz
+      REAL_T pdx, pdy, pdz
+      integer i, j, k
+      integer n,ncomp,idir,indtot,imin,imax
+
+      CHF_DTERM[
+      xxScale =    one / (dx(0)*dx(0));
+      yyScale =    one / (dx(1)*dx(1));
+      zzScale =    one / (dx(2)*dx(2))]
+
+      CHF_DTERM[;
+      xyScale = fourth / (dx(0)*dx(1));
+      yzScale = fourth / (dx(1)*dx(2))
+      zxScale = fourth / (dx(2)*dx(0))]
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[extrap]) then
+         print*, 'GSRBITER3D: phi and extrap incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBITER3D: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check dims
+      if (CH_SPACEDIM .ne. 3) then
+        print*, "GSRBITER3D: Called 3D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER3D: phi does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(extrap,0,0,0, region,1,1,1)) then
+        print*, 'GSRBITER3D: extrap does not contain region +1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg0,1,0,0, region,0,0,0)) then
+        print*, 'GSRBITER3D: Jg0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg1,0,1,0, region,0,0,0)) then
+        print*, 'GSRBITER3D: Jg1 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg2,0,0,1, region,0,0,0)) then
+        print*, 'GSRBITER3D: Jg2 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER3D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER3D: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp - 1
+#if CH_SPACEDIM > 2
+        do k=CHF_LBOUND[region; 2], CHF_UBOUND[region; 2]
+#endif
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+
+            imin = CHF_LBOUND[region; 0]
+            CHF_DTERM[indtot = imin; + j ; + k ]
+C     add 0 or 1 to imin, so that imin+j+k has same parity as redBlack
+C     petermc, 26 april 2001
+            imin = imin + abs(mod(indtot + redBlack, 2))
+            imax = CHF_UBOUND[region; 0]
+            do i = imin, imax, 2
+
+              pdx = extrap(CHF_IX[i+1;j  ;k],n) - extrap(CHF_IX[i-1;j  ;k],n)
+              pdy = extrap(CHF_IX[i  ;j+1;k],n) - extrap(CHF_IX[i  ;j-1;k],n)
+              pdz = extrap(CHF_IX[i  ;j;k+1],n) - extrap(CHF_IX[i  ;j;k-1],n)
+
+              ! X-gradient terms
+              JDxx = Jg0(CHF_IX[i+1;j;k],0) * phi(CHF_IX[i+1;j;k],n)
+     &             + Jg0(CHF_IX[i  ;j;k],0) * phi(CHF_IX[i-1;j;k],n)
+
+              JDxy = Jg0(CHF_IX[i+1;j;k],1) * (extrap(CHF_IX[i+1;j+1;k],n) - extrap(CHF_IX[i+1;j-1;k],n) + pdy)
+     &             - Jg0(CHF_IX[i  ;j;k],1) * (pdy + extrap(CHF_IX[i-1;j+1;k],n) - extrap(CHF_IX[i-1;j-1;k],n))
+
+              JDxz = Jg0(CHF_IX[i+1;j;k],2) * (extrap(CHF_IX[i+1;j;k+1],n) - extrap(CHF_IX[i+1;j;k-1],n) + pdz)
+     &             - Jg0(CHF_IX[i  ;j;k],2) * (pdz + extrap(CHF_IX[i-1;j;k+1],n) - extrap(CHF_IX[i-1;j;k-1],n))
+
+              ! Y-gradient terms
+              JDyx = Jg1(CHF_IX[i;j+1;k],0) * (extrap(CHF_IX[i+1;j+1;k],n) - extrap(CHF_IX[i-1;j+1;k],n) + pdx)
+     &             - Jg1(CHF_IX[i;j  ;k],0) * (pdx + extrap(CHF_IX[i+1;j-1;k],n) - extrap(CHF_IX[i-1;j-1;k],n))
+
+              JDyy = Jg1(CHF_IX[i;j+1;k],1) * phi(CHF_IX[i;j+1;k],n)
+     &             + Jg1(CHF_IX[i;j  ;k],1) * phi(CHF_IX[i;j-1;k],n)
+
+              JDyz = Jg1(CHF_IX[i;j+1;k],2) * (extrap(CHF_IX[i;j+1;k+1],n) - extrap(CHF_IX[i;j+1;k-1],n) + pdz)
+     &             - Jg1(CHF_IX[i;j  ;k],2) * (pdz + extrap(CHF_IX[i;j-1;k+1],n) - extrap(CHF_IX[i;j-1;k-1],n))
+
+              ! Z-gradient terms
+              JDzx = Jg2(CHF_IX[i;j;k+1],0) * (extrap(CHF_IX[i+1;j;k+1],n) - extrap(CHF_IX[i-1;j;k+1],n) + pdx)
+     &             - Jg2(CHF_IX[i;j;k  ],0) * (pdx + extrap(CHF_IX[i+1;j;k-1],n) - extrap(CHF_IX[i-1;j;k-1],n))
+
+              JDzy = Jg2(CHF_IX[i;j;k+1],1) * (extrap(CHF_IX[i;j+1;k+1],n) - extrap(CHF_IX[i;j-1;k+1],n) + pdy)
+     &             - Jg2(CHF_IX[i;j;k  ],1) * (pdy + extrap(CHF_IX[i;j+1;k-1],n) - extrap(CHF_IX[i;j-1;k-1],n))
+
+              JDzz = Jg2(CHF_IX[i;j;k+1],2) * phi(CHF_IX[i;j;k+1],n)
+     &             + Jg2(CHF_IX[i;j;k  ],2) * phi(CHF_IX[i;j;k-1],n)
+
+              ! Divergence
+              lphi = beta * Jinv(CHF_IX[i;j;k])
+     &             * (           JDxx * xxScale          + JDyy * yyScale          + JDzz * zzScale
+     &                + (JDxy + JDyx) * xyScale + (JDyz + JDzy) * yzScale + (JDzx + JDxz) * zxScale  )
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              phi(CHF_IX[i;j;k],n) = (rhs(CHF_IX[i;j;k],n) - lphi) / (alpha + beta*lapDiag(CHF_IX[i;j;k]))
+
+            enddo
+          enddo
+#if CH_SPACEDIM > 2
+        enddo
+#endif
+      enddo
+
+      return
+      end
+
+
+      subroutine GSRBITER2DORTHO (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA1[Jgxx],
+     &     CHF_CONST_FRA1[Jgyy],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_CONST_FRA1[lapDiag],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[redBlack])
+
+      REAL_T xxScale, yyScale, lphi
+      REAL_T JDxx, JDyy
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp,idir,indtot,imin,imax
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBITER2DORTHO: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+#     if CH_SPACEDIM == 2
+        ! No problem here !
+#     else
+#       if CH_SPACEDIM == 3
+          ! 3D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;2] .ne. 0) .or. (CHF_UBOUND[region;2] .ne. 0)) then
+            print*, "GSRBITER2DORTHO: Called 2D function while CH_SPACEDIM = 3 and region is not flat"
+            call MAYDAYERROR()
+          endif
+#       else
+          ! 1D code should never call this function.
+          print*, "GSRBITER2DORTHO: Called 2D function while CH_SPACEDIM = ", CH_SPACEDIM
+          call MAYDAYERROR()
+#       endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,1,1,0)) then
+        print*, 'GSRBITER2DORTHO: phi does not contain region +1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(rhs,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER2DORTHO: rhs does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgxx,1,0,0, region,0,0,0)) then
+        print*, 'GSRBITER2DORTHO: Jgxx does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgyy,0,1,0, region,0,0,0)) then
+        print*, 'GSRBITER2DORTHO: Jgyy does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER2DORTHO: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      xxScale = one / (dx(0)*dx(0))
+      yyScale = one / (dx(1)*dx(1))
+
+      do n = 0, ncomp - 1
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+            imin = CHF_LBOUND[region; 0]
+            indtot = imin + j
+C     add 0 or 1 to imin, so that imin+j+k has same parity as redBlack
+C     petermc, 26 april 2001
+            imin = imin + abs(mod(indtot + redBlack, 2))
+            imax = CHF_UBOUND[region; 0]
+            do i = imin, imax, 2
+
+              JDxx = xxScale
+     &             * (  Jgxx(CHF_IX[i+1;j;0]) * phi(CHF_IX[i+1;j;0],n)
+     &                + Jgxx(CHF_IX[i  ;j;0]) * phi(CHF_IX[i-1;j;0],n)  )
+
+              JDyy = yyScale
+     &             * (  Jgyy(CHF_IX[i;j+1;0]) * phi(CHF_IX[i;j+1;0],n)
+     &                + Jgyy(CHF_IX[i;j  ;0]) * phi(CHF_IX[i;j-1;0],n)  )
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * (JDxx + JDyy) * Jinv(CHF_IX[i;j;0])
+              phi(CHF_IX[i;j;0],n) = (rhs(CHF_IX[i;j;0],n) - lphi) / (alpha + beta*lapDiag(CHF_IX[i;j;0]))
+
+            enddo
+          enddo
+      enddo
+
+      return
+      end
+
+
+      subroutine GSRBITER3DORTHO (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA1[Jgxx],
+     &     CHF_CONST_FRA1[Jgyy],
+     &     CHF_CONST_FRA1[Jgzz],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_CONST_FRA1[lapDiag],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[redBlack])
+
+      REAL_T xxScale, yyScale, zzScale, lphi
+      REAL_T JDxx, JDyy, JDzz
+      integer i, j, k
+      integer n,ncomp,idir,indtot,imin,imax
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBITER3DORTHO: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if (CH_SPACEDIM .ne. 3) then
+        print*, "GSRBITER3DORTHO: Called 3D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,1,1,1)) then
+        print*, 'GSRBITER3DORTHO: phi does not contain region +1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(rhs,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER3DORTHO: rhs does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgxx,1,0,0, region,0,0,0)) then
+        print*, 'GSRBITER3DORTHO: Jgxx does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgyy,0,1,0, region,0,0,0)) then
+        print*, 'GSRBITER3DORTHO: Jgyy does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgzz,0,0,1, region,0,0,0)) then
+        print*, 'GSRBITER3DORTHO: Jgzz does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(lapDiag,0,0,0, region,0,0,0)) then
+        print*, 'GSRBITER3DORTHO: lapDiag does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_DTERM[
+      xxScale = one / (dx(0)*dx(0));
+      yyScale = one / (dx(1)*dx(1));
+      zzScale = one / (dx(2)*dx(2))]
+
+      do n = 0, ncomp - 1
+#if CH_SPACEDIM > 2
+        do k=CHF_LBOUND[region; 2], CHF_UBOUND[region; 2]
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+#else
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+#endif
+            imin = CHF_LBOUND[region; 0]
+            CHF_DTERM[indtot = imin; + j ; + k ]
+            imin = imin + abs(mod(indtot + redBlack, 2))
+            imax = CHF_UBOUND[region; 0]
+            do i = imin, imax, 2
+
+              ! X-gradient term
+              JDxx = xxScale
+     &             * (  Jgxx(CHF_IX[i+1;j;k]) * phi(CHF_IX[i+1;j;k],n)
+     &                + Jgxx(CHF_IX[i  ;j;k]) * phi(CHF_IX[i-1;j;k],n)  )
+
+              ! Y-gradient term
+              JDyy = yyScale
+     &             * (  Jgyy(CHF_IX[i;j+1;k]) * phi(CHF_IX[i;j+1;k],n)
+     &                + Jgyy(CHF_IX[i;j  ;k]) * phi(CHF_IX[i;j-1;k],n)  )
+
+              ! Z-gradient term
+              JDzz = zzScale
+     &             * (  Jgzz(CHF_IX[i;j;k+1]) * phi(CHF_IX[i;j;k+1],n)
+     &                + Jgzz(CHF_IX[i;j;k  ]) * phi(CHF_IX[i;j;k-1],n)  )
+
+              ! Divergence
+              lphi = beta * Jinv(CHF_IX[i;j;k]) * (JDxx + JDyy + JDzz)
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              phi(CHF_IX[i;j;k],n) = (rhs(CHF_IX[i;j;k],n) - lphi) / (alpha + beta*lapDiag(CHF_IX[i;j;k]))
+
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+C     ----------------------------------------------------------------
+C     subroutine GSRBBOUNDARYITER*D(ORTHO)
+C     Applies either a red or black sweep of Gauss-Seidel
+C        with non-7-point terms on rhs. This version applies either
+C        Dirichlet or Neumann homogeneous BCs without the need for
+C        filling ghost cells.
+C
+C     extrap is the initial phi with ghosts extrapolated. This lets us
+C     perform one-sided derivatives while using a standard stencil.
+C
+C     This function assumes fluxDesc == 0 means Neumann BCs.
+C
+C     Warning: phi, extrap, rhs must have the same number
+C     of components and span region.  Phi, extrap needs one more cell
+C     on all sides
+C     ------------------------------------------------------------------
+      subroutine GSRBBOUNDARYITER1D (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[loStencil],
+     &     CHF_CONST_INT[hiStencil],
+     &     CHF_CONST_INT[lineDir],
+     &     CHF_CONST_INT[redBlack])
+
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp,idir,indtot,imin,imax
+      REAL_T lapDiag, lphi
+      REAL_T JDlo, JDhi
+      REAL_T scale
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBBOUNDARYITER1D: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check dims
+#     if CH_SPACEDIM == 2
+        ! 2D code may call this function to perform a flat Poisson solve.
+        ! If the region is flat, then assume this is the case.
+        if (lineDir .eq. 0) then
+          if ((CHF_LBOUND[region;1] .ne. 0) .or. (CHF_UBOUND[region;1] .ne. 0)) then
+            print*, "GSRBBOUNDARYITER1D: Called 1D function while CH_SPACEDIM = 2 and region is not flat. lineDir = ", lineDir
+            call MAYDAYERROR()
+          endif
+        else
+          if ((CHF_LBOUND[region;0] .ne. 0) .or. (CHF_UBOUND[region;0] .ne. 0)) then
+            print*, "GSRBBOUNDARYITER1D: Called 1D function while CH_SPACEDIM = 2 and region is not flat. lineDir = ", lineDir
+            call MAYDAYERROR()
+          endif
+        endif
+#     else
+        ! 1D code should never call this function...which is silly, I know.
+        print*, "GSRBBOUNDARYITER1D: Called 1D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER1D: phi does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg0,1,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER1D: Jg0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER1D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      JDlo = zero
+      JDhi = zero
+      scale = one / (dx(lineDir)*dx(lineDir))
+
+      if (lineDir .eq. 0) then
+        do n = 0, ncomp - 1
+          j = CHF_LBOUND[region; 1]
+
+          imin = CHF_LBOUND[region; 0]
+          indtot = imin + j
+          imin = imin + abs(mod(indtot + redBlack, 2))
+          imax = CHF_UBOUND[region; 0]
+          do i = imin, imax, 2
+
+              lapDiag = zero
+
+              if (loStencil .ne. BCType_Neum) then
+                JDlo = scale * Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ],n)
+                lapDiag = lapDiag - scale * Jg0(CHF_IX[i  ;j  ;0  ],0)
+              endif
+
+              if (hiStencil .ne. BCType_Neum) then
+                JDhi = scale * Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ],n)
+                lapDiag = lapDiag - scale * Jg0(CHF_IX[i+1;j  ;0  ],0)
+              endif
+
+              lapDiag = lapDiag * Jinv(CHF_IX[i;j;0])
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;0]) * (JDlo + JDhi)
+              phi(CHF_IX[i;j;0],n) = (rhs(CHF_IX[i;j;0],n) - lphi) / (alpha + beta*lapDiag)
+
+          enddo ! (i)
+        enddo  ! (n)
+      else
+        do n = 0, ncomp - 1
+          i = CHF_LBOUND[region; 0]
+
+          imin = CHF_LBOUND[region; 1]
+          indtot = imin + i
+          imin = imin + abs(mod(indtot + redBlack, 2))
+          imax = CHF_UBOUND[region; 1]
+          do j = imin, imax, 2
+
+              lapDiag = zero
+
+              if (loStencil .ne. BCType_Neum) then
+                JDlo = scale * Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i  ;j-1;0  ],n)
+                lapDiag = lapDiag - scale * Jg0(CHF_IX[i  ;j  ;0  ],0)
+              endif
+
+              if (hiStencil .ne. BCType_Neum) then
+                JDhi = scale * Jg0(CHF_IX[i  ;j+1;0  ],0) * phi(CHF_IX[i+1;j  ;0  ],n)
+                lapDiag = lapDiag - scale * Jg0(CHF_IX[i  ;j+1;0  ],0)
+              endif
+
+              lapDiag = lapDiag * Jinv(CHF_IX[i;j;0])
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;0]) * (JDlo + JDhi)
+              phi(CHF_IX[i;j;0],n) = (rhs(CHF_IX[i;j;0],n) - lphi) / (alpha + beta*lapDiag)
+
+          enddo ! (j)
+        enddo  ! (n)
+      endif
+
+
+      return
+      end
+
+
+      subroutine GSRBBOUNDARYITER2D (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[extrap],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA[Jg1],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[loXStencil],
+     &     CHF_CONST_INT[hiXStencil],
+     &     CHF_CONST_INT[loYStencil],
+     &     CHF_CONST_INT[hiYStencil],
+     &     CHF_CONST_INT[redBlack])
+
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp,idir,indtot,imin,imax
+      REAL_T lapDiag, lphi
+      REAL_T JDloX, JDloY
+      REAL_T JDhiX, JDhiY
+      REAL_T xxScale, yyScale, zzScale
+      REAL_T yzScale, zxScale, xyScale
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[extrap]) then
+         print*, 'GSRBBOUNDARYITER2D: phi and extrap incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBBOUNDARYITER2D: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check dims
+#     if CH_SPACEDIM == 2
+        ! No problem here !
+#     else
+#       if CH_SPACEDIM == 3
+          ! 3D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;2] .ne. 0) .or. (CHF_UBOUND[region;2] .ne. 0)) then
+            print*, "GSRBBOUNDARYITER2D: Called 2D function while CH_SPACEDIM = 3 and region is not flat"
+            call MAYDAYERROR()
+          endif
+#       else
+          ! 1D code should never call this function.
+          print*, "GSRBBOUNDARYITER2D: Called 2D function while CH_SPACEDIM = ", CH_SPACEDIM
+          call MAYDAYERROR()
+#       endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER2D: phi does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(extrap,0,0,0, region,1,1,0)) then
+        print*, 'GSRBBOUNDARYITER2D: extrap does not contain region +1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg0,1,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER2D: Jg0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg1,0,1,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER2D: Jg1 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER2D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      JDloX = zero
+      JDhiX = zero
+      JDloY = zero
+      JDhiY = zero
+
+      CHF_DTERM[
+      xxScale =    one / (dx(0)*dx(0));
+      yyScale =    one / (dx(1)*dx(1));
+      zzScale =    one / (dx(2)*dx(2))]
+
+      CHF_DTERM[;
+      xyScale = fourth / (dx(0)*dx(1));
+      yzScale = fourth / (dx(1)*dx(2))
+      zxScale = fourth / (dx(2)*dx(0))]
+
+      do n = 0, ncomp - 1
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+            imin = CHF_LBOUND[region; 0]
+            indtot = imin + j
+C     add 0 or 1 to imin, so that imin+j has same parity as redBlack
+C     petermc, 26 april 2001
+            imin = imin + abs(mod(indtot + redBlack, 2))
+            imax = CHF_UBOUND[region; 0]
+            do i = imin, imax, 2
+
+              lapDiag = zero
+
+              if (loXStencil .ne. BCType_Neum) then
+                JDloX =
+     &              + xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ],n)
+     &              - xyScale * Jg0(CHF_IX[i  ;j  ;0  ],1)
+     &                * (  extrap(CHF_IX[i  ;j+1;0  ],n) - extrap(CHF_IX[i  ;j-1;0  ],n)
+     &                   + extrap(CHF_IX[i-1;j+1;0  ],n) - extrap(CHF_IX[i-1;j-1;0  ],n)  )
+
+                lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0)
+              endif
+
+              if (hiXStencil .ne. BCType_Neum) then
+                JDhiX =
+     &              + xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ],n)
+     &              + xyScale * Jg0(CHF_IX[i+1;j  ;0  ],1)
+     &                * (  extrap(CHF_IX[i+1;j+1;0  ],n) - extrap(CHF_IX[i+1;j-1;0  ],n)
+     &                   + extrap(CHF_IX[i  ;j+1;0  ],n) - extrap(CHF_IX[i  ;j-1;0  ],n)  )
+
+                lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0)
+              endif
+
+              if (loYStencil .ne. BCType_Neum) then
+                JDloY =
+     &              - xyScale * Jg1(CHF_IX[i  ;j  ;0  ],0)
+     &                * (  extrap(CHF_IX[i+1;j  ;0  ],n) - extrap(CHF_IX[i-1;j  ;0  ],n)
+     &                   + extrap(CHF_IX[i+1;j-1;0  ],n) - extrap(CHF_IX[i-1;j-1;0  ],n)  )
+     &              + yyScale * Jg1(CHF_IX[i  ;j  ;0  ],1) * phi(CHF_IX[i  ;j-1;0  ],n)
+
+                lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j  ;0  ],1)
+              endif
+
+              if (hiYStencil .ne. BCType_Neum) then
+                JDhiY =
+     &              + xyScale * Jg1(CHF_IX[i  ;j+1;0  ],0)
+     &                * (  extrap(CHF_IX[i+1;j+1;0  ],n) - extrap(CHF_IX[i-1;j+1;0  ],n)
+     &                   + extrap(CHF_IX[i+1;j  ;0  ],n) - extrap(CHF_IX[i-1;j  ;0  ],n)  )
+     &              + yyScale * Jg1(CHF_IX[i  ;j+1;0  ],1) * phi(CHF_IX[i  ;j+1;0  ],n)
+
+                lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j+1;0  ],1)
+              endif
+
+
+              lapDiag = lapDiag * Jinv(CHF_IX[i;j;0])
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;0]) * (JDloX + JDhiX + JDloY + JDhiY)
+              phi(CHF_IX[i;j;0],n) = (rhs(CHF_IX[i;j;0],n) - lphi) / (alpha + beta*lapDiag)
+
+            enddo
+          enddo
+      enddo
+
+      return
+      end
+
+
+      subroutine GSRBBOUNDARYITER3D (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[extrap],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA[Jg1],
+     &     CHF_CONST_FRA[Jg2],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[loXStencil],
+     &     CHF_CONST_INT[hiXStencil],
+     &     CHF_CONST_INT[loYStencil],
+     &     CHF_CONST_INT[hiYStencil],
+     &     CHF_CONST_INT[loZStencil],
+     &     CHF_CONST_INT[hiZStencil],
+     &     CHF_CONST_INT[redBlack])
+
+      integer i, j, k
+      integer n,ncomp,idir,indtot,imin,imax
+      REAL_T lapDiag, lphi
+      REAL_T JDloX, JDloY, JDloZ
+      REAL_T JDhiX, JDhiY, JDhiZ
+      REAL_T xxScale, yyScale, zzScale
+      REAL_T yzScale, zxScale, xyScale
+
+      JDloX = zero
+      JDhiX = zero
+      JDloY = zero
+      JDhiY = zero
+      JDloZ = zero
+      JDhiZ = zero
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[extrap]) then
+         print*, 'GSRBBOUNDARYITER3D: phi and extrap incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBBOUNDARYITER3D: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check dims
+      if (CH_SPACEDIM .ne. 3) then
+        print*, "GSRBBOUNDARYITER3D: Called 3D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3D: phi does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(extrap,0,0,0, region,1,1,1)) then
+        print*, 'GSRBBOUNDARYITER3D: extrap does not contain region +1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg0,1,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3D: Jg0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg1,0,1,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3D: Jg1 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jg2,0,0,1, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3D: Jg2 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_DTERM[
+      xxScale =    one / (dx(0)*dx(0));
+      yyScale =    one / (dx(1)*dx(1));
+      zzScale =    one / (dx(2)*dx(2))]
+
+      CHF_DTERM[;
+      xyScale = fourth / (dx(0)*dx(1));
+      yzScale = fourth / (dx(1)*dx(2))
+      zxScale = fourth / (dx(2)*dx(0))]
+
+      do n = 0, ncomp - 1
+#if CH_SPACEDIM > 2
+        do k=CHF_LBOUND[region; 2], CHF_UBOUND[region; 2]
+#endif
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+
+            imin = CHF_LBOUND[region; 0]
+            CHF_DTERM[indtot = imin; + j ; + k ]
+C     add 0 or 1 to imin, so that imin+j+k has same parity as redBlack
+C     petermc, 26 april 2001
+            imin = imin + abs(mod(indtot + redBlack, 2))
+            imax = CHF_UBOUND[region; 0]
+            do i = imin, imax, 2
+
+              lapDiag = zero
+
+              if (loXStencil .ne. BCType_Neum) then
+                JDloX =
+     &              + xxScale * Jg0(CHF_IX[i  ;j  ;k  ],0) * phi(CHF_IX[i-1;j  ;k  ],n)
+     &              - xyScale * Jg0(CHF_IX[i  ;j  ;k  ],1)
+     &                * (  extrap(CHF_IX[i  ;j+1;k  ],n) - extrap(CHF_IX[i  ;j-1;k  ],n)
+     &                   + extrap(CHF_IX[i-1;j+1;k  ],n) - extrap(CHF_IX[i-1;j-1;k  ],n)  )
+     &              - zxScale * Jg0(CHF_IX[i  ;j  ;k  ],2)
+     &                * (  extrap(CHF_IX[i  ;j  ;k+1],n) - extrap(CHF_IX[i  ;j  ;k-1],n)
+     &                   + extrap(CHF_IX[i-1;j  ;k+1],n) - extrap(CHF_IX[i-1;j  ;k-1],n)  )
+
+                lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;k  ],0)
+              endif
+
+              if (hiXStencil .ne. BCType_Neum) then
+                JDhiX =
+     &              + xxScale * Jg0(CHF_IX[i+1;j  ;k  ],0) * phi(CHF_IX[i+1;j  ;k  ],n)
+     &              + xyScale * Jg0(CHF_IX[i+1;j  ;k  ],1)
+     &                * (  extrap(CHF_IX[i+1;j+1;k  ],n) - extrap(CHF_IX[i+1;j-1;k  ],n)
+     &                   + extrap(CHF_IX[i  ;j+1;k  ],n) - extrap(CHF_IX[i  ;j-1;k  ],n)  )
+     &              + zxScale * Jg0(CHF_IX[i+1;j  ;k  ],2)
+     &                * (  extrap(CHF_IX[i+1;j  ;k+1],n) - extrap(CHF_IX[i+1;j  ;k-1],n)
+     &                   + extrap(CHF_IX[i  ;j  ;k+1],n) - extrap(CHF_IX[i  ;j  ;k-1],n)  )
+
+                lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;k  ],0)
+              endif
+
+              if (loYStencil .ne. BCType_Neum) then
+                JDloY =
+     &              - xyScale * Jg1(CHF_IX[i  ;j  ;k  ],0)
+     &                * (  extrap(CHF_IX[i+1;j  ;k  ],n) - extrap(CHF_IX[i-1;j  ;k  ],n)
+     &                   + extrap(CHF_IX[i+1;j-1;k  ],n) - extrap(CHF_IX[i-1;j-1;k  ],n)  )
+     &              + yyScale * Jg1(CHF_IX[i  ;j  ;k  ],1) * phi(CHF_IX[i  ;j-1;k  ],n)
+     &              - yzScale * Jg1(CHF_IX[i  ;j  ;k  ],2)
+     &                * (  extrap(CHF_IX[i  ;j  ;k+1],n) - extrap(CHF_IX[i  ;j  ;k-1],n)
+     &                   + extrap(CHF_IX[i  ;j-1;k+1],n) - extrap(CHF_IX[i  ;j-1;k-1],n)  )
+
+                lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j  ;k  ],1)
+              endif
+
+              if (hiYStencil .ne. BCType_Neum) then
+                JDhiY =
+     &              + xyScale * Jg1(CHF_IX[i  ;j+1;k  ],0)
+     &                * (  extrap(CHF_IX[i+1;j+1;k  ],n) - extrap(CHF_IX[i-1;j+1;k  ],n)
+     &                   + extrap(CHF_IX[i+1;j  ;k  ],n) - extrap(CHF_IX[i-1;j  ;k  ],n)  )
+     &              + yyScale * Jg1(CHF_IX[i  ;j+1;k  ],1) * phi(CHF_IX[i  ;j+1;k  ],n)
+     &              + yzScale * Jg1(CHF_IX[i  ;j+1;k  ],2)
+     &                * (  extrap(CHF_IX[i  ;j+1;k+1],n) - extrap(CHF_IX[i  ;j+1;k-1],n)
+     &                   + extrap(CHF_IX[i  ;j  ;k+1],n) - extrap(CHF_IX[i  ;j  ;k-1],n)  )
+
+                lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j+1;k  ],1)
+              endif
+
+              if (loZStencil .ne. BCType_Neum) then
+                JDloZ =
+     &              - zxScale * Jg2(CHF_IX[i  ;j  ;k  ],0)
+     &                * (  extrap(CHF_IX[i+1;j  ;k  ],n) - extrap(CHF_IX[i-1;j  ;k  ],n)
+     &                   + extrap(CHF_IX[i+1;j  ;k-1],n) - extrap(CHF_IX[i-1;j  ;k-1],n)  )
+     &              - yzScale * Jg2(CHF_IX[i  ;j  ;k  ],1)
+     &                * (  extrap(CHF_IX[i  ;j+1;k  ],n) - extrap(CHF_IX[i  ;j-1;k  ],n)
+     &                   + extrap(CHF_IX[i  ;j+1;k-1],n) - extrap(CHF_IX[i  ;j-1;k-1],n)  )
+     &              + zzScale * Jg2(CHF_IX[i  ;j  ;k  ],2) * phi(CHF_IX[i  ;j  ;k-1],n)
+
+                lapDiag = lapDiag - zzScale * Jg2(CHF_IX[i  ;j  ;k  ],2)
+              endif
+
+              if (hiZStencil .ne. BCType_Neum) then
+                JDhiZ =
+     &              + zxScale * Jg2(CHF_IX[i  ;j  ;k+1],0)
+     &                * (  extrap(CHF_IX[i+1;j  ;k+1],n) - extrap(CHF_IX[i-1;j  ;k+1],n)
+     &                   + extrap(CHF_IX[i+1;j  ;k  ],n) - extrap(CHF_IX[i-1;j  ;k  ],n)  )
+     &              + yzScale * Jg2(CHF_IX[i  ;j  ;k+1],1)
+     &                * (  extrap(CHF_IX[i  ;j+1;k+1],n) - extrap(CHF_IX[i  ;j-1;k+1],n)
+     &                   + extrap(CHF_IX[i  ;j+1;k  ],n) - extrap(CHF_IX[i  ;j-1;k  ],n)  )
+     &              + zzScale * Jg2(CHF_IX[i  ;j  ;k+1],2) * phi(CHF_IX[i  ;j  ;k+1],n)
+
+                lapDiag = lapDiag - zzScale * Jg2(CHF_IX[i  ;j  ;k+1],2)
+              endif
+
+
+              lapDiag = lapDiag * Jinv(CHF_IX[i;j;k])
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;k]) * (JDloX + JDhiX + JDloY + JDhiY + JDloZ + JDhiZ)
+              phi(CHF_IX[i;j;k],n) = (rhs(CHF_IX[i;j;k],n) - lphi) / (alpha + beta*lapDiag)
+
+            enddo
+          enddo
+#if CH_SPACEDIM > 2
+        enddo
+#endif
+      enddo
+
+      return
+      end
+
+
+      subroutine GSRBBOUNDARYITER2DORTHO (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA1[Jgxx],
+     &     CHF_CONST_FRA1[Jgyy],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[loXStencil],
+     &     CHF_CONST_INT[hiXStencil],
+     &     CHF_CONST_INT[loYStencil],
+     &     CHF_CONST_INT[hiYStencil],
+     &     CHF_CONST_INT[redBlack])
+
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp,idir,indtot,imin,imax
+      REAL_T lapDiag, lphi
+      REAL_T xxScale, yyScale
+      REAL_T JDloX, JDloY
+      REAL_T JDhiX, JDhiY
+
+      JDloX = zero
+      JDhiX = zero
+      JDloY = zero
+      JDhiY = zero
+
+      xxScale = one / (dx(0)*dx(0))
+      yyScale = one / (dx(1)*dx(1))
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBBOUNDARYITER2DORTHO: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+#     if CH_SPACEDIM == 2
+        ! No problem here !
+#     else
+#       if CH_SPACEDIM == 3
+          ! 3D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;2] .ne. 0) .or. (CHF_UBOUND[region;2] .ne. 0)) then
+            print*, "GSRBBOUNDARYITER2DORTHO: Called 2D function while CH_SPACEDIM = 3 and region is not flat"
+            call MAYDAYERROR()
+          endif
+#       else
+          ! 1D code should never call this function.
+          print*, "GSRBBOUNDARYITER2DORTHO: Called 2D function while CH_SPACEDIM = ", CH_SPACEDIM
+          call MAYDAYERROR()
+#       endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,1,1,0)) then
+        print*, 'GSRBBOUNDARYITER2DORTHO: phi does not contain region +1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(rhs,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER2DORTHO: rhs does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgxx,1,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER2DORTHO: Jgxx does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgyy,0,1,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER2DORTHO: Jgyy does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER2DORTHO: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp - 1
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+            imin = CHF_LBOUND[region; 0]
+            indtot = imin + j
+            imin = imin + abs(mod(indtot + redBlack, 2))
+            imax = CHF_UBOUND[region; 0]
+            do i = imin, imax, 2
+
+              lapDiag = zero
+
+              if (loXStencil .ne. BCType_Neum) then
+                JDloX = Jgxx(CHF_IX[i  ;j  ;0  ]) * phi(CHF_IX[i-1;j  ;0  ],n)
+                lapDiag = lapDiag - xxScale * Jgxx(CHF_IX[i  ;j  ;0  ])
+              endif
+
+              if (hiXStencil .ne. BCType_Neum) then
+                JDhiX = Jgxx(CHF_IX[i+1;j  ;0  ]) * phi(CHF_IX[i+1;j  ;0  ],n)
+                lapDiag = lapDiag - xxScale * Jgxx(CHF_IX[i+1;j  ;0  ])
+              endif
+
+              if (loYStencil .ne. BCType_Neum) then
+                JDloY = Jgyy(CHF_IX[i  ;j  ;0  ]) * phi(CHF_IX[i  ;j-1;0  ],n)
+                lapDiag = lapDiag - yyScale * Jgyy(CHF_IX[i  ;j  ;0  ])
+              endif
+
+              if (hiYStencil .ne. BCType_Neum) then
+                JDhiY = Jgyy(CHF_IX[i  ;j+1;0  ]) * phi(CHF_IX[i  ;j+1;0  ],n)
+                lapDiag = lapDiag - yyScale * Jgyy(CHF_IX[i  ;j+1;0  ])
+              endif
+
+              lapDiag = lapDiag * Jinv(CHF_IX[i;j;0])
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;0])
+     &             * (  (JDloX + JDhiX) * xxScale
+     &                + (JDloY + JDhiY) * yyScale  )
+              phi(CHF_IX[i;j;0],n) = (rhs(CHF_IX[i;j;0],n) - lphi) / (alpha + beta*lapDiag)
+
+            enddo
+          enddo
+      enddo
+
+      return
+      end
+
+
+      subroutine GSRBBOUNDARYITER3DORTHO (
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[rhs],
+     &     CHF_CONST_FRA1[Jgxx],
+     &     CHF_CONST_FRA1[Jgyy],
+     &     CHF_CONST_FRA1[Jgzz],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[loXStencil],
+     &     CHF_CONST_INT[hiXStencil],
+     &     CHF_CONST_INT[loYStencil],
+     &     CHF_CONST_INT[hiYStencil],
+     &     CHF_CONST_INT[loZStencil],
+     &     CHF_CONST_INT[hiZStencil],
+     &     CHF_CONST_INT[redBlack])
+
+      integer i, j, k
+      integer n,ncomp,idir,indtot,imin,imax
+      REAL_T lapDiag, lphi
+      REAL_T xxScale, yyScale, zzScale
+      REAL_T JDloX, JDloY, JDloZ
+      REAL_T JDhiX, JDhiY, JDhiZ
+
+      JDloX = zero
+      JDhiX = zero
+      JDloY = zero
+      JDhiY = zero
+      JDloZ = zero
+      JDhiZ = zero
+
+      CHF_DTERM[
+      xxScale = one / (dx(0)*dx(0));
+      yyScale = one / (dx(1)*dx(1));
+      zzScale = one / (dx(2)*dx(2))]
+
+      ncomp = CHF_NCOMP[phi]
+
+#ifndef NDEBUG
+      if(ncomp .ne. CHF_NCOMP[rhs]) then
+         print*, 'GSRBBOUNDARYITER3DORTHO: phi and rhs incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if (CH_SPACEDIM .ne. 3) then
+        print*, "GSRBBOUNDARYITER3DORTHO: Called 3D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(phi,0,0,0, region,1,1,1)) then
+        print*, 'GSRBBOUNDARYITER3DORTHO: phi does not contain region +1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(rhs,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3DORTHO: rhs does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgxx,1,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3DORTHO: Jgxx does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgyy,0,1,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3DORTHO: Jgyy does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jgzz,0,0,1, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3DORTHO: Jgzz does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'GSRBBOUNDARYITER3DORTHO: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+
+      do n = 0, ncomp - 1
+#if CH_SPACEDIM > 2
+        do k=CHF_LBOUND[region; 2], CHF_UBOUND[region; 2]
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+#else
+          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+#endif
+
+            imin = CHF_LBOUND[region; 0]
+            CHF_DTERM[indtot = imin; + j ; + k ]
+            imin = imin + abs(mod(indtot + redBlack, 2))
+            imax = CHF_UBOUND[region; 0]
+            do i = imin, imax, 2
+
+              lapDiag = zero
+
+              if (loXStencil .ne. BCType_Neum) then
+                JDloX = Jgxx(CHF_IX[i  ;j  ;k  ]) * phi(CHF_IX[i-1;j  ;k  ],n)
+                lapDiag = lapDiag - xxScale * Jgxx(CHF_IX[i  ;j  ;k  ])
+              endif
+
+              if (loYStencil .ne. BCType_Neum) then
+                JDloY = Jgyy(CHF_IX[i  ;j  ;k  ]) * phi(CHF_IX[i  ;j-1;k  ],n)
+                lapDiag = lapDiag - yyScale * Jgyy(CHF_IX[i  ;j  ;k  ])
+              endif
+
+              if (loZStencil .ne. BCType_Neum) then
+                JDloZ = Jgzz(CHF_IX[i  ;j  ;k  ]) * phi(CHF_IX[i  ;j  ;k-1],n)
+                lapDiag = lapDiag - zzScale * Jgzz(CHF_IX[i  ;j  ;k  ])
+              endif
+
+              if (hiXStencil .ne. BCType_Neum) then
+                JDhiX = Jgxx(CHF_IX[i+1;j  ;k  ]) * phi(CHF_IX[i+1;j  ;k  ],n)
+                lapDiag = lapDiag - xxScale * Jgxx(CHF_IX[i+1;j  ;k  ])
+              endif
+
+              if (hiYStencil .ne. BCType_Neum) then
+                JDhiY = Jgyy(CHF_IX[i  ;j+1;k  ]) * phi(CHF_IX[i  ;j+1;k  ],n)
+                lapDiag = lapDiag - yyScale * Jgyy(CHF_IX[i  ;j+1;k  ])
+              endif
+
+              if (hiZStencil .ne. BCType_Neum) then
+                JDhiZ = Jgzz(CHF_IX[i  ;j  ;k+1]) * phi(CHF_IX[i  ;j  ;k+1],n)
+                lapDiag = lapDiag - zzScale * Jgzz(CHF_IX[i  ;j  ;k+1])
+              endif
+
+              lapDiag = lapDiag * Jinv(CHF_IX[i;j;k])
+
+              ! Update phi. Use [D+S]phi = rhs-C[extrap]
+              lphi = beta * Jinv(CHF_IX[i;j;k])
+     &             * (  (JDloX + JDhiX) * xxScale
+     &                + (JDloY + JDhiY) * yyScale
+     &                + (JDloZ + JDhiZ) * zzScale  )
+              phi(CHF_IX[i;j;k],n) = (rhs(CHF_IX[i;j;k],n) - lphi) / (alpha + beta*lapDiag)
+
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+
+! This will remove some of the clutter in the tridiagonal solver.
+#ifdef IDX
+#  error IDX needs to be renamed
+#endif
+
+#if CH_SPACEDIM == 2
+#  define IDX(j) i,(j)
+#  define ARRAYIDX(i) (i),1
+
+#elif CH_SPACEDIM == 3
+#  define IDX(k) i,j,(k)
+#  define ARRAYIDX(i) (i),1,1
+
+#else
+#  error Bad SpaceDim
+#endif
+
+c ------------------------------------------------------------------------------
+c 2D Line relaxation with GSRB.
+c ------------------------------------------------------------------------------
+      subroutine LineGSRBIter2D (
+     &     CHF_FRA1[phi],
+     &     CHF_CONST_FRA1[extrap],
+     &     CHF_CONST_FRA1[rhs],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA[Jg1],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[dzCrse],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[redBlack],
+     &     CHF_FRA1[DU], ! Empty work space, dimensions 1..N-1
+     &     CHF_FRA1[D],  ! Empty work space, dimensions 1..N
+     &     CHF_FRA1[DL], ! Empty work space, dimensions 1..N-1
+     &     CHF_FRA1[B],  ! Empty work space, dimensions 1..N=LDB
+     &     CHF_CONST_INT[loXBCType],
+     &     CHF_CONST_INT[hiXBCType],
+     &     CHF_CONST_INT[loYBCType],
+     &     CHF_CONST_INT[hiYBCType])
+
+      REAL_T xxScale, xyScale, yyScale, lphi
+      REAL_T lapDiag, BCval
+      REAL_T JDxx, JDxy, JDyx
+      REAL_T coeff1, coeff2
+      integer CHF_DDECL[i;j;k]
+      integer imin, imax
+      integer NRHS, LDB, INFO
+      integer jmax, jdx
+
+#ifndef NDEBUG
+#if CH_SPACEDIM == 2
+      if (CHF_LBOUND[region;1] .ne. 0) then
+        print*, 'LineGSRBIter2D: region must have a vertical lower bound of zero'
+        call MAYDAYERROR()
+      endif
+#else
+      print*, 'LineGSRBIter2D does not work in 3D'
+#endif
+#endif
+
+      ! Setup
+      jmax = CHF_UBOUND[region; 1]
+      NRHS = 1
+      LDB = jmax+1
+
+      xxScale = beta * one / (dx(0)*dx(0))
+      yyScale = beta * one / (dx(1)*dx(1))
+      xyScale = beta * fourth / (dx(0)*dx(1))
+
+      ! Main loop
+      imin = CHF_LBOUND[region; 0]
+      imin = imin + abs(mod(imin + redBlack, 2))
+      imax = CHF_UBOUND[region; 0]
+      do i = imin, imax, 2
+          ! Set up matrix equation. (Array indices are the column number.)
+
+          ! Lower vertical boundary elements
+          j = 0
+          jdx = j+1
+
+          if (loYBCType.eq.BCType_Neum) then
+            coeff1 = zero
+          else if (loYBCType .eq. BCType_Diri) then
+            coeff1 = two
+          else if (loYBCType .eq. BCType_CF) then
+            coeff1 = two*dx(1)/(dzCrse+dx(1))
+          ! else
+          !   print*,'LineGSRBIter2D: Unforseen vertical BC!!!'
+          !   call MAYDAYERROR()
+          else
+            ! Use low-order extrapolation
+            coeff1 = zero
+          endif
+          lapDiag = -yyScale * (Jg1(CHF_IX[i  ;j+1;0],1) + coeff1*Jg1(CHF_IX[i  ;j  ;0],1))
+
+          JDxx = zero
+          if ((loXBCType.ne.BCType_Neum) .or. (i.ne.CHF_LBOUND[region; 0])) then
+            JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ])
+            lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0)
+          endif
+          if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.CHF_UBOUND[region; 0])) then
+            JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ])
+            lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0)
+          endif
+
+          JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
+     &                                     + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
+     &         - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
+     &                                     + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+          JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
+     &                                     + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
+     &         - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
+     &                                     + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+          lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
+
+          B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(CHF_IX[i;j;0])
+          D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
+          DL(ARRAYIDX(jdx)) = Jg1(IDX(j+1),1) * yyScale
+
+          ! Vertical interior elements
+          do j = 1, jmax-1
+            jdx = j+1
+
+            lapDiag = -yyScale * (Jg1(CHF_IX[i  ;j  ;0  ],1) + Jg1(CHF_IX[i  ;j+1;0  ],1))
+
+            JDxx = zero
+            if ((loXBCType.ne.BCType_Neum) .or. (i.ne.CHF_LBOUND[region; 0])) then
+              JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ])
+              lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0)
+            endif
+            if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.CHF_UBOUND[region; 0])) then
+              JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ])
+              lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0)
+            endif
+
+            JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
+     &                                       + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
+     &           - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
+     &                                       + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+            JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
+     &                                       + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
+     &           - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
+     &                                       + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+            lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
+
+            B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(IDX(j))
+            D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
+            DL(ARRAYIDX(jdx)) = Jg1(IDX(j+1),1) * yyScale
+          enddo
+
+          ! Upper vertical boundary elements
+          j = jmax
+          jdx = j+1
+
+          if (hiYBCType.eq.BCType_Neum) then
+            coeff1 = zero
+          else if (hiYBCType .eq. BCType_Diri) then
+            coeff1 = two
+          else if (hiYBCType .eq. BCType_CF) then
+            coeff1 = two*dx(1)/(dzCrse+dx(1))
+          ! else
+          !   print*,'LineGSRBIter2D: Unforseen vertical BC!!!'
+          !   call MAYDAYERROR()
+          else
+            ! Use low-order extrapolation
+            coeff1 = zero
+          endif
+          lapDiag = -yyScale * (coeff1*Jg1(CHF_IX[i  ;j+1;0],1) + Jg1(CHF_IX[i  ;j  ;0],1))
+
+          JDxx = zero
+          if ((loXBCType.ne.BCType_Neum) .or. (i.ne.CHF_LBOUND[region; 0])) then
+            JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ])
+            lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0)
+          endif
+          if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.CHF_UBOUND[region; 0])) then
+            JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ])
+            lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0)
+          endif
+
+          JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
+     &                                     + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
+     &         - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
+     &                                     + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+          JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
+     &                                     + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
+     &         - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
+     &                                     + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+          lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
+
+          B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(IDX(j))
+          D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
+
+          ! Set the upper diagonals equal to the lower diagonals
+          do jdx = 1, jmax
+            DU(ARRAYIDX(jdx+1)) = DL(ARRAYIDX(jdx))
+          enddo
+
+          ! Solve the tridiagonal problem
+          call dgtsv(jmax+1, NRHS, DL, D, DU, B, LDB, INFO)
+
+          ! Check INFO
+          if ((INFO .ne. 0) .and. (INFO .ne. jmax+1)) then
+            print*, 'LineGSRBIter2D: INFO = ', INFO
+            call MAYDAYERROR()
+          endif
+
+          ! Put solution in user's holder
+          do j = 0, jmax
+            phi(IDX(j)) = B(ARRAYIDX(j+1))
+          enddo
+      enddo ! i
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c 3D Line relaxation with GSRB.
+c ------------------------------------------------------------------------------
+      subroutine LineGSRBIter3D (
+     &     CHF_FRA1[phi],
+     &     CHF_CONST_FRA1[extrap],
+     &     CHF_CONST_FRA1[rhs],
+     &     CHF_CONST_FRA[Jg0],
+     &     CHF_CONST_FRA[Jg1],
+     &     CHF_CONST_FRA[Jg2],
+     &     CHF_CONST_FRA1[Jinv],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_CONST_REAL[dzCrse],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_INT[redBlack],
+     &     CHF_FRA1[DU], ! Empty work space, dimensions 1..N-1
+     &     CHF_FRA1[D],  ! Empty work space, dimensions 1..N
+     &     CHF_FRA1[DL], ! Empty work space, dimensions 1..N-1
+     &     CHF_FRA1[B],  ! Empty work space, dimensions 1..N=LDB
+     &     CHF_CONST_INT[loXBCType],
+     &     CHF_CONST_INT[hiXBCType],
+     &     CHF_CONST_INT[loYBCType],
+     &     CHF_CONST_INT[hiYBCType],
+     &     CHF_CONST_INT[loZBCType],
+     &     CHF_CONST_INT[hiZBCType])
+
+      REAL_T xxScale, yyScale, zzScale
+      REAL_T xyScale, yzScale, zxScale
+      REAL_T lphi, lapDiag, BCval
+      REAL_T JDxx, JDyy
+      REAL_T JDxy, JDyx, JDyz, JDzy, JDzx, JDxz
+      REAL_T coeff1, coeff2
+      integer CHF_DDECL[i;j;k]
+      integer imin, imax, jmin, jmax, indtot
+      integer NRHS, LDB, INFO
+      integer kmax, kdx
+
+      ! TODO
+      print*, 'LineGSRBIter3D not yet complete'
+      call MAYDAYERROR()
+
+! #ifndef NDEBUG
+! #if CH_SPACEDIM == 3
+!       if (CHF_LBOUND[region;2] .ne. 0) then
+!         print*, 'LineGSRBIter3D: region must have a vertical lower bound of zero'
+!         call MAYDAYERROR()
+!       endif
+! #else
+!       print*, 'LineGSRBIter3D does not work in 2D'
+! #endif
+! #endif
+
+!       ! Setup
+!       kmax = CHF_UBOUND[region; 2]
+!       NRHS = 1
+!       LDB = kmax+1
+
+!       xxScale = beta * one / (dx(0)*dx(0))
+!       yyScale = beta * one / (dx(1)*dx(1))
+!       zzScale = beta * one / (dx(2)*dx(2))
+!       xyScale = beta * fourth / (dx(0)*dx(1))
+!       yzScale = beta * fourth / (dx(1)*dx(2))
+!       zxScale = beta * fourth / (dx(2)*dx(0))
+
+      ! ! Main loop
+      ! do j = CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+      !   imin = CHF_LBOUND[region; 0]
+      !   indtot = imin + j
+      !   imin = imin + abs(mod(indtot + redBlack, 2))
+      !   imax = CHF_UBOUND[region; 0]
+      !   do i = imin, imax, 2
+      !     ! Set up matrix equation. (Array indices are the column number.)
+
+      !     ! Lower vertical boundary elements
+      !     k = 0
+      !     kdx = k+1
+
+      !     if (loZBCType .eq. BCType_Neum) then
+      !       coeff1 = zero
+      !     else if (loZBCType .eq. BCType_Diri) then
+      !       coeff1 = two
+      !     else if (loZBCType .eq. BCType_CF) then
+      !       coeff1 = two*dx(1)/(dzCrse+dx(1))
+      !     ! else
+      !     !   print*,'LineGSRBIter3D: Unforseen vertical BC!!!'
+      !     !   call MAYDAYERROR()
+      !     else
+      !       ! Use low-order extrapolation
+      !       coeff1 = zero
+      !     endif
+      !     lapDiag = -zzScale * (Jg1(CHF_IX[i  ;j  ;k+1],1) + coeff1*Jg1(CHF_IX[i  ;j  ;k  ],1))
+
+          ! JDxx = zero
+          ! if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
+          !   JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;k  ],0) * phi(CHF_IX[i-1;j  ;k  ])
+          !   lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;k  ],0)
+          ! endif
+          ! if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
+          !   JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;k  ],0) * phi(CHF_IX[i+1;j  ;k  ])
+          !   lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;k  ],0)
+          ! endif
+
+          ! JDyy = zero
+          ! if ((loYBCType.ne.BCType_Neum) .or. (j.ne.jmin)) then
+          !   JDyy = JDyy + Jg1(CHF_IX[i  ;j  ;k  ],1) * phi(CHF_IX[i  ;j-1;k  ])
+          !   lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j  ;k  ],1)
+          ! endif
+          ! if ((hiYBCType.ne.BCType_Neum) .or. (j.ne.jmax)) then
+          !   JDyy = JDyy + Jg1(CHF_IX[i  ;j+1;k  ],1) * phi(CHF_IX[i  ;j+1;k  ])
+          !   lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j+1;k  ],1)
+          ! endif
+
+     !      JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
+     ! &                                     + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
+     ! &         - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
+     ! &                                     + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+     !      JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
+     ! &                                     + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
+     ! &         - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
+     ! &                                     + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+     !      lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
+
+     !      B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(CHF_IX[i;j;0])
+     !      D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
+     !      DL(ARRAYIDX(jdx)) = Jg1(IDX(j+1),1) * yyScale
+
+     !      ! Vertical interior elements
+     !      do j = 1, jmax-1
+     !        jdx = j+1
+
+     !        lapDiag = -yyScale * (Jg1(CHF_IX[i  ;j  ;0  ],1) + Jg1(CHF_IX[i  ;j+1;0  ],1))
+
+     !        JDxx = zero
+     !        if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
+     !          JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ])
+     !          lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0)
+     !        endif
+     !        if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
+     !          JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ])
+     !          lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0)
+     !        endif
+
+     !        JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
+     ! &                                       + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
+     ! &           - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
+     ! &                                       + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+     !        JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
+     ! &                                       + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
+     ! &           - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
+     ! &                                       + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+     !        lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
+
+     !        B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(IDX(j))
+     !        D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
+     !        DL(ARRAYIDX(jdx)) = Jg1(IDX(j+1),1) * yyScale
+     !      enddo
+
+     !      ! Upper vertical boundary elements
+     !      j = jmax
+     !      jdx = j+1
+
+     !      if (hiYBCType.eq.BCType_Neum) then
+     !        coeff1 = zero
+     !      else if (hiYBCType .eq. BCType_Diri) then
+     !        coeff1 = two
+     !      else if (hiYBCType .eq. BCType_CF) then
+     !        coeff1 = two*dx(1)/(dzCrse+dx(1))
+     !      ! else
+     !      !   print*,'LineGSRBIter2D: Unforseen vertical BC!!!'
+     !      !   call MAYDAYERROR()
+     !      else
+     !        ! Use low-order extrapolation
+     !        coeff1 = zero
+     !      endif
+     !      lapDiag = -yyScale * (coeff1*Jg1(CHF_IX[i  ;j+1;0],1) + Jg1(CHF_IX[i  ;j  ;0],1))
+
+     !      JDxx = zero
+     !      if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
+     !        JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ])
+     !        lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0)
+     !      endif
+     !      if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
+     !        JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ])
+     !        lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0)
+     !      endif
+
+     !      JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
+     ! &                                     + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
+     ! &         - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
+     ! &                                     + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+     !      JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
+     ! &                                     + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
+     ! &         - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
+     ! &                                     + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
+     !      lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
+
+     !      B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(IDX(j))
+     !      D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
+
+     !      ! Set the upper diagonals equal to the lower diagonals
+     !      do jdx = 1, jmax
+     !        DU(ARRAYIDX(jdx+1)) = DL(ARRAYIDX(jdx))
+     !      enddo
+
+     !      ! Solve the tridiagonal problem
+     !      call dgtsv(jmax+1, NRHS, DL, D, DU, B, LDB, INFO)
+
+     !      ! Check INFO
+     !      if ((INFO .ne. 0) .and. (INFO .ne. jmax+1)) then
+     !        print*, 'LineGSRBIter2D: INFO = ', INFO
+     !        call MAYDAYERROR()
+     !      endif
+
+     !      ! Put solution in user's holder
+     !      do j = 0, jmax
+     !        phi(IDX(j)) = B(ARRAYIDX(j+1))
+     !      enddo
+      !   enddo ! i
+      ! enddo ! j
+
+      return
+      end

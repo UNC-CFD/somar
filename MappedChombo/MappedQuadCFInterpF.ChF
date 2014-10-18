@@ -1,0 +1,127 @@
+C      _______              __
+C     / ___/ /  ___  __ _  / /  ___
+C    / /__/ _ \/ _ \/  V \/ _ \/ _ \
+C    \___/_//_/\___/_/_/_/_.__/\___/
+C    Please refer to Copyright.txt, in Chombo's root directory.
+
+#include "CONSTANTS.H"
+
+      subroutine mappedquadinterp(
+     &     CHF_FRA[phi],
+     &     CHF_CONST_FRA[phistar],
+     &     CHF_BOX[box],
+     &     CHF_CONST_INT[ihilo],
+     &     CHF_CONST_REAL[h],
+     &     CHF_CONST_INT[idir],
+     &     CHF_CONST_INT[scomp],
+     &     CHF_CONST_INT[ecomp],
+     &     CHF_CONST_INT[nref])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      integer n
+      real_t x, pa, pb, ps, a, b, frac, denom, xsquared
+      real_t  mult, invh
+
+      frac = two/(h*h)
+      denom =  nref*nref + 4*nref + 3
+      mult = frac/denom
+      invh = one / h
+      x = two * h
+      xsquared = four * h*h
+
+      CHF_AUTOID[ii; idir; ihilo]
+
+      do n=scomp,ecomp
+         CHF_AUTOMULTIDO[box; i]
+            pa = phi(CHF_OFFSETIX[i; -2*ii],n)
+            pb = phi(CHF_OFFSETIX[i; -ii],n)
+            ps = phistar(CHF_OFFSETIX[i; +ii],n)
+            a  = mult*(two*ps + (nref+1)*pa - (nref+3)*pb)
+            b  = (pb-pa)*invh - a*h
+            phi(CHF_AUTOIX[i],n) = xsquared*a + b*x + pa
+         CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+c This function is only called in 3D.
+      subroutine MAPPEDPHISTAR(
+     &     CHF_FRA[fPhiStar],
+     &     CHF_BOX[region],
+     &     CHF_CONST_FRA[phic],
+     &     CHF_FRA[coarslope],
+     &     CHF_FRA[coarcurva],
+     &     CHF_FRA[coarmixed],
+     &     CHF_CONST_REALVECT[dxf],
+     &     CHF_CONST_INT[ivar],
+     &     CHF_CONST_INT[dir],
+     &     CHF_CONST_INT[sign],
+     &     CHF_CONST_INTVECT[nRef])
+
+c  note that this has not been extended to work for DIM > 3
+#if CH_SPACEDIM == 2
+      call MAYDAY_ERROR()
+#endif
+
+#if CH_SPACEDIM == 3
+      REAL_T xf1, xc1, xf2, xc2, x1, x2
+      REAL_T aa, update1, update2, update3
+      REAL_T dxc(0:2)
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      integer CHF_AUTODECL[ir]
+      integer ic(0:CH_SPACEDIM-1)
+      integer ivf(0:CH_SPACEDIM-1)
+      integer YOU(1:2, 0:2), you1, you2
+      data YOU / 1, 2, 0, 2, 0, 1 /
+
+      dxc(0) = nRef(0) * dxf(0)
+      dxc(1) = nRef(1) * dxf(1)
+      dxc(2) = nRef(2) * dxf(2)
+      you1 = YOU(1,dir)
+      you2 = YOU(2,dir)
+
+      CHF_AUTOID[ii; dir; sign]
+
+      CHF_AUTOMULTIDO[region; ir]
+         CHF_DTERM[
+         ic(0)=ir0/nRef(0);
+         ic(1)=ir1/nRef(1);
+         ic(2)=ir2/nRef(2)]
+
+         CHF_DTERM[
+         ivf(0)=ir0;
+         ivf(1)=ir1;
+         ivf(2)=ir2]
+
+         CHF_DTERM[
+         i0=ir0+ii0;
+         i1=ir1+ii1;
+         i2=ir2+ii2]
+
+         xf1 = (ivf(you1)+half)*dxf(you1)
+         xc1 = ( ic(you1)+half)*dxc(you1)
+         xf2 = (ivf(you2)+half)*dxf(you2)
+         xc2 = ( ic(you2)+half)*dxc(you2)
+         x1 = xf1-xc1
+         x2 = xf2-xc2
+         aa = phic(CHF_IX[ic(0);ic(1);ic(2)],ivar)
+
+         update1 = coarslope(CHF_IX[ic(0);ic(1);ic(2)],you1) * x1
+     &           + coarcurva(CHF_IX[ic(0);ic(1);ic(2)],you1) * x1 * x1 * half
+
+         update2 = coarslope(CHF_IX[ic(0);ic(1);ic(2)],you2) * x2
+     &           + coarcurva(CHF_IX[ic(0);ic(1);ic(2)],you2) * x2 * x2 * half
+
+         update3 = coarmixed(CHF_IX[ic(0);ic(1);ic(2)],0) * x1 * x2
+
+         fPhiStar(CHF_AUTOIX[i],ivar) = aa + update1 + update2 + update3
+
+      CHF_ENDDO
+#endif
+
+      return
+      end

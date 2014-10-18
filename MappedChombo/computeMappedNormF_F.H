@@ -1,0 +1,78 @@
+#ifndef _COMPUTEMAPPEDNORMF_F_H_
+#define _COMPUTEMAPPEDNORMF_F_H_
+
+#include "FORT_PROTO.H"
+#include "CH_Timer.H"
+#include "REAL.H"
+
+extern "C"
+{
+
+#ifndef GUARDCOMPUTEMAPPEDNORMPOW 
+#define GUARDCOMPUTEMAPPEDNORMPOW 
+// Prototype for Fortran procedure COMPUTEMAPPEDNORMPOW ...
+//
+void FORTRAN_NAME( COMPUTEMAPPEDNORMPOW ,computemappednormpow )(
+      CHFp_REAL(sum)
+      ,CHFp_CONST_FRA1(phi)
+      ,CHFp_CONST_FRA1(J)
+      ,CHFp_BOX(stateBox)
+      ,CHFp_CONST_REAL(dxScale)
+      ,CHFp_CONST_INT(p) );
+
+#define FORT_COMPUTEMAPPEDNORMPOW FORTRAN_NAME( inlineCOMPUTEMAPPEDNORMPOW, inlineCOMPUTEMAPPEDNORMPOW)
+#define FORTNT_COMPUTEMAPPEDNORMPOW FORTRAN_NAME( COMPUTEMAPPEDNORMPOW, computemappednormpow)
+
+inline void FORTRAN_NAME(inlineCOMPUTEMAPPEDNORMPOW, inlineCOMPUTEMAPPEDNORMPOW)(
+      CHFp_REAL(sum)
+      ,CHFp_CONST_FRA1(phi)
+      ,CHFp_CONST_FRA1(J)
+      ,CHFp_BOX(stateBox)
+      ,CHFp_CONST_REAL(dxScale)
+      ,CHFp_CONST_INT(p) )
+{
+ CH_TIMELEAF("FORT_COMPUTEMAPPEDNORMPOW");
+ FORTRAN_NAME( COMPUTEMAPPEDNORMPOW ,computemappednormpow )(
+      CHFt_REAL(sum)
+      ,CHFt_CONST_FRA1(phi)
+      ,CHFt_CONST_FRA1(J)
+      ,CHFt_BOX(stateBox)
+      ,CHFt_CONST_REAL(dxScale)
+      ,CHFt_CONST_INT(p) );
+}
+#endif  // GUARDCOMPUTEMAPPEDNORMPOW 
+
+#ifndef GUARDCOMPUTEUNMAPPEDNORMPOW 
+#define GUARDCOMPUTEUNMAPPEDNORMPOW 
+// Prototype for Fortran procedure COMPUTEUNMAPPEDNORMPOW ...
+//
+void FORTRAN_NAME( COMPUTEUNMAPPEDNORMPOW ,computeunmappednormpow )(
+      CHFp_REAL(sum)
+      ,CHFp_CONST_FRA1(phi)
+      ,CHFp_BOX(stateBox)
+      ,CHFp_CONST_REAL(dxScale)
+      ,CHFp_CONST_INT(p) );
+
+#define FORT_COMPUTEUNMAPPEDNORMPOW FORTRAN_NAME( inlineCOMPUTEUNMAPPEDNORMPOW, inlineCOMPUTEUNMAPPEDNORMPOW)
+#define FORTNT_COMPUTEUNMAPPEDNORMPOW FORTRAN_NAME( COMPUTEUNMAPPEDNORMPOW, computeunmappednormpow)
+
+inline void FORTRAN_NAME(inlineCOMPUTEUNMAPPEDNORMPOW, inlineCOMPUTEUNMAPPEDNORMPOW)(
+      CHFp_REAL(sum)
+      ,CHFp_CONST_FRA1(phi)
+      ,CHFp_BOX(stateBox)
+      ,CHFp_CONST_REAL(dxScale)
+      ,CHFp_CONST_INT(p) )
+{
+ CH_TIMELEAF("FORT_COMPUTEUNMAPPEDNORMPOW");
+ FORTRAN_NAME( COMPUTEUNMAPPEDNORMPOW ,computeunmappednormpow )(
+      CHFt_REAL(sum)
+      ,CHFt_CONST_FRA1(phi)
+      ,CHFt_BOX(stateBox)
+      ,CHFt_CONST_REAL(dxScale)
+      ,CHFt_CONST_INT(p) );
+}
+#endif  // GUARDCOMPUTEUNMAPPEDNORMPOW 
+
+}
+
+#endif

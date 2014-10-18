@@ -1,0 +1,538 @@
+#include "CONSTANTS.H"
+#include "LevelGeometry.H"
+
+
+c ------------------------------------------------------------------------------
+c Calculates max[sqrt(-db/dz)]^p = max[dXi^{i}/dz * partial_{i}b]^(p/2)
+c ------------------------------------------------------------------------------
+      subroutine ComputeMaxBVFreq2D (
+     &     CHF_REAL[maxN],
+     &     CHF_CONST_FRA1[buoyancy0],
+     &     CHF_CONST_FRA1[buoyancy1],
+     &     CHF_CONST_FRA[dXidz],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[p])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T val
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[dXidz] .ne. CH_SPACEDIM) then
+        print*, 'dXidz does not have the correct number of comps, ', CHF_NCOMP[dXidz]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      maxN = zero;
+
+      CHF_MULTIDO[region;i;j;k]
+        val = dXidz(CHF_IX[i;j;k],0) * (  buoyancy0(CHF_IX[i+1;j  ;k  ])
+     &                                  - buoyancy0(CHF_IX[i  ;j  ;k  ])  ) / dx(0)
+     &      + dXidz(CHF_IX[i;j;k],1) * (  buoyancy1(CHF_IX[i  ;j+1;k  ])
+     &                                  - buoyancy1(CHF_IX[i  ;j  ;k  ])  ) / dx(1)
+        maxN = max(maxN,abs(val))
+      CHF_ENDDO
+
+      maxN = maxN**(p/two)
+
+      return
+      end
+
+
+      subroutine ComputeMaxBVFreq3D (
+     &     CHF_REAL[maxN],
+     &     CHF_CONST_FRA1[buoyancy0],
+     &     CHF_CONST_FRA1[buoyancy1],
+     &     CHF_CONST_FRA1[buoyancy2],
+     &     CHF_CONST_FRA[dXidz],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[p])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T val
+
+      CH_assert(CH_SPACEDIM .eq. 3)
+#if CH_SPACEDIM == 3
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[dXidz] .ne. CH_SPACEDIM) then
+        print*, 'dXidz does not have the correct number of comps, ', CHF_NCOMP[dXidz]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      maxN = zero;
+
+      CHF_MULTIDO[region;i;j;k]
+        val = dXidz(CHF_IX[i;j;k],0) * (  buoyancy0(CHF_IX[i+1;j  ;k  ])
+     &                                  - buoyancy0(CHF_IX[i  ;j  ;k  ])  ) / dx(0)
+     &      + dXidz(CHF_IX[i;j;k],1) * (  buoyancy1(CHF_IX[i  ;j+1;k  ])
+     &                                  - buoyancy1(CHF_IX[i  ;j  ;k  ])  ) / dx(1)
+     &      + dXidz(CHF_IX[i;j;k],2) * (  buoyancy2(CHF_IX[i  ;j  ;k+1])
+     &                                  - buoyancy2(CHF_IX[i  ;j  ;k  ])  ) / dx(2)
+        maxN = max(maxN,abs(val))
+      CHF_ENDDO
+
+      maxN = maxN**(p/two)
+#endif
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c Calculates sqrt(-db/dz)^p = dXi^{i}/dz * (partial_{i}b)^(p/2)
+c ------------------------------------------------------------------------------
+      subroutine ComputeBVFreq2D (
+     &     CHF_FRA1[BVFreq],
+     &     CHF_CONST_FRA1[buoyancy0],
+     &     CHF_CONST_FRA1[buoyancy1],
+     &     CHF_CONST_FRA[dXidz],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[p])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T val
+
+      CH_assert(CH_SPACEDIM .eq. 2)
+#if CH_SPACEDIM == 2
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[dXidz] .ne. CH_SPACEDIM) then
+        print*, 'dXidz does not have the correct number of comps, ', CHF_NCOMP[dXidz]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_MULTIDO[region;i;j;k]
+        val = dXidz(CHF_IX[i;j;k],0) * (  buoyancy0(CHF_IX[i+1;j  ;k  ])
+     &                                  - buoyancy0(CHF_IX[i  ;j  ;k  ])  ) / dx(0)
+     &      + dXidz(CHF_IX[i;j;k],1) * (  buoyancy1(CHF_IX[i  ;j+1;k  ])
+     &                                  - buoyancy1(CHF_IX[i  ;j  ;k  ])  ) / dx(1)
+        BVFreq(CHF_IX[i;j;k]) = abs(val)**(p/two)
+      CHF_ENDDO
+#endif
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c Calculates sqrt(-db/dz)^p = dXi^{i}/dz * (partial_{i}b)^(p/2)
+c ------------------------------------------------------------------------------
+      subroutine ComputeBVFreq3D (
+     &     CHF_FRA1[BVFreq],
+     &     CHF_CONST_FRA1[buoyancy0],
+     &     CHF_CONST_FRA1[buoyancy1],
+     &     CHF_CONST_FRA1[buoyancy2],
+     &     CHF_CONST_FRA[dXidz],
+     &     CHF_CONST_REALVECT[dx],
+     &     CHF_BOX[region],
+     &     CHF_CONST_REAL[p])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T val
+
+      CH_assert(CH_SPACEDIM .eq. 3)
+
+#if CH_SPACEDIM == 3
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[dXidz] .ne. CH_SPACEDIM) then
+        print*, 'dXidz does not have the correct number of comps, ', CHF_NCOMP[dXidz]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_MULTIDO[region;i;j;k]
+        val = dXidz(CHF_IX[i;j;k],0) * (  buoyancy0(CHF_IX[i+1;j  ;k  ])
+     &                                  - buoyancy0(CHF_IX[i  ;j  ;k  ])  ) / dx(0)
+     &      + dXidz(CHF_IX[i;j;k],1) * (  buoyancy1(CHF_IX[i  ;j+1;k  ])
+     &                                  - buoyancy1(CHF_IX[i  ;j  ;k  ])  ) / dx(1)
+     &      + dXidz(CHF_IX[i;j;k],2) * (  buoyancy2(CHF_IX[i  ;j  ;k+1])
+     &                                  - buoyancy2(CHF_IX[i  ;j  ;k  ])  ) / dx(2)
+        BVFreq(CHF_IX[i;j;k]) = abs(val)**(p/two)
+      CHF_ENDDO
+#endif
+
+      return
+      end
+
+
+c ---------------------------------------------------------------------------------
+c Finds the largest speed, c0 (smallest Nsq/c^2) and the corresponding structure
+c function, phi0 (corresponding eigenfunction) of phi'' + (Nsq/c^2) phi = 0.
+c NOTE: N is the number of vertical cells (the size of phi0) while Nsq is the
+c square of the Brunt-Vaisala frequency.
+c
+c jacFC and jacCC are dZeta/dz.
+c ---------------------------------------------------------------------------------
+      subroutine SOLVEVERTEIGENPROBLEM (
+     &     CHF_REAL[c0],
+     &     CHF_FRA1[phi0],
+     &     CHF_CONST_FRA1[Nsq],
+     &     CHF_CONST_FRA1[jacFC],
+     &     CHF_CONST_FRA1[jacCC],
+     &     CHF_CONST_INTVECT[loIdx],
+     &     CHF_CONST_INT[N],
+     &     CHF_CONST_REAL[dz],
+     &     CHF_CONST_REAL[abstol],
+     &     CHF_FIA1[IFAIL],
+     &     CHF_FIA1[IWORK],
+     &     CHF_FRA1[AB],
+     &     CHF_FRA1[BB],
+     &     CHF_FRA1[Q],
+     &     CHF_FRA1[W],
+     &     CHF_FRA1[WORK],
+     &     CHF_FRA1[Z])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[hi]
+      integer CHF_AUTODECL[vunit]
+      integer idx
+      REAL_T scale, EPS, maxZ
+
+      CHARACTER          JOBZ, RANGE, UPLO
+      INTEGER            IL, INFO, IU, KA, KB, LDAB, LDBB, LDQ, LDZ, M
+      DOUBLE PRECISION   VL, VU
+
+      double precision DLAMCH
+      external DLAMCH
+
+      JOBZ = 'V'    ! Compute eigenvalues and eigenvectors.
+      RANGE = 'I'   ! The IL-th through IU-th eigenvalues will be found.
+      UPLO = 'L'    ! Lower triangles of A and B are stored.
+      KA = 1        ! The number of subdiagonals of the matrix A.
+      KB = 0        ! The number of subdiagonals of the matrix B
+      LDAB = 2      ! The leading dimension of the array AB. LDAB >= KA+1.
+      LDBB = 1      ! The leading dimension of the array BB. LDBB >= KB+1.
+      LDQ = N       ! The leading dimension of the array Q. LDQ >= max(1,N).
+      VL = 0.0      ! If RANGE='V', the lower bound of the eigenvalue search. VL < VU.
+      VU = 1.0      ! If RANGE='V', the upper bound of the eigenvalue search. VL < VU.
+      IL = 1        ! If RANGE='I', the index of the smallest eigenvalue.
+      IU = 1        ! If RANGE='I', the index of the largest eigenvalue.
+      M = 1         ! The total number of eigenvalues found.
+      LDZ = N       ! The leading dimension of the array Z.
+      EPS = 1.0E-12 ! Added to diagonal entries of BB to amplify diagonal dominance.
+
+      CHF_DTERM[    ! The horizontal coordinates and vertical unit vector
+      hi0 = loIdx(0);
+      hi1 = loIdx(1);
+      hi2 = loIdx(2)]
+
+      CHF_AUTOID[vunit;CH_SPACEDIM-1]
+
+      ! Construct AB matrix = second vertical derivative.
+!      scale = one/(dz*dz)
+!      do idx = 1, N
+!        AB(CHF_IX[1;idx;1]) = two * scale
+!        AB(CHF_IX[2;idx;1]) = -scale
+!      enddo
+!      AB(CHF_IX[1;1;1]) = three * scale
+!      AB(CHF_IX[1;N;1]) = three * scale
+
+      scale = one/(dz*dz)
+      AB(CHF_IX[1;1;1]) = (two*jacFC(CHF_AUTOIX[hi]) + jacFC(CHF_OFFSETIX[hi;+vunit])) * scale
+      AB(CHF_IX[2;1;1]) = -jacFC(CHF_OFFSETIX[hi;+vunit]) * scale
+      do idx = 2, N-1
+        AB(CHF_IX[1;idx;1]) = (jacFC(CHF_OFFSETIX[hi;+(idx-1)*vunit]) + jacFC(CHF_OFFSETIX[hi;+idx*vunit])) * scale
+        AB(CHF_IX[2;idx;1]) = -jacFC(CHF_OFFSETIX[hi;+idx*vunit])*scale
+      enddo
+      AB(CHF_IX[1;N;1]) = (jacFC(CHF_OFFSETIX[hi;+(N-1)*vunit]) + two*jacFC(CHF_OFFSETIX[hi;+N*vunit])) * scale
+      AB(CHF_IX[2;N;1]) = 123456789.0
+
+
+      ! Construct BB matrix = Nsq on diagonals.
+      do idx = 1, N
+        BB(CHF_IX[1;idx;1]) = (Nsq(CHF_OFFSETIX[hi;+(idx-1)*vunit]) / jacCC(CHF_OFFSETIX[hi;+(idx-1)*vunit])) + EPS
+      enddo
+
+      ! Call LAPACK solver
+      call DSBGVX (JOBZ, RANGE, UPLO, N, KA, KB, AB, LDAB, BB,
+     &             LDBB, Q, LDQ, VL, VU, IL, IU, abstol, M, W, Z,
+     &             LDZ, WORK, IWORK, IFAIL, INFO)
+
+      ! Did the solver fail?
+      if (INFO .ne. 0) then
+        print*, 'SOLVEVERTEIGENPROBLEM: INFO = ', INFO, ' -- IFAIL(1) = ', IFAIL(CHF_IX[1;1;1]), ' -- W(1) = ', W(CHF_IX[1;1;1])
+        call MAYDAYERROR()
+      endif
+
+      ! Normalize Z and send results to permanent holders
+      maxZ = zero
+      do idx = 1, N
+        if (abs(maxZ) .lt. abs(Z(CHF_IX[idx;1;1]))) then
+          maxZ = Z(CHF_IX[idx;1;1])
+        endif
+      enddo
+      do idx = 1, N
+        phi0(CHF_OFFSETIX[hi;+(idx-1)*vunit]) = Z(CHF_IX[idx;1;1]) / maxZ
+      enddo
+      c0 = sqrt(one / abs(W(CHF_IX[1;1;1])))
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c ProjectPhaseSpeed
+c c0^i = Max_j[c0 * dXi^i/dx^j)], j = horizontal dirs
+c ----------------------------------------------------------------
+      subroutine ProjectPhaseSpeed (CHF_FRA[c0i],
+     &                              CHF_CONST_FRA1[c0],
+     &                              CHF_CONST_FRA[dXidx],
+     &                              CHF_BOX[region])
+
+      integer CHF_AUTODECL[i]
+      REAL_T c0val, maxJinv
+
+      CH_assert(CHF_NCOMP[dXidx] .eq. CH_SPACEDIM*CH_SPACEDIM)
+
+      CHF_AUTOMULTIDO[region;i]
+        c0val = c0(CHF_AUTOIX[i])
+
+        ! c0^i = Max_j[c0 * dXi^i/dx^j)], j = horizontal dirs
+        CHF_DTERM[;
+        maxJinv = dXidx(CHF_AUTOIX[i],xxComp);
+        maxJinv = Max(maxJinv, dXidx(CHF_AUTOIX[i],xyComp))]
+        c0i(CHF_AUTOIX[i],0) = c0val * maxJinv
+
+        CHF_DTERM[;
+        maxJinv = dXidx(CHF_AUTOIX[i],yxComp);
+        maxJinv = Max(maxJinv, dXidx(CHF_AUTOIX[i],yyComp))]
+        c0i(CHF_AUTOIX[i],1) = c0val * maxJinv
+
+        CHF_DTERM[;;
+        maxJinv = dXidx(CHF_AUTOIX[i],zxComp)
+        maxJinv = Max(maxJinv, dXidx(CHF_AUTOIX[i],zyComp))
+        c0i(CHF_AUTOIX[i],2) = c0val * maxJinv]
+
+      CHF_ENDDO
+
+      return
+      end
+
+
+
+
+
+c   These were just taken from old code...
+
+c ------------------------------------------------------------------------------
+c Calculates sqrt(-db/dz) = sqrt( dXi^{i}/dz * partial_{i}b )
+c This version allows for more general centerings, but only works in Cartesian.
+c
+c TODO: Make a general mapped version that takes the place of all BV funcs.
+c ------------------------------------------------------------------------------
+      subroutine ComputeBVFreqCartesian (
+     &     CHF_FRA1[freq],
+     &     CHF_CONST_FRA1[bouyancy],
+     &     CHF_CONST_REAL[dz],
+     &     CHF_BOX[NBox],
+     &     CHF_CONST_INTVECT[NBoxType],
+     &     CHF_CONST_INTVECT[BBoxType],
+     &     CHF_CONST_REAL[p])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      integer NType, BType
+      REAL_T scale, power
+
+      CHF_AUTOID[ii;CH_SPACEDIM-1]
+      NType = NBoxType(CH_SPACEDIM-1)
+      BType = BBoxType(CH_SPACEDIM-1)
+      scale = one / dz
+      power = p / two
+
+      if (NType.eq.0 .and. BType.eq.1) then
+        CHF_AUTOMULTIDO[NBox;i]
+          freq(CHF_AUTOIX[i]) = (-scale * (bouyancy(CHF_OFFSETIX[i;+ii]) - bouyancy(CHF_AUTOIX[i])))**power
+        CHF_ENDDO
+      else if (NType.eq.1 .and. BType.eq.0) then
+        CHF_AUTOMULTIDO[NBox;i]
+          freq(CHF_AUTOIX[i]) = (-scale * (bouyancy(CHF_AUTOIX[i]) - bouyancy(CHF_OFFSETIX[i;-ii])))**power
+        CHF_ENDDO
+      else
+        print*, 'COMPUTE_BRUNTVAISALAFREQ: Bad box types'
+        call MAYDAYERROR();
+      endif
+
+      return
+      end
+
+
+c ---------------------------------------------------------------------------------
+c Finds the largest speed, c0 (smallest eigenvalue) and the corresponding structure
+c function, phi0 (corresponding eigenfunction) of phi'' + (Nsq/c^2) phi = 0.
+c NOTE: N is the number of vertical cells (the size of phi0) while Nsq is the
+c square of the Brunt-Vaisala frequency.
+c ---------------------------------------------------------------------------------
+      subroutine SOLVEVERTEIGENPROBLEMCARTESIAN (
+     &     CHF_REAL[c0],
+     &     CHF_FRA1[phi0],
+     &     CHF_CONST_FRA1[Nsq],
+     &     CHF_BOX[region],
+     &     CHF_CONST_INT[N],
+     &     CHF_CONST_REAL[dz],
+     &     CHF_CONST_REAL[abstol],
+     &     CHF_FIA1[IFAIL],
+     &     CHF_FIA1[IWORK],
+     &     CHF_FRA1[AB],
+     &     CHF_FRA1[BB],
+     &     CHF_FRA1[Q],
+     &     CHF_FRA1[W],
+     &     CHF_FRA1[WORK],
+     &     CHF_FRA1[Z])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[hi]
+      integer CHF_AUTODECL[vunit]
+      integer idx
+      REAL_T scale, EPS, maxZ
+
+      CHARACTER          JOBZ, RANGE, UPLO
+      INTEGER            IL, INFO, IU, KA, KB, LDAB, LDBB, LDQ, LDZ, M
+      DOUBLE PRECISION   VL, VU
+
+      double precision DLAMCH
+      external DLAMCH
+
+      JOBZ = 'V'    ! Compute eigenvalues and eigenvectors.
+      RANGE = 'I'   ! The IL-th through IU-th eigenvalues will be found.
+      UPLO = 'L'    ! Lower triangles of A and B are stored.
+      KA = 1        ! The number of subdiagonals of the matrix A.
+      KB = 0        ! The number of subdiagonals of the matrix B
+      LDAB = 2      ! The leading dimension of the array AB. LDAB >= KA+1.
+      LDBB = 1      ! The leading dimension of the array BB. LDBB >= KB+1.
+      LDQ = N       ! The leading dimension of the array Q. LDQ >= max(1,N).
+      VL = 0.0      ! If RANGE='V', the lower bound of the eigenvalue search. VL < VU.
+      VU = 1.0      ! If RANGE='V', the upper bound of the eigenvalue search. VL < VU.
+      IL = 1        ! If RANGE='I', the index of the smallest eigenvalue.
+      IU = 1        ! If RANGE='I', the index of the largest eigenvalue.
+      M = 1         ! The total number of eigenvalues found.
+      LDZ = N       ! The leading dimension of the array Z.
+      EPS = 1.0E-12 ! Added to diagonal entries of BB to amplify diagonal dominance.
+
+      CHF_DTERM[    ! The horizontal coordinates and vertical unit vector
+      hi0 = CHF_LBOUND[region;0];
+      hi1 = CHF_LBOUND[region;1];
+      hi2 = CHF_LBOUND[region;2]]
+
+      CHF_AUTOID[vunit;CH_SPACEDIM-1]
+
+      ! Construct AB matrix = second vertical derivative.
+      scale = one/(dz*dz)
+      do idx = 1, N
+        AB(CHF_IX[1;idx;1]) = two * scale
+        AB(CHF_IX[2;idx;1]) = -scale
+      enddo
+      AB(CHF_IX[1;1;1]) = three * scale
+      AB(CHF_IX[1;N;1]) = three * scale
+
+      ! Construct BB matrix = Nsq on diagonals.
+      do idx = 1, N
+        BB(CHF_IX[1;idx;1]) = Nsq(CHF_OFFSETIX[hi;+(idx-1)*vunit]) + EPS
+      enddo
+
+      ! Call LAPACK solver
+      call DSBGVX (JOBZ, RANGE, UPLO, N, KA, KB, AB, LDAB, BB,
+     &             LDBB, Q, LDQ, VL, VU, IL, IU, abstol, M, W, Z,
+     &             LDZ, WORK, IWORK, IFAIL, INFO)
+
+      ! Did the solver fail?
+      if (INFO .ne. 0) then
+        print*, 'SOLVEVERTEIGENPROBLEM: INFO = ', INFO, ' -- IFAIL(1) = ', IFAIL(CHF_IX[1;1;1]), ' -- W(1) = ', W(CHF_IX[1;1;1])
+        call MAYDAYERROR()
+      endif
+
+      ! Normalize Z and send results to permanent holders
+      maxZ = zero
+      do idx = 1, N
+        if (abs(maxZ) .lt. abs(Z(CHF_IX[idx;1;1]))) then
+          maxZ = Z(CHF_IX[idx;1;1])
+        endif
+      enddo
+      do idx = 1, N
+        phi0(CHF_OFFSETIX[hi;+(idx-1)*vunit]) = -Z(CHF_IX[idx;1;1]) / maxZ
+      enddo
+      c0 = sqrt(one / W(CHF_IX[1;1;1]))
+
+      return
+      end
+
+
+c ---------------------------------------------------------------------------------
+c Let I and D denote vertical integration and differentiation, respectively.
+c Also, let lambda = (a_Nsq / a_c)^2, which is a function of z alone.
+c This function computes the following:
+c   alpha =  I[   lambda  * a_phi^2 ]
+c   beta  = -I[ D[lambda] * a_phi^3 ]
+c   gamma =  I[             a_phi^2 ]
+c
+c NOTE: This only works in Cartesian at the moment.
+c ---------------------------------------------------------------------------------
+      subroutine COMPUTEHORIZCOEFFSCARTESIAN (
+     &     CHF_REAL[alpha],
+     &     CHF_REAL[beta],
+     &     CHF_REAL[gamma],
+     &     CHF_CONST_FRA1[CCphi],
+     &     CHF_CONST_FRA1[CCNsq],
+     &     CHF_CONST_FRA1[FCNsq],
+     &     CHF_CONST_REAL[c0],
+     &     CHF_BOX[vertBox],
+     &     CHF_CONST_REAL[dz])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[vi]
+      REAL_T invC0sq
+
+      CHF_AUTOID[vi;CH_SPACEDIM-1]
+      invC0sq = one / (c0**2)
+      alpha = zero
+      beta = zero
+      gamma = zero
+
+      ! alpha and gamma
+      CHF_AUTOMULTIDO[vertBox;i]
+        alpha = alpha + CCphi(CHF_AUTOIX[i])**2 * dz * invC0sq * CCNsq(CHF_AUTOIX[i])
+        beta  = beta  - CCphi(CHF_AUTOIX[i])**3 * invc0sq * (FCNsq(CHF_OFFSETIX[i;+vi]) - FCNsq(CHF_AUTOIX[i]))
+        gamma = gamma + CCphi(CHF_AUTOIX[i])**2 * dz
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ---------------------------------------------------------------------------------
+c Sets A(x) = amp * sech[(x-Vt) / width] ^ 2
+c where width = 6 * gamma * c / (beta * amp)
+c and V = a_beta * amp / (3 * alpha)
+c ---------------------------------------------------------------------------------
+      subroutine FILLHORIZSTRUCTURE (
+     &     CHF_FRA1[A0],
+     &     CHF_CONST_REAL[alpha],
+     &     CHF_CONST_REAL[beta],
+     &     CHF_CONST_REAL[gamma],
+     &     CHF_CONST_REAL[c0],
+     &     CHF_CONST_REAL[xcenter],
+     &     CHF_CONST_REAL[amp],
+     &     CHF_BOX[region],
+     &     CHF_CONST_INTVECT[boxType],
+     &     CHF_CONST_REAL[physDx])
+
+      integer CHF_AUTODECL[i]
+      REAL_T offset, width, x, dx
+
+      offset = (one - boxType(0)) * half
+      width = sqrt(six * gamma * c0 / (beta * amp))
+
+      CHF_AUTOMULTIDO[region;i]
+        x = (i0 + offset) * physDx - xcenter
+        A0(CHF_AUTOIX[i]) = amp / (cosh(x / width)**2)
+      CHF_ENDDO
+
+      return
+      end

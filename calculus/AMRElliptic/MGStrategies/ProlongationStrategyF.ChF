@@ -1,0 +1,137 @@
+#include "CONSTANTS.H"
+#include "AddlFortranMacros.H"
+
+
+C     -----------------------------------------------------------------
+C     Computes prolongation of correction to finer level by
+C     adding coarse cell values directly to all overlying fine cells.
+C       fine[h] += I[mh->h](coarse[mh])
+C
+C     Warning: fine, coarse must have the same number
+C     of components and span fineRegion.
+C     ------------------------------------------------------------------
+      subroutine ConstInterpPS (
+     &    CHF_FRA[fine],
+     &    CHF_CONST_FRA[coarse],
+     &    CHF_BOX[fineRegion],
+     &    CHF_CONST_INTVECT[m])
+
+      INTEGER ncomp, n
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii;jj;kk]
+
+      ncomp = CHF_NCOMP[fine]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[coarse]) then
+         print*, 'ConstInterpPS: fine and coarse incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(fine,0,0,0, fineRegion,0,0,0)) then
+        print*, 'ConstInterpPS: fine does not contain fineRegion'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINSFINE(coarse,0,0,0, fineRegion,0,0,0, m)) then
+        print*, 'ConstInterpPS: refine(coarse,m) does not contain fineRegion'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+#if CH_SPACEDIM > 2
+        do k=CHF_LBOUND[fineRegion; 2], CHF_UBOUND[fineRegion; 2]
+          kk = k / m(2)
+#endif
+          do j=CHF_LBOUND[fineRegion; 1], CHF_UBOUND[fineRegion; 1]
+            jj = j / m(1)
+            do i=CHF_LBOUND[fineRegion; 0], CHF_UBOUND[fineRegion; 0]
+              ii = i / m(0)
+
+              fine(CHF_IX[i;j;k],n) = fine(CHF_IX[i;j;k],n)
+     &                              + coarse(CHF_IX[ii;jj;kk],n)
+            enddo
+          enddo
+#if CH_SPACEDIM > 2
+        enddo
+#endif
+      enddo
+
+      return
+      end
+
+
+C     -----------------------------------------------------------------
+C     Computes prolongation of correction to finer level by
+C     adding coarse cell values directly to all overlying fine cells.
+C       fine[h] += I[mh->h](coarse[mh])
+C     This also computes the total sum and volume.
+C
+C     Warning: fine, coarse must have the same number
+C     of components and span fineRegion.
+C     ------------------------------------------------------------------
+      subroutine ConstInterpWithAvgPS (
+     &    CHF_FRA[fine],
+     &    CHF_CONST_FRA[coarse],
+     &    CHF_BOX[fineRegion],
+     &    CHF_CONST_INTVECT[m],
+     &    CHF_CONST_FRA1[Jinv],
+     &    CHF_CONST_REAL[dxProduct],
+     &    CHF_REAL[vol],
+     &    CHF_REAL[sum])
+
+      INTEGER ncomp, n
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii;jj;kk]
+      REAL_T dvol
+
+      ncomp = CHF_NCOMP[fine]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[coarse]) then
+         print*, 'ConstInterpWithAvgPS: fine and coarse incompatible'
+         call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(fine,0,0,0, fineRegion,0,0,0)) then
+        print*, 'ConstInterpWithAvgPS: fine does not contain fineRegion'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINSFINE(coarse,0,0,0, fineRegion,0,0,0, m)) then
+        print*, 'ConstInterpWithAvgPS: refine(coarse,m) does not contain fineRegion'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+#if CH_SPACEDIM > 2
+        do k=CHF_LBOUND[fineRegion; 2], CHF_UBOUND[fineRegion; 2]
+          kk = k / m(2)
+#endif
+          do j=CHF_LBOUND[fineRegion; 1], CHF_UBOUND[fineRegion; 1]
+            jj = j / m(1)
+            do i=CHF_LBOUND[fineRegion; 0], CHF_UBOUND[fineRegion; 0]
+              ii = i / m(0)
+
+              fine(CHF_IX[i;j;k],n) = fine(CHF_IX[i;j;k],n)
+     &                              + coarse(CHF_IX[ii;jj;kk],n)
+
+              dvol = dxProduct / Jinv(CHF_IX[i;j;k])
+              sum = sum + dvol * fine(CHF_IX[i;j;k],n)
+              vol = vol + dvol
+            enddo
+          enddo
+#if CH_SPACEDIM > 2
+        enddo
+#endif
+      enddo
+
+      return
+      end
+

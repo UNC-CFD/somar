@@ -1,0 +1,322 @@
+#include "CONSTANTS.H"
+
+c ------------------------------------------------------------------------------
+c Performs averaging of data from fine to coarse level.
+c TODO: Unroll the inner loop for common refRatios
+c ------------------------------------------------------------------------------
+      subroutine UNMAPPEDAVERAGE (
+     &     CHF_FRA[coarse],
+     &     CHF_CONST_FRA[fine],
+     &     CHF_BOX[box],
+     &     CHF_CONST_INTVECT[refRatio],
+     &     CHF_BOX[bref])
+
+      integer var
+      integer CHF_AUTODECL[ic]
+      integer CHF_AUTODECL[ip]
+      integer CHF_AUTODECL[ii]
+      REAL_T refScale, coarseSum
+
+      refScale = one / DBLE(CHF_DTERM[refRatio(0);*refRatio(1);*refRatio(2)])
+
+      do var = 0, CHF_NCOMP[coarse] - 1
+        CHF_AUTOMULTIDO[box;ic]
+          CHF_DTERM[
+          ip0 = ic0*refRatio(0);
+          ip1 = ic1*refRatio(1);
+          ip2 = ic2*refRatio(2)]
+
+          coarseSum = zero
+
+          ! loop over fine grid faces and compute sum
+          CHF_AUTOMULTIDO[ bref; ii ]
+            coarseSum = coarseSum + fine( CHF_OFFSETIX[ip;+ii],var)
+          CHF_ENDDO
+
+          coarse(CHF_AUTOIX[ic],var) = coarseSum * refScale
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c Performs harmonic averaging of data from fine to coarse level.
+c TODO: Unroll the inner loop for common refRatios
+c ------------------------------------------------------------------------------
+      subroutine UNMAPPEDAVERAGEHARMONIC (
+     &     CHF_FRA[coarse],
+     &     CHF_CONST_FRA[fine],
+     &     CHF_BOX[box],
+     &     CHF_CONST_INTVECT[refRatio],
+     &     CHF_BOX[bref])
+
+      integer var
+      integer CHF_AUTODECL[ic]
+      integer CHF_AUTODECL[ip]
+      integer CHF_AUTODECL[ii]
+      REAL_T refScale, coarseSum
+
+      refScale = one / DBLE(CHF_DTERM[refRatio(0);*refRatio(1);*refRatio(2)])
+
+      do var = 0, CHF_NCOMP[coarse] - 1
+        CHF_AUTOMULTIDO[box;ic]
+          CHF_DTERM[
+          ip0 = ic0*refRatio(0);
+          ip1 = ic1*refRatio(1);
+          ip2 = ic2*refRatio(2)]
+
+          coarseSum = zero
+
+          ! loop over fine grid faces and compute sum
+          CHF_AUTOMULTIDO[bref; ii]
+            coarseSum = coarseSum + one / fine(CHF_OFFSETIX[ip;+ii],var)
+          CHF_ENDDO
+
+          coarse(CHF_AUTOIX[ic],var) = one / (coarseSum * refScale)
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c Performs a cell-volume weighted average of fine data to coarse level.
+c TODO: Unroll the inner loop for common refRatios
+c ------------------------------------------------------------------------------
+      subroutine MAPPEDAVERAGE (
+     &     CHF_FRA[coarse],
+     &     CHF_CONST_FRA[fine],
+     &     CHF_CONST_FRA1[fineCCJ],
+     &     CHF_BOX[box],
+     &     CHF_CONST_INTVECT[refRatio],
+     &     CHF_BOX[bref])
+
+      integer var
+      integer CHF_AUTODECL[ic]
+      integer CHF_AUTODECL[ip]
+      integer CHF_AUTODECL[ii]
+      REAL_T coarseSum, coarseCCJSum
+
+      do var = 0, CHF_NCOMP[coarse] - 1
+        CHF_AUTOMULTIDO[box;ic]
+          CHF_DTERM[
+          ip0 = ic0*refRatio(0);
+          ip1 = ic1*refRatio(1);
+          ip2 = ic2*refRatio(2)]
+
+          coarseSum = zero
+          coarseCCJSum = zero
+
+          ! loop over fine grid faces and compute sums
+          CHF_AUTOMULTIDO[bref;ii]
+            coarseSum = coarseSum + fine(CHF_OFFSETIX[ip;+ii],var) * fineCCJ(CHF_OFFSETIX[ip;+ii])
+            coarseCCJSum = coarseCCJSum + fineCCJ(CHF_OFFSETIX[ip;+ii])
+          CHF_ENDDO
+
+          coarse(CHF_AUTOIX[ic],var) = coarseSum / coarseCCJSum
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c Performs a cell-volume weighted average of fine data to coarse level.
+c This is an alternate version that uses Jinv instead of J.
+c TODO: Unroll the inner loop for common refRatios
+c ------------------------------------------------------------------------------
+      subroutine MAPPEDAVERAGE2 (
+     &     CHF_FRA[coarse],
+     &     CHF_CONST_FRA[fine],
+     &     CHF_CONST_FRA1[fineCCJinv],
+     &     CHF_BOX[box],
+     &     CHF_CONST_INTVECT[refRatio],
+     &     CHF_BOX[bref])
+
+      integer var
+      integer CHF_AUTODECL[ic]
+      integer CHF_AUTODECL[ip]
+      integer CHF_AUTODECL[ii]
+      REAL_T coarseSum, coarseCCJSum
+
+      do var = 0, CHF_NCOMP[coarse] - 1
+        CHF_AUTOMULTIDO[box;ic]
+          CHF_DTERM[
+          ip0 = ic0*refRatio(0);
+          ip1 = ic1*refRatio(1);
+          ip2 = ic2*refRatio(2)]
+
+          coarseSum = zero
+          coarseCCJSum = zero
+
+          ! loop over fine grid faces and compute sums
+          CHF_AUTOMULTIDO[bref;ii]
+            coarseSum = coarseSum + fine(CHF_OFFSETIX[ip;+ii],var) / fineCCJinv(CHF_OFFSETIX[ip;+ii])
+            coarseCCJSum = coarseCCJSum + one / fineCCJinv(CHF_OFFSETIX[ip;+ii])
+          CHF_ENDDO
+
+          coarse(CHF_AUTOIX[ic],var) = coarseSum / coarseCCJSum
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+c --------------------------------------------------------------
+c  this subroutine averages edge-centered fine grid data onto
+c  underlying coarse-grid faces in direction dir
+c
+c  INPUTS/OUTPUTS:
+c  fine      => fine-grid data
+c  coarse   <=  coarse data
+c  crseBox   => face-centered coarse box over which to average
+c  dir       => direction of face-centered data (0 = x-faces)
+c  refRatio  => refinement ratio
+c  refBox    => utility box, goes from (0,nref-1) in all directions
+c --------------------------------------------------------------
+      subroutine UNMAPPEDAVERAGEFACE (
+     &      CHF_FRA[coarse],
+     &      CHF_CONST_FRA[fine],
+     &      CHF_BOX[crseBox],
+     &      CHF_CONST_INT[dir],
+     &      CHF_CONST_INTVECT[refRatio],
+     &      CHF_BOX[refBox])
+
+
+      ! local variables
+      integer CHF_AUTODECL[ic]
+      integer CHF_AUTODECL[ip]
+      integer CHF_AUTODECL[ii]
+      integer var
+      REAL_T crseSum, refScale
+
+      refScale = DBLE(refRatio(dir))
+     &         / DBLE(CHF_DTERM[refRatio(0);*refRatio(1);*refRatio(2)])
+
+      do var = 0, CHF_NCOMP[coarse]-1
+        CHF_AUTOMULTIDO[crseBox;ic]
+          CHF_DTERM[
+          ip0 = ic0 * refRatio(0);
+          ip1 = ic1 * refRatio(1);
+          ip2 = ic2 * refRatio(2)]
+
+          crseSum = zero
+
+          ! loop over fine grid faces and compute sum
+          CHF_AUTOMULTIDO[refBox;ii]
+            crseSum = crseSum + fine(CHF_OFFSETIX[ip;+ii],var)
+          CHF_ENDDO
+
+          coarse(CHF_AUTOIX[ic],var) = refScale * crseSum
+
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+
+
+c --------------------------------------------------------------
+c  this subroutine averages face-centered fine grid data onto
+c  underlying coarse-grid faces in direction dir using harmonic
+c  averaging
+c
+c  INPUTS/OUTPUTS:
+c  fine      => fine-grid data
+c  coarse   <=  coarse data
+c  crseBox   => face-centered coarse box over which to average
+c  dir       => direction of face-centered data (0 = x-faces)
+c  refRatio  => refinement ratio
+c  refBox    => utility box, goes from (0,nref-1) in all directions
+c --------------------------------------------------------------
+      subroutine UNMAPPEDAVERAGEFACEHARMONIC (
+     &      CHF_FRA[coarse],
+     &      CHF_CONST_FRA[fine],
+     &      CHF_BOX[crseBox],
+     &      CHF_CONST_INT[dir],
+     &      CHF_CONST_INTVECT[refRatio],
+     &      CHF_BOX[refBox])
+
+
+      ! local variables
+      integer CHF_AUTODECL[ic]
+      integer CHF_AUTODECL[ip]
+      integer CHF_AUTODECL[ii]
+      integer var
+      REAL_T crseSum, refScale
+
+      refScale = DBLE(refRatio(dir))
+     &         / DBLE(CHF_DTERM[refRatio(0);*refRatio(1);*refRatio(2)])
+
+      do var = 0, CHF_NCOMP[coarse]-1
+        CHF_AUTOMULTIDO[crseBox;ic]
+          CHF_DTERM[
+          ip0 = ic0 * refRatio(0);
+          ip1 = ic1 * refRatio(1);
+          ip2 = ic2 * refRatio(2)]
+
+          crseSum = zero
+
+         ! loop over fine grid faces and compute sum
+         CHF_AUTOMULTIDO[refBox;ii]
+            crseSum = crseSum + one / fine(CHF_OFFSETIX[ip;+ii],var)
+         CHF_ENDDO
+
+         coarse(CHF_AUTOIX[ic],var) = one / (refScale * crseSum)
+
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+c ------------------------------------------------------------------------------
+c Performs an area-weighted average of fine, FC data to a coarse level.
+c TODO: Unroll the inner loop for common refRatios
+c ------------------------------------------------------------------------------
+      subroutine MAPPEDAVERAGEFACE (
+     &     CHF_FRA[coarse],
+     &     CHF_CONST_FRA[fine],
+     &     CHF_CONST_FRA1[fineFCJ],
+     &     CHF_BOX[box],
+     &     CHF_CONST_INT[dir],
+     &     CHF_CONST_INTVECT[refRatio],
+     &     CHF_BOX[bref])
+
+      integer var
+      integer CHF_AUTODECL[ic]
+      integer CHF_AUTODECL[ip]
+      integer CHF_AUTODECL[ii]
+      REAL_T coarseSum, coarseFCJSum
+
+      do var = 0, CHF_NCOMP[coarse] - 1
+        CHF_AUTOMULTIDO[box;ic]
+          CHF_DTERM[
+          ip0 = ic0*refRatio(0);
+          ip1 = ic1*refRatio(1);
+          ip2 = ic2*refRatio(2)]
+
+          coarseSum = zero
+          coarseFCJSum = zero
+
+          ! loop over fine grid faces and compute sums
+          CHF_AUTOMULTIDO[bref;ii]
+            coarseSum = coarseSum + fine(CHF_OFFSETIX[ip;+ii],var) * fineFCJ(CHF_OFFSETIX[ip;+ii])
+            coarseFCJSum = coarseFCJSum + fineFCJ(CHF_OFFSETIX[ip;+ii])
+          CHF_ENDDO
+
+          coarse(CHF_AUTOIX[ic],var) = coarseSum / coarseFCJSum
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+

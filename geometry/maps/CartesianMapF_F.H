@@ -1,0 +1,72 @@
+#ifndef _CARTESIANMAPF_F_H_
+#define _CARTESIANMAPF_F_H_
+
+#include "FORT_PROTO.H"
+#include "CH_Timer.H"
+#include "REAL.H"
+
+extern "C"
+{
+
+#ifndef GUARDCARTESIAN_FILL_PHYSCOOR 
+#define GUARDCARTESIAN_FILL_PHYSCOOR 
+// Prototype for Fortran procedure CARTESIAN_FILL_PHYSCOOR ...
+//
+void FORTRAN_NAME( CARTESIAN_FILL_PHYSCOOR ,cartesian_fill_physcoor )(
+      CHFp_FRA1(dest)
+      ,CHFp_CONST_INT(mu)
+      ,CHFp_CONST_REAL(dXi)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INT(destBoxType) );
+
+#define FORT_CARTESIAN_FILL_PHYSCOOR FORTRAN_NAME( inlineCARTESIAN_FILL_PHYSCOOR, inlineCARTESIAN_FILL_PHYSCOOR)
+#define FORTNT_CARTESIAN_FILL_PHYSCOOR FORTRAN_NAME( CARTESIAN_FILL_PHYSCOOR, cartesian_fill_physcoor)
+
+inline void FORTRAN_NAME(inlineCARTESIAN_FILL_PHYSCOOR, inlineCARTESIAN_FILL_PHYSCOOR)(
+      CHFp_FRA1(dest)
+      ,CHFp_CONST_INT(mu)
+      ,CHFp_CONST_REAL(dXi)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INT(destBoxType) )
+{
+ CH_TIMELEAF("FORT_CARTESIAN_FILL_PHYSCOOR");
+ FORTRAN_NAME( CARTESIAN_FILL_PHYSCOOR ,cartesian_fill_physcoor )(
+      CHFt_FRA1(dest)
+      ,CHFt_CONST_INT(mu)
+      ,CHFt_CONST_REAL(dXi)
+      ,CHFt_BOX(destBox)
+      ,CHFt_CONST_INT(destBoxType) );
+}
+#endif  // GUARDCARTESIAN_FILL_PHYSCOOR 
+
+#ifndef GUARDCARTESIAN_FILL_PHYSCOOR_ALL_COMPS 
+#define GUARDCARTESIAN_FILL_PHYSCOOR_ALL_COMPS 
+// Prototype for Fortran procedure CARTESIAN_FILL_PHYSCOOR_ALL_COMPS ...
+//
+void FORTRAN_NAME( CARTESIAN_FILL_PHYSCOOR_ALL_COMPS ,cartesian_fill_physcoor_all_comps )(
+      CHFp_FRA(dest)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INTVECT(destBoxType) );
+
+#define FORT_CARTESIAN_FILL_PHYSCOOR_ALL_COMPS FORTRAN_NAME( inlineCARTESIAN_FILL_PHYSCOOR_ALL_COMPS, inlineCARTESIAN_FILL_PHYSCOOR_ALL_COMPS)
+#define FORTNT_CARTESIAN_FILL_PHYSCOOR_ALL_COMPS FORTRAN_NAME( CARTESIAN_FILL_PHYSCOOR_ALL_COMPS, cartesian_fill_physcoor_all_comps)
+
+inline void FORTRAN_NAME(inlineCARTESIAN_FILL_PHYSCOOR_ALL_COMPS, inlineCARTESIAN_FILL_PHYSCOOR_ALL_COMPS)(
+      CHFp_FRA(dest)
+      ,CHFp_CONST_REALVECT(dXi)
+      ,CHFp_BOX(destBox)
+      ,CHFp_CONST_INTVECT(destBoxType) )
+{
+ CH_TIMELEAF("FORT_CARTESIAN_FILL_PHYSCOOR_ALL_COMPS");
+ FORTRAN_NAME( CARTESIAN_FILL_PHYSCOOR_ALL_COMPS ,cartesian_fill_physcoor_all_comps )(
+      CHFt_FRA(dest)
+      ,CHFt_CONST_REALVECT(dXi)
+      ,CHFt_BOX(destBox)
+      ,CHFt_CONST_INTVECT(destBoxType) );
+}
+#endif  // GUARDCARTESIAN_FILL_PHYSCOOR_ALL_COMPS 
+
+}
+
+#endif

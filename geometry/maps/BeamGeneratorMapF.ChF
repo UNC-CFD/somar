@@ -1,0 +1,146 @@
+#include "CONSTANTS.H"
+
+
+c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+c
+c                         ///^\\\
+c                        /       \
+c                       /         \
+c                      /           \
+c                     /             \
+c _________________///               \\\_________________
+c |---------------|--|----|--|--|----|--|---------------|
+c -LxMax        -C1 -C2  -C3 0  C4  C5  C6            LxMax
+c
+c /// Represents smoothed regions.
+c For a symmetric hill,
+c  C1 = -l*cos(angle) - 3P
+c  C2 = -l*cos(angle) - P
+c  C3 = -B
+c  C4 = B
+c  C5 = l*cos(angle) + P
+c  C6 = l*cos(angle) + 3P
+c  Where B and P are the sizes of the smoothed regions.
+c LxMax = Lx/2
+c
+c The total width of the ridge is then [2*lp*cos(angle) + 4*Bp + 2*Pp]*Lx
+c  where Lx is the domain length
+c!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      subroutine FILL_BeamGeneratorMapBATHYMETRY (
+     &      CHF_FRA1[elevation],
+     &      CHF_BOX[depthBox],
+     &      CHF_CONST_INTVECT[destBoxType],
+     &      CHF_CONST_FRA[cartPos],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REALVECT[length],
+     &      CHF_CONST_REAL[angle])
+
+      REAL_T lp, Bp, Pp, l, B, P, F, scale
+
+      ! The original 5 degree ridge.
+!      PARAMETER (lp = 0.02500)  ! Length of along-slope critical region   (fraction of the domain width)
+!      PARAMETER (Bp = 0.01875)  ! Length of smoothed region at ridge base (fraction of the domain width)
+!      PARAMETER (Pp = 0.03750)  ! Half-width of smoothed region at ridge peak (fraction of the domain width)
+
+      ! Masoud's lab-scale ridge (total ridge width ~ 3.8m with Lx = 40.5m)
+      PARAMETER (lp = 0.009714) ! Length of along-slope critical region   (fraction of the domain width)
+      PARAMETER (Bp = 0.01173)  ! Length of smoothed region at ridge base (fraction of the domain width)
+      PARAMETER (Pp = 0.0183542)  ! Half-width of smoothed region at ridge peak (fraction of the domain width)
+
+      ! Narsimha's lab-scale ridge (total ridge width ~ 3.8m with Lx = 40.0m)
+!      PARAMETER (lp = 0.014488887) ! Length of along-slope critical region   (fraction of the domain width)
+!      PARAMETER (Bp = 0.010982626) ! Length of smoothed region at ridge base (fraction of the domain width)
+!      PARAMETER (Pp = 0.01125)     ! Half-width of smoothed region at ridge peak (fraction of the domain width)
+
+
+      integer CHF_AUTODECL[i]
+      REAL_T C1, C2, C3, C4, C5, C6
+      REAL_T sa, ca, ta
+      REAL_T LxMax, lstar, x
+      REAL_T b0, b1, b2    ! Coefficents of smoothed regions at ridge base
+      REAL_T p0, p2        ! Coefficents of smoothed regions at ridge peak
+
+      ! These will be used again and again. Cache the values.
+      sa = sin(angle)
+      ca = cos(angle)
+      ta = tan(angle)
+
+      ! lp, Bp, and Pp are fractions of the domain width.
+      ! We need to bring them to scale
+      l = lp*length(0)
+      B = Bp*length(0)
+      P = Pp*length(0)
+
+      ! Length of the critical slope extended to make a triangle shaped ridge
+      lstar = l + (B+P)/ca
+
+      ! Locations of functional changes
+      C1 = -lstar*ca - B
+      C2 = -lstar*ca + B
+      C3 = -P
+      C4 = P
+      C5 = lstar*ca - B
+      C6 = lstar*ca + B
+
+      ! Cubic spline coefficients
+      b0 = 0.25*ta*(B+lstar*ca)*(B+lstar*ca)/B
+      b1 = -0.5*ta*(B+lstar*ca)/B
+      b2 = 0.25*ta/B
+
+      p0 = lstar*sa - 0.5*ta*P
+      p2 = -0.5*ta/P
+
+#ifndef NDEBUG
+      if (destBoxType(CH_SPACEDIM-1) .eq. 0) then
+        print*, 'FILL_BeamGeneratorMapBATHYMETRY: destBox must be nodal in vertical direction'
+        call MAYDAYERROR()
+      endif
+#endif
+      ! print*,'C1 = ', C1
+      ! print*,'C2 = ', C2
+      ! print*,'C3 = ', C3
+      ! print*,'C4 = ', C4
+      ! print*,'C5 = ', C5
+      ! print*,'C6 = ', C6
+      ! print*,'lstar*sa = ', lstar*sa
+      ! print*,'p0       = ', p0
+      ! print*,'lcrit    = ', l
+
+      CHF_AUTOMULTIDO[depthBox;i]
+        x = cartPos(CHF_AUTOIX[i],0)
+
+        if (x .le. C1) then
+          ! Left flat region
+          elevation(CHF_AUTOIX[i]) = 0.0
+
+        else if ((C1 .lt. x) .and. (x .lt. C2)) then
+          ! Curving upwards (left ridge base)
+          elevation(CHF_AUTOIX[i]) = b2*x*x - b1*x + b0
+
+        else if ((C2 .le. x) .and. (x .le. C3)) then
+          ! Left critical region
+          elevation(CHF_AUTOIX[i]) = lstar*sa + ta*x
+
+        else if ((C3 .lt. x) .and. (x .lt. C4)) then
+          ! Curving downwards (ridge peak)
+          elevation(CHF_AUTOIX[i]) = p2*x*x + p0
+
+        else if ((C4 .le. x) .and. (x .le. C5)) then
+          ! Right critical region
+          elevation(CHF_AUTOIX[i]) = lstar*sa - ta*x
+
+        else if ((C5 .lt. x) .and. (x .lt. C6)) then
+          ! Curving upwards (right ridge base)
+          elevation(CHF_AUTOIX[i]) = b2*x*x + b1*x + b0
+
+        else
+          ! Right flat region
+          elevation(CHF_AUTOIX[i]) = 0.0
+
+        endif
+
+      CHF_ENDDO
+
+      return
+      end
+

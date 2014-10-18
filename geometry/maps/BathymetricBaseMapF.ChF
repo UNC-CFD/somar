@@ -1,0 +1,215 @@
+#include "CONSTANTS.H"
+#include "Subspace.H"
+#include "AddlFortranMacros.H"
+
+
+! *** IMPORTANT *** !
+! Only use the linear profile for now.
+! The tanh profile needs to be debugged.
+
+! Linear profile
+#define VERTPHI(f)   ( f )
+#define DVERTPHI(f)  ( one )
+#define HORIZPHI(f)  ( f )
+
+! ! Tanh profile
+! #define STRENGTH  1.2
+! #define VERTPHI(f)   ( one - tanh((STRENGTH)*(one-(f))) / tanh((STRENGTH)) )
+! #define DVERTPHI(f)  ( (STRENGTH) / (tanh((STRENGTH)) * (cosh((STRENGTH)*(one-(f)))**two))  )
+! #define HORIZPHI(f)  ( dsign(VERTPHI(dabs(f)), f) )
+
+
+
+c ----------------------------------------------------------------
+c FILL_BATHYHORIZMAP
+c Sets x = Xi (and y = Nu in 3D)
+c ----------------------------------------------------------------
+      subroutine FILL_BATHYHORIZMAP (
+     &      CHF_FRA1[xFAB],
+     &      CHF_BOX[xBox],
+     &      CHF_CONST_INT[xBoxDirType],
+     &      CHF_CONST_INT[xDir],
+     &      CHF_CONST_REAL[L],
+     &      CHF_CONST_REAL[dXi])
+
+      integer CHF_AUTODECL[i]
+      REAL_T offset, xFrac, xiFrac
+
+      ! Declare stretching functions
+      double precision, external :: HORIZPHI
+
+      CH_assert(((xBoxDirType .eq. 0) .or. (xBoxDirType .eq. 1)))
+      offset = half * (one - dble(xBoxDirType))
+
+      if (xDir .eq. 0) then
+        CHF_AUTOMULTIDO[xBox;i]
+          xiFrac = dXi * (dble(i0) + offset) * two / L
+          xFrac = HORIZPHI(xiFrac)
+          xFAB(CHF_AUTOIX[i]) = xFrac * L / two
+        CHF_ENDDO
+
+      else if (xDir .eq. 1) then
+        CHF_AUTOMULTIDO[xBox;i]
+          xiFrac = dXi * (dble(i1) + offset) * two / L
+          xFrac = HORIZPHI(xiFrac)
+          xFAB(CHF_AUTOIX[i]) = xFrac * L / two
+        CHF_ENDDO
+      endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c FILL_BATHYVERTMAP
+c z = Zeta * (-depth(Xi) / zetaAtBottom),
+c where Zeta = [0,-zetaAtBottom].
+c This assumes node-centered data!
+c ----------------------------------------------------------------
+      subroutine FILL_BATHYVERTMAP (
+     &      CHF_FRA1[zFAB],
+     &      CHF_BOX[zBox],
+     &      CHF_CONST_INTVECT[zBoxType],
+     &      CHF_CONST_FRA1[depth],
+     &      CHF_CONST_REALVECT[L],
+     &      CHF_CONST_REALVECT[dXi])
+
+      integer CHF_AUTODECL[i]
+      REAL_T H, dZeta, zetaFrac, zFrac, dFrac
+      REAL_T zOffset
+
+      ! Declare stretching functions
+      double precision, external :: VERTPHI
+
+      H = L(CH_SPACEDIM-1)
+      dZeta = dXi(CH_SPACEDIM-1)
+      zOffset = half * (one - dble(zBoxType(CH_SPACEDIM-1)))
+
+      CHF_AUTOMULTIDO[zBox;i]
+        dFrac = depth(FLATIX(i)) / H
+        zetaFrac = (dble(VERTCOMP(i)) + zOffset) * dZeta / H
+        zFrac = dFrac + (one - dFrac) * VERTPHI(zetaFrac)
+
+        zFAB(CHF_AUTOIX[i]) = zFrac * H
+      CHF_ENDDO
+
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c FILL_BATHYDXDXI
+c dx/dXi = HORIZPHI'(2*Xi/L)
+c ----------------------------------------------------------------
+      subroutine FILL_BATHYDXDXI (
+     &      CHF_FRA1[dxdXi],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INTVECT[destBoxType],
+     &      CHF_CONST_INT[nu],
+     &      CHF_CONST_REALVECT[L],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REAL[scale])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      REAL_T offsetF, offsetB, invDXi, twoDXiOnL, XiF, XiB
+
+      ! Declare stretching functions
+      double precision, external :: HORIZPHI
+
+      CHF_AUTOID[ii;nu]
+      offsetF = half * (one - dble(destBoxType(nu))) + half
+      offsetB = half * (one - dble(destBoxType(nu))) - half
+      twoDXiOnL = two * dXi(nu) / L(nu)
+      invDXi = scale / twoDXiOnL
+
+      if (nu .eq. 0) then
+        CHF_AUTOMULTIDO[destBox;i]
+          XiF = twoDXiOnL * (dble(i0) + offsetF)
+          XiB = twoDXiOnL * (dble(i0) + offsetB)
+          dxdXi(CHF_AUTOIX[i]) = (HORIZPHI(XiF) - HORIZPHI(XiB)) * invDXi
+        CHF_ENDDO
+      else
+        CHF_AUTOMULTIDO[destBox;i]
+          XiF = twoDXiOnL * (dble(i1) + offsetF)
+          XiB = twoDXiOnL * (dble(i1) + offsetB)
+          dxdXi(CHF_AUTOIX[i]) = (HORIZPHI(XiF) - HORIZPHI(XiB)) * invDXi
+        CHF_ENDDO
+      endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c FILL_BATHYDZDXI
+c dz/dXi = (1.0 - VERTPHI(zeta/H)) * d(Cartesian depth)/dXi
+c dxdXi and destBox must be CC in nu and NC in other dirs.
+c depth must be NC and have a vertical index of 0.
+c NC = node centered, CC = cell centered.
+c ----------------------------------------------------------------
+      subroutine FILL_BATHYDZDXI (
+     &      CHF_FRA1[dxdXi],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INT[nu],
+     &      CHF_CONST_FRA1[depth],
+     &      CHF_CONST_REALVECT[L],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REAL[scale])
+
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+      REAL_T invDXi, dZeta, H, zetaFrac, DDepthDXi
+
+      ! Declare stretching functions
+      double precision, external :: VERTPHI
+
+      CHF_AUTOID[ii;nu]
+      invDXi = one / dXi(nu)
+      dZeta = dXi(CH_SPACEDIM-1)
+      H = L(CH_SPACEDIM-1)
+
+      CHF_AUTOMULTIDO[destBox;i]
+        zetaFrac = dble(VERTCOMP(i)) * dZeta / H
+        DDepthDXi = (depth(FLATOFFSET(i,+ii)) - depth(FLATIX(i))) * invDXi
+
+        dxdXi(CHF_AUTOIX[i]) = scale * (one - VERTPHI(zetaFrac)) * DDepthDXi
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c FILL_BATHYDZDZETA
+c dz/dZeta = (1.0 - D(x,y)/H) * VERTPHI'(zeta/H)
+c dxdXi must be node centered in all directions.
+c depth must be node centered and have a vertical index of 0.
+c ----------------------------------------------------------------
+      subroutine FILL_BATHYDZDZETA (
+     &      CHF_FRA1[dxdZeta],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_FRA1[depth],
+     &      CHF_CONST_REALVECT[L],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REAL[scale])
+
+      integer CHF_AUTODECL[i]
+      REAL_T H, dZeta, zetaFrac, depthFrac
+
+      ! Declare stretching functions
+      double precision, external :: DVERTPHI
+
+      H = L(CH_SPACEDIM-1)
+      dZeta = dXi(CH_SPACEDIM-1)
+
+      CHF_AUTOMULTIDO[destBox;i]
+        zetaFrac = dble(VERTCOMP(i)) * dZeta / H
+        depthFrac = depth(FLATIX(i)) / H
+
+        dxdZeta(CHF_AUTOIX[i]) = scale * (one - depthFrac) * DVERTPHI(zetaFrac)
+      CHF_ENDDO
+
+      return
+      end

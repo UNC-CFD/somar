@@ -1,0 +1,1415 @@
+#include "CONSTANTS.H"
+#include "MASKVAL.H"
+#include "AddlFortranMacros.H"
+
+
+c -------------------------------------------------------------------
+c  This subroutine computes the edge-centered (MAC) gradient in
+c  a single component direction.
+c
+c  INPUTS/OUTPUTS:
+c  edgeGrad <=  edge centered gradient of phi in direction dir
+c  phi       => cell-centered field
+c  extrap    => phi with ghosts extrapolated
+c  Jga       => Jg[gradDir]
+c  edgeGrid  => edgecentered box which defines valid region
+c  dx        => cell spacing
+c  gradDir   => direction of gradient
+c  edgeDir   => which set of edges edgeGrad lives on
+c -----------------------------------------------------------------
+      subroutine MAPPEDMACGRAD (
+     &      CHF_FRA1[edgeGrad],
+     &      CHF_CONST_FRA1[phi],
+     &      CHF_CONST_FRA1[extrap],
+     &      CHF_CONST_FRA[Jga],
+     &      CHF_BOX[edgeGrid],
+     &      CHF_CONST_REALVECT[dx],
+     &      CHF_INT[gradDir],
+     &      CHF_INT[edgeDir])
+
+c ::: local variables
+      integer CHF_DDECL[i ; j ; k ]
+      integer adir, bdir, cdir
+      integer CHF_DDECL[ai; aj; ak]
+      integer CHF_DDECL[bi; bj; bk]
+#if CH_SPACEDIM == 3
+      integer CHF_DDECL[ci; cj; ck]
+#endif
+      REAL_T CHF_DDECL[dxinva; dxinvb; dxinvc]
+
+      if (gradDir .eq. edgeDir) then
+c   ::: this is a normal derivative (simpler stencil)
+
+        CHF_DTERM[
+        adir = gradDir;
+        bdir = mod((adir + 1), CH_SPACEDIM);
+        cdir = mod((adir + 2), CH_SPACEDIM)]
+
+        CHF_DTERM[
+        ai = CHF_ID(0,adir);
+        aj = CHF_ID(1,adir);
+        ak = CHF_ID(2,adir)]
+
+        CHF_DTERM[
+        bi = CHF_ID(0,bdir);
+        bj = CHF_ID(1,bdir);
+        bk = CHF_ID(2,bdir)]
+
+#if CH_SPACEDIM == 3
+        CHF_DTERM[
+        ci = CHF_ID(0,cdir);
+        cj = CHF_ID(1,cdir);
+        ck = CHF_ID(2,cdir)]
+#endif
+
+        CHF_DTERM[
+        dxinva = one / dx(adir);
+        dxinvb = fourth / dx(bdir);
+        dxinvc = fourth / dx(cdir)]
+
+        CHF_MULTIDO[edgeGrid;i;j;k]
+
+          edgeGrad(CHF_IX[i;j;k]) =
+     &        CHF_DTERM[
+     &           Jga(CHF_IX[i;j;k],adir) * dxinva
+     &           * (phi(CHF_IX[i;j;k]) - phi(CHF_IX[i-ai;j-aj;k-ak]));
+     &         + Jga(CHF_IX[i;j;k],bdir) * dxinvb
+     &           * (  extrap(CHF_IX[i+bi   ;j+bj   ;k+bk   ]) - extrap(CHF_IX[i-bi   ;j-bj   ;k-bk   ])
+     &              + extrap(CHF_IX[i+bi-ai;j+bj-aj;k+bk-ak]) - extrap(CHF_IX[i-bi-ai;j-bj-aj;k-bk-ak])  );
+     &         + Jga(CHF_IX[i;j;k],cdir) * dxinvc
+     &           * (  extrap(CHF_IX[i+ci   ;j+cj   ;k+ck   ]) - extrap(CHF_IX[i-ci   ;j-cj   ;k-ck   ])
+     &              + extrap(CHF_IX[i+ci-ai;j+cj-aj;k+ck-ak]) - extrap(CHF_IX[i-ci-ai;j-cj-aj;k-ck-ak])  )]
+
+        CHF_ENDDO
+
+      else
+c   ::: this is a transverse derivative
+
+        CHF_DTERM[
+        adir = gradDir;
+        bdir = edgeDir;
+        cdir = 3 - adir - bdir]
+
+        CHF_DTERM[
+        ai = CHF_ID(0,adir);
+        aj = CHF_ID(1,adir);
+        ak = CHF_ID(2,adir)]
+
+        CHF_DTERM[
+        bi = CHF_ID(0,bdir);
+        bj = CHF_ID(1,bdir);
+        bk = CHF_ID(2,bdir)]
+
+#if CH_SPACEDIM == 3
+        CHF_DTERM[
+        ci = CHF_ID(0,cdir);
+        cj = CHF_ID(1,cdir);
+        ck = CHF_ID(2,cdir)]
+#endif
+
+        CHF_DTERM[
+        dxinva = fourth / dx(adir);
+        dxinvb = one / dx(bdir);
+        dxinvc = fourth / dx(cdir)]
+
+        CHF_MULTIDO[edgeGrid;i;j;k]
+
+          ! Jga is assumed to be centered in gradDir
+
+          edgeGrad(CHF_IX[i;j;k]) =
+     &        CHF_DTERM[
+     &           Jga(CHF_IX[i;j;k],adir) * dxinva
+     &           * (  extrap(CHF_IX[i+ai   ;j+aj   ;k+ak   ]) - extrap(CHF_IX[i-ai   ;j-aj   ;k-ak   ])
+     &              + extrap(CHF_IX[i+ai-bi;j+aj-bj;k+ak-bk]) - extrap(CHF_IX[i-ai-bi;j-aj-bj;k-ak-bk])  );
+     &         + Jga(CHF_IX[i;j;k],bdir) * dxinvb
+     &           * (phi(CHF_IX[i;j;k]) - phi(CHF_IX[i-bi;j-bj;k-bk]));
+     &         + Jga(CHF_IX[i;j;k],cdir) * dxinvc
+     &           * (  extrap(CHF_IX[i+ci   ;j+cj   ;k+ck   ]) - extrap(CHF_IX[i-ci   ;j-cj   ;k-ck   ])
+     &              + extrap(CHF_IX[i+ci-bi;j+cj-bj;k+ck-bk]) - extrap(CHF_IX[i-ci-bi;j-cj-bj;k-ck-bk])  )]
+
+        CHF_ENDDO
+
+      endif
+
+      return
+      end
+
+
+
+c -------------------------------------------------------------------
+c  This subroutine computes the edge-centered (MAC) gradient in
+c  a single component direction. This version only computes the
+c  diagonal metric terms, assuming all others are zero.
+c
+c  INPUTS/OUTPUTS:
+c  edgeGrad <=  edge centered gradient of phi in direction dir
+c  phi       => cell-centered field
+c  extrap    => phi with ghosts extrapolated
+c  Jga       => Jg[gradDir]
+c  edgeGrid  => edgecentered box which defines valid region
+c  dx        => cell spacing
+c  gradDir   => direction of gradient
+c  edgeDir   => which set of edges edgeGrad lives on
+c -----------------------------------------------------------------
+      subroutine MAPPEDMACGRADORTHO (
+     &      CHF_FRA1[edgeGrad],
+     &      CHF_CONST_FRA1[phi],
+     &      CHF_CONST_FRA1[extrap],
+     &      CHF_CONST_FRA[Jga],
+     &      CHF_BOX[edgeGrid],
+     &      CHF_CONST_REAL[dxDir],
+     &      CHF_INT[gradDir],
+     &      CHF_INT[edgeDir])
+
+c ::: local variables
+      integer CHF_DDECL[i ; j ; k ]
+      integer CHF_DDECL[gi; gj; gk]
+      integer CHF_DDECL[ei; ej; ek]
+      REAL_T dxinv
+
+      if (gradDir .eq. edgeDir) then
+c   ::: this is a normal derivative (simpler stencil)
+
+        CHF_DTERM[
+        gi = CHF_ID(0,gradDir);
+        gj = CHF_ID(1,gradDir);
+        gk = CHF_ID(2,gradDir)]
+
+        dxinv = one / dxDir
+
+        CHF_MULTIDO[edgeGrid;i;j;k]
+
+          edgeGrad(CHF_IX[i;j;k]) =
+     &            dxinv * Jga(CHF_IX[i;j;k],gradDir)
+     &            * (phi(CHF_IX[i;j;k]) - phi(CHF_IX[i-gi;j-gj;k-gk]))
+
+        CHF_ENDDO
+
+      else
+c   ::: this is a transverse derivative
+
+        CHF_DTERM[
+        gi = CHF_ID(0,gradDir);
+        gj = CHF_ID(1,gradDir);
+        gk = CHF_ID(2,gradDir)]
+
+        CHF_DTERM[
+        ei = CHF_ID(0,edgeDir);
+        ej = CHF_ID(1,edgeDir);
+        ek = CHF_ID(2,edgeDir)]
+
+        dxinv = fourth / dxDir
+
+        CHF_MULTIDO[edgeGrid;i;j;k]
+
+          ! Jga is assumed to be centered in gradDir
+          edgeGrad(CHF_IX[i;j;k]) =
+     &            dxinv * Jga(CHF_IX[i;j;k],gradDir)
+     &            * (  extrap(CHF_IX[i+gi   ;j+gj   ;k+gk   ]) - extrap(CHF_IX[i-gi   ;j-gj   ;k-gk   ])
+     &               + extrap(CHF_IX[i+gi-ei;j+gj-ej;k+gk-ek]) - extrap(CHF_IX[i-gi-ei;j-gj-ej;k-gk-ek])  )
+
+        CHF_ENDDO
+
+      endif
+
+      return
+      end
+
+
+c -------------------------------------------------------------------
+c MappedMACGradScale
+c  This subroutine computes the edge-centered (MAC) gradient in
+c  a single component direction.
+c
+c  INPUTS/OUTPUTS:
+c  edgeGrad <=  edge centered gradient of phi in direction dir
+c  phi       => cell-centered field
+c  extrap    => phi with ghosts extrapolated
+c  Jga       => Jg[gradDir]
+c  edgeGrid  => edgecentered box which defines valid region
+c  dx        => cell spacing
+c  pdScale   => a multiplier for each partial derivative
+c  gradDir   => direction of gradient
+c  edgeDir   => which set of edges edgeGrad lives on
+c -----------------------------------------------------------------
+      subroutine MappedMACGradScale (
+     &    CHF_FRA1[edgeGrad],
+     &    CHF_CONST_FRA1[phi],
+     &    CHF_CONST_FRA1[extrap],
+     &    CHF_CONST_FRA[Jga],
+     &    CHF_BOX[edgeGrid],
+     &    CHF_CONST_REALVECT[dx],
+     &    CHF_CONST_REALVECT[pdScale],
+     &    CHF_CONST_INT[gradDir],
+     &    CHF_CONST_INT[edgeDir])
+
+c ::: local variables
+      integer CHF_DDECL[i ; j ; k ]
+      integer adir, bdir, cdir
+      integer CHF_DDECL[ai; aj; ak]
+      integer CHF_DDECL[bi; bj; bk]
+#if CH_SPACEDIM == 3
+      integer CHF_DDECL[ci; cj; ck]
+#endif
+      REAL_T CHF_DDECL[dxinva; dxinvb; dxinvc]
+
+      ! This wouldn't make much sense.
+      CH_assert(pdScale(gradDir) .ne. zero)
+
+      if (gradDir .eq. edgeDir) then
+        ! This is a normal derivative (simpler stencil).
+        ! We are careful not to compute derivatives in directions that
+        ! are unneccesary because MappedAMRPoissonOp may be trying to
+        ! take the gradient of an (N-1)-dimensional field.
+
+        CHF_DTERM[
+        adir = gradDir;
+        bdir = mod((adir + 1), CH_SPACEDIM);
+        cdir = mod((adir + 2), CH_SPACEDIM)]
+
+        CHF_DTERM[
+        ai = CHF_ID(0,adir);
+        aj = CHF_ID(1,adir);
+        ak = CHF_ID(2,adir)]
+
+        CHF_DTERM[
+        bi = CHF_ID(0,bdir);
+        bj = CHF_ID(1,bdir);
+        bk = CHF_ID(2,bdir)]
+
+#if CH_SPACEDIM == 3
+        CHF_DTERM[
+        ci = CHF_ID(0,cdir);
+        cj = CHF_ID(1,cdir);
+        ck = CHF_ID(2,cdir)]
+#endif
+
+        CHF_DTERM[
+        dxinva = pdScale(adir) * one / dx(adir);
+        dxinvb = pdScale(bdir) * fourth / dx(bdir);
+        dxinvc = pdScale(cdir) * fourth / dx(cdir)]
+
+        ! Initialize with the normal derivative
+        CHF_MULTIDO[edgeGrid;i;j;k]
+            edgeGrad(CHF_IX[i;j;k]) =
+     &             Jga(CHF_IX[i;j;k],adir) * dxinva
+     &             * (phi(CHF_IX[i;j;k]) - phi(CHF_IX[i-ai;j-aj;k-ak]));
+        CHF_ENDDO
+
+        ! Add in bdir derivative if needed
+        if (pdScale(bdir) .ne. zero) then
+          CHF_MULTIDO[edgeGrid;i;j;k]
+            edgeGrad(CHF_IX[i;j;k]) = edgeGrad(CHF_IX[i;j;k])
+     &           + Jga(CHF_IX[i;j;k],bdir) * dxinvb
+     &             * (  extrap(CHF_IX[i+bi   ;j+bj   ;k+bk   ]) - extrap(CHF_IX[i-bi   ;j-bj   ;k-bk   ])
+     &                + extrap(CHF_IX[i+bi-ai;j+bj-aj;k+bk-ak]) - extrap(CHF_IX[i-bi-ai;j-bj-aj;k-bk-ak])  )
+          CHF_ENDDO
+        endif
+
+#if CH_SPACEDIM == 3
+        ! Add in cdir derivative if needed
+        if (pdScale(cdir) .ne. zero) then
+          CHF_MULTIDO[edgeGrid;i;j;k]
+            edgeGrad(CHF_IX[i;j;k]) = edgeGrad(CHF_IX[i;j;k])
+     &           + Jga(CHF_IX[i;j;k],cdir) * dxinvc
+     &             * (  extrap(CHF_IX[i+ci   ;j+cj   ;k+ck   ]) - extrap(CHF_IX[i-ci   ;j-cj   ;k-ck   ])
+     &                + extrap(CHF_IX[i+ci-ai;j+cj-aj;k+ck-ak]) - extrap(CHF_IX[i-ci-ai;j-cj-aj;k-ck-ak])  )
+          CHF_ENDDO
+        endif
+#endif
+
+      else
+        ! This is a transverse derivative.
+        ! We just do this in one shot.
+
+        CHF_DTERM[
+        adir = gradDir;
+        bdir = edgeDir;
+        cdir = 3 - adir - bdir]
+
+        CHF_DTERM[
+        ai = CHF_ID(0,adir);
+        aj = CHF_ID(1,adir);
+        ak = CHF_ID(2,adir)]
+
+        CHF_DTERM[
+        bi = CHF_ID(0,bdir);
+        bj = CHF_ID(1,bdir);
+        bk = CHF_ID(2,bdir)]
+
+#if CH_SPACEDIM == 3
+        CHF_DTERM[
+        ci = CHF_ID(0,cdir);
+        cj = CHF_ID(1,cdir);
+        ck = CHF_ID(2,cdir)]
+#endif
+
+        CHF_DTERM[
+        dxinva = pdScale(adir) * fourth / dx(adir);
+        dxinvb = pdScale(bdir) * one / dx(bdir);
+        dxinvc = pdScale(cdir) * fourth / dx(cdir)]
+
+        CHF_MULTIDO[edgeGrid;i;j;k]
+
+          ! Jga is assumed to be centered in gradDir
+
+          edgeGrad(CHF_IX[i;j;k]) =
+     &        CHF_DTERM[
+     &           Jga(CHF_IX[i;j;k],adir) * dxinva
+     &           * (  extrap(CHF_IX[i+ai   ;j+aj   ;k+ak   ]) - extrap(CHF_IX[i-ai   ;j-aj   ;k-ak   ])
+     &              + extrap(CHF_IX[i+ai-bi;j+aj-bj;k+ak-bk]) - extrap(CHF_IX[i-ai-bi;j-aj-bj;k-ak-bk])  );
+     &         + Jga(CHF_IX[i;j;k],bdir) * dxinvb
+     &           * (phi(CHF_IX[i;j;k]) - phi(CHF_IX[i-bi;j-bj;k-bk]));
+     &         + Jga(CHF_IX[i;j;k],cdir) * dxinvc
+     &           * (  extrap(CHF_IX[i+ci   ;j+cj   ;k+ck   ]) - extrap(CHF_IX[i-ci   ;j-cj   ;k-ck   ])
+     &              + extrap(CHF_IX[i+ci-bi;j+cj-bj;k+ck-bk]) - extrap(CHF_IX[i-ci-bi;j-cj-bj;k-ck-bk])  )]
+
+        CHF_ENDDO
+
+      endif
+
+      return
+      end
+
+
+
+c -------------------------------------------------------------------
+c MappedMACGradOrthoScale
+c  This subroutine computes the edge-centered (MAC) gradient in
+c  a single component direction. This version only computes the
+c  diagonal metric terms, assuming all others are zero.
+c
+c  INPUTS/OUTPUTS:
+c  edgeGrad  <=  edge centered gradient of phi in direction dir
+c  phi        => cell-centered field
+c  extrap     => phi with ghosts extrapolated
+c  Jga        => Jg[gradDir]
+c  edgeGrid   => edgecentered box which defines valid region
+c  dx         => cell spacing
+c  pdScaleDir => partial derivative multiplier (error if zero)
+c  gradDir    => direction of gradient
+c  edgeDir    => which set of edges edgeGrad lives on
+c -----------------------------------------------------------------
+      subroutine MappedMACGradOrthoScale (
+     &    CHF_FRA1[edgeGrad],
+     &    CHF_CONST_FRA1[phi],
+     &    CHF_CONST_FRA1[extrap],
+     &    CHF_CONST_FRA[Jga],
+     &    CHF_BOX[edgeGrid],
+     &    CHF_CONST_REAL[dxDir],
+     &    CHF_CONST_REAL[pdScaleDir],
+     &    CHF_CONST_INT[gradDir],
+     &    CHF_CONST_INT[edgeDir])
+
+c ::: local variables
+      integer CHF_DDECL[i ; j ; k ]
+      integer CHF_DDECL[gi; gj; gk]
+      integer CHF_DDECL[ei; ej; ek]
+      REAL_T dxinv
+
+      ! If this trips, then you didn't need to call this function, did you?
+      CH_assert(pdScaleDir .ne. zero)
+
+      if (gradDir .eq. edgeDir) then
+c   ::: this is a normal derivative (simpler stencil)
+
+        CHF_DTERM[
+        gi = CHF_ID(0,gradDir);
+        gj = CHF_ID(1,gradDir);
+        gk = CHF_ID(2,gradDir)]
+
+        dxinv = pdScaleDir / dxDir
+
+        CHF_MULTIDO[edgeGrid;i;j;k]
+
+          edgeGrad(CHF_IX[i;j;k]) =
+     &            dxinv * Jga(CHF_IX[i;j;k],gradDir)
+     &            * (phi(CHF_IX[i;j;k]) - phi(CHF_IX[i-gi;j-gj;k-gk]))
+
+        CHF_ENDDO
+
+      else
+c   ::: this is a transverse derivative
+
+        CHF_DTERM[
+        gi = CHF_ID(0,gradDir);
+        gj = CHF_ID(1,gradDir);
+        gk = CHF_ID(2,gradDir)]
+
+        CHF_DTERM[
+        ei = CHF_ID(0,edgeDir);
+        ej = CHF_ID(1,edgeDir);
+        ek = CHF_ID(2,edgeDir)]
+
+        dxinv = pdScaleDir * fourth / dxDir
+
+        CHF_MULTIDO[edgeGrid;i;j;k]
+
+          ! Jga is assumed to be centered in gradDir
+          edgeGrad(CHF_IX[i;j;k]) =
+     &            dxinv * Jga(CHF_IX[i;j;k],gradDir)
+     &            * (  extrap(CHF_IX[i+gi   ;j+gj   ;k+gk   ]) - extrap(CHF_IX[i-gi   ;j-gj   ;k-gk   ])
+     &               + extrap(CHF_IX[i+gi-ei;j+gj-ej;k+gk-ek]) - extrap(CHF_IX[i-gi-ei;j-gj-ej;k-gk-ek])  )
+
+        CHF_ENDDO
+
+      endif
+
+      return
+      end
+
+
+c -------------------------------------------------------------------
+c MappedCCGradScale
+c  This subroutine computes the cell-centered (CC) gradient in
+c  a single component direction.
+c
+c  INPUTS/OUTPUTS:
+c  grad      <=  cell centered gradient of phi in direction dir
+c  phi       => cell-centered field
+c  extrap    => phi with transverse ghosts extrapolated
+c  Jga       => Jg[gradDir]
+c  region    => CC box where grad is needed
+c  dx        => cell spacing
+c  pdScale   => a multiplier for each partial derivative
+c  gradDir   => direction of gradient
+c -----------------------------------------------------------------
+      subroutine MappedCCGradScale (
+     &    CHF_FRA1[grad],
+     &    CHF_CONST_FRA1[phi],
+     &    CHF_CONST_FRA1[extrap],
+     &    CHF_CONST_FRA[Jga],
+     &    CHF_BOX[region],
+     &    CHF_CONST_REALVECT[dx],
+     &    CHF_CONST_REALVECT[pdScale],
+     &    CHF_CONST_INT[gradDir])
+
+      integer CHF_DDECL[i ; j ; k ]
+      integer adir, bdir, cdir
+      integer CHF_DDECL[ai; aj; ak]
+      integer CHF_DDECL[bi; bj; bk]
+#if CH_SPACEDIM == 3
+      integer CHF_DDECL[ci; cj; ck]
+#endif
+      REAL_T CHF_DDECL[dxinva; dxinvb; dxinvc]
+      REAL_T CHF_DDECL[pda; pdb; pdc]
+
+      ! This wouldn't make much sense.
+      CH_assert(pdScale(gradDir) .ne. zero)
+
+      CHF_DTERM[
+      adir = gradDir;
+      bdir = mod((adir + 1), CH_SPACEDIM);
+      cdir = mod((adir + 2), CH_SPACEDIM)]
+
+      CHF_DTERM[
+      ai = CHF_ID(0,adir);
+      aj = CHF_ID(1,adir);
+      ak = CHF_ID(2,adir)]
+
+      CHF_DTERM[
+      bi = CHF_ID(0,bdir);
+      bj = CHF_ID(1,bdir);
+      bk = CHF_ID(2,bdir)]
+
+#if CH_SPACEDIM == 3
+      CHF_DTERM[
+      ci = CHF_ID(0,cdir);
+      cj = CHF_ID(1,cdir);
+      ck = CHF_ID(2,cdir)]
+#endif
+
+      CHF_DTERM[
+      dxinva = fourth * pdScale(adir) / dx(adir);
+      dxinvb = fourth * pdScale(bdir) / dx(bdir);
+      dxinvc = fourth * pdScale(cdir) / dx(cdir)]
+
+      ! Compute the gradient
+      CHF_MULTIDO[region;i;j;k]
+        CHF_DTERM[
+        pda = (phi(CHF_IX[i+ai;j+aj;k+ak]) - phi(CHF_IX[i-ai;j-aj;k-ak])) * dxinva;
+        pdb = (phi(CHF_IX[i+bi;j+bj;k+bk]) - phi(CHF_IX[i-bi;j-bj;k-bk])) * dxinvb;
+        pdc = (phi(CHF_IX[i+ci;j+cj;k+ck]) - phi(CHF_IX[i-ci;j-cj;k-ck])) * dxinvc]
+
+        grad(CHF_IX[i;j;k]) = CHF_DTERM[
+     &        (Jga(CHF_IX[i+ai;j+aj;k+ak],adir) + Jga(CHF_IX[i;j;k],adir)) * pda;
+     &      + (Jga(CHF_IX[i+ai;j+aj;k+ak],bdir) + Jga(CHF_IX[i;j;k],bdir)) * pdb;
+     &      + (Jga(CHF_IX[i+ai;j+aj;k+ak],cdir) + Jga(CHF_IX[i;j;k],cdir)) * pdc]
+      CHF_ENDDO
+
+      return
+      end
+
+
+
+c ----------------------------------------------------------------------
+c   modifies edge-centered gradients so that averaged cell-centered
+c   gradients will be one-sided extrapolations along coarse side of C/F
+c   interface
+c
+c   INPUTS/OUTPUTS:
+c   edgeGrad <=> edge centered gradients in direction dir
+c   mask      => integer flags indicating AMR coverage
+c   loEdgeBox => box which indicates lo edge of fine grid in direction dir
+c   hiEdgeBox => box which indicates hi edge of fine grid in direction dir
+c   dir       => direction of gradient (and of edges)
+c   doLo      => should we do correction on the low-side?
+c   doHi      => 1 if we should do correction on hi-side...
+c ------------------------------------------------------------------------
+      subroutine CRSEONESIDEGRAD (
+     &      CHF_FRA1[edgeGrad],
+     &      CHF_FIA1[mask],
+     &      CHF_BOX[loEdgeBox],
+     &      CHF_BOX[hiEdgeBox],
+     &      CHF_INT[dir],
+     &      CHF_INT[doLo],
+     &      CHF_INT[doHi])
+
+c ::: local variables
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii;jj;kk]
+
+      CHF_DTERM[
+      ii = CHF_ID(dir,0);
+      jj = CHF_ID(dir,1);
+      kk = CHF_ID(dir,2)]
+
+c ::: do low side
+      if (doLo.eq.1) then
+         CHF_MULTIDO[loEdgeBox;i;j;k]
+
+c     :: check to see if enough cells exist for full stencil
+         if (mask(CHF_IX[i-2*ii; j-2*jj; k-2*kk]).eq.MASKCOPY) then
+
+c     :: do linear extrapolation
+            edgeGrad(CHF_IX[i;j;k]) = two*edgeGrad(CHF_IX[i-ii;j-jj;k-kk])
+     &           -edgeGrad(CHF_IX[i-2*ii;j-2*jj;k-2*kk])
+
+         else if (mask(CHF_IX[i-ii;j-jj;k-kk]).eq.MASKCOPY) then
+
+c     ::: just do simple extrapolation
+            edgeGrad(CHF_IX[i;j;k]) = edgeGrad(CHF_IX[i-ii;j-jj;k-kk])
+
+         else
+c     ::: don't know what to do here, so do nothing...
+
+         endif
+
+         CHF_ENDDO
+
+      endif
+
+c ::: now do high end box
+
+      if (doHi.eq.1) then
+         CHF_MULTIDO[hiEdgeBox;i;j;k]
+
+c     :: check to see if enough cells exist for full stencil
+c     :: note that we only look one _cell_ over due to i-1/2 indexing
+c     :: of edges
+         if (mask(CHF_IX[i+ii; j+jj;k+kk]).eq.MASKCOPY) then
+
+c     :: do linear extrapolation
+            edgeGrad(CHF_IX[i;j;k]) = two*edgeGrad(CHF_IX[i+ii;j+jj;k+kk])
+     &           -edgeGrad(CHF_IX[i+2*ii;j+2*jj;k+2*kk])
+
+         else if (mask(CHF_IX[i;j;k]).eq.MASKCOPY) then
+
+c     ::: just do simple extrapolation
+            edgeGrad(CHF_IX[i;j;k]) = edgeGrad(CHF_IX[i+ii;j+jj;k+kk])
+
+         else
+c     ::: don't know what to do here, so do nothing...
+
+         endif
+
+         CHF_ENDDO
+      endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------------
+c   modifies CC gradients to use one-sided extrap along coarse side of
+c   CF interface
+c
+c   INPUTS/OUTPUTS:
+c   grad     <=> cell centered gradients in direction dir
+c   mask      => integer flags indicating AMR coverage
+c   loEdgeBox => box which indicates lo edge of fine grid in direction dir
+c   hiEdgeBox => box which indicates hi edge of fine grid in direction dir
+c   dir       => direction of gradient (and of edges)
+c   doLo      => should we do correction on the low-side?
+c   doHi      => 1 if we should do correction on hi-side...
+c ------------------------------------------------------------------------
+      subroutine SIMPLECRSEONESIDEGRAD (
+     &      CHF_FRA1[grad],
+     &      CHF_FIA1[mask],
+     &      CHF_BOX[loEdgeBox],
+     &      CHF_BOX[hiEdgeBox],
+     &      CHF_INT[dir],
+     &      CHF_INT[doLo],
+     &      CHF_INT[doHi])
+
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii;jj;kk]
+
+      CHF_DTERM[
+      ii = CHF_ID(dir,0);
+      jj = CHF_ID(dir,1);
+      kk = CHF_ID(dir,2)]
+
+      ! do low side
+      if (doLo.eq.1) then
+        CHF_MULTIDO[loEdgeBox;i;j;k]
+          ! check to see if enough cells exist for full stencil
+          if (mask(CHF_IX[i-3*ii; j-3*jj; k-3*kk]).eq.MASKCOPY) then
+            ! do linear extrapolation
+            grad(CHF_IX[i-ii;j-jj;k-kk])
+     &            = two * grad(CHF_IX[i-2*ii;j-2*jj;k-2*kk])
+     &            -       grad(CHF_IX[i-3*ii;j-3*jj;k-3*kk])
+
+          else if (mask(CHF_IX[i-ii;j-jj;k-kk]).eq.MASKCOPY) then
+
+            ! just do simple extrapolation
+            grad(CHF_IX[i-ii;j-jj;k-kk])
+     &            = grad(CHF_IX[i-2*ii;j-2*jj;k-2*kk])
+
+          else
+            ! don't know what to do here, so do nothing...
+          endif
+        CHF_ENDDO
+      endif
+
+      ! now do high end box
+      if (doHi.eq.1) then
+        CHF_MULTIDO[hiEdgeBox;i;j;k]
+          ! check to see if enough cells exist for full stencil
+          if (mask(CHF_IX[i+2*ii; j+2*jj;k+2*kk]).eq.MASKCOPY) then
+            ! do linear extrapolation
+            grad(CHF_IX[i;j;k])
+     &            = two * grad(CHF_IX[i+  ii;j+  jj;k+  kk])
+     &            -       grad(CHF_IX[i+2*ii;j+2*jj;k+2*kk])
+
+          else if (mask(CHF_IX[i;j;k]).eq.MASKCOPY) then
+            ! just do simple extrapolation
+            grad(CHF_IX[i;j;k])
+     &            = grad(CHF_IX[i+ii;j+jj;k+kk])
+
+          else
+            ! don't know what to do here, so do nothing...
+          endif
+        CHF_ENDDO
+      endif
+
+      return
+      end
+
+
+c -----------------------------------------------------------------
+c  CCGRADFC2D
+c  This subroutine computes the cell-centered CC.grad(FC)
+c  assumes all BC's already set, etc.
+c ----------------------------------------------------------------
+      subroutine CCGRADFC2D (
+     &      CHF_FRA1[sol],
+     &      CHF_CONST_FRA[CC],
+     &      CHF_CONST_FRA1[FC0],
+     &      CHF_CONST_FRA1[FC1],
+     &      CHF_BOX[region],
+     &      CHF_CONST_REALVECT[dx],
+     &      CHF_CONST_INT[dir])
+
+c ::: local variables
+      integer CHF_DDECL[dir0;dir1;dir2]
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii0;jj0;kk0]
+      integer CHF_DDECL[ii1;jj1;kk1]
+      REAL_T CHF_AUTODECL[invdx]
+
+      CHF_DTERM[
+      dir0 = dir;
+      dir1 = MOD(dir+1,CH_SPACEDIM);]
+
+      CHF_DTERM[
+      ii0 = CHF_ID(dir0,0);
+      jj0 = CHF_ID(dir0,1);
+      kk0 = CHF_ID(dir0,2)]
+
+      CHF_DTERM[
+      ii1 = CHF_ID(dir1,0);
+      jj1 = CHF_ID(dir1,1);
+      kk1 = CHF_ID(dir1,2)]
+
+      CHF_DTERM[
+      invdx0 = one / dx(dir0);
+      invdx1 = one / dx(dir1);]
+
+      CHF_MULTIDO[region;i;j;k]
+
+          sol(CHF_IX[i;j;k]) = CHF_DTERM[
+     &          CC(CHF_IX[i;j;k],dir0) * (FC0(CHF_IX[i+ii0;j+jj0;k+kk0]) - FC0(CHF_IX[i;j;k])) * invdx0;
+     &        + CC(CHF_IX[i;j;k],dir1) * (FC1(CHF_IX[i+ii1;j+jj1;k+kk1]) - FC1(CHF_IX[i;j;k])) * invdx1;]
+
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c  CCGRADFC3D
+c  This subroutine computes the cell-centered CC.grad(FC)
+c  assumes all BC's already set, etc.
+c ----------------------------------------------------------------
+      subroutine CCGRADFC3D (
+     &      CHF_FRA1[sol],
+     &      CHF_CONST_FRA[CC],
+     &      CHF_CONST_FRA1[FC0],
+     &      CHF_CONST_FRA1[FC1],
+     &      CHF_CONST_FRA1[FC2],
+     &      CHF_BOX[region],
+     &      CHF_CONST_REALVECT[dx],
+     &      CHF_CONST_INT[dir])
+
+c ::: local variables
+      integer CHF_DDECL[dir0;dir1;dir2]
+      integer CHF_DDECL[i;j;k]
+      integer CHF_DDECL[ii0;jj0;kk0]
+      integer CHF_DDECL[ii1;jj1;kk1]
+      integer CHF_DDECL[ii2;jj2;kk2]
+      REAL_T CHF_AUTODECL[invdx]
+
+      CHF_DTERM[
+      dir0 = dir;
+      dir1 = MOD(dir+1,CH_SPACEDIM);
+      dir2 = MOD(dir+2,CH_SPACEDIM)]
+
+      CHF_DTERM[
+      ii0 = CHF_ID(dir0,0);
+      jj0 = CHF_ID(dir0,1);
+      kk0 = CHF_ID(dir0,2)]
+
+      CHF_DTERM[
+      ii1 = CHF_ID(dir1,0);
+      jj1 = CHF_ID(dir1,1);
+      kk1 = CHF_ID(dir1,2)]
+
+#if CH_SPACEDIM > 2
+      CHF_DTERM[
+      ii2 = CHF_ID(dir2,0);
+      jj2 = CHF_ID(dir2,1);
+      kk2 = CHF_ID(dir2,2)]
+#endif
+
+      CHF_DTERM[
+      invdx0 = one / dx(dir0);
+      invdx1 = one / dx(dir1);
+      invdx2 = one / dx(dir2)]
+
+      CHF_MULTIDO[region;i;j;k]
+
+          sol(CHF_IX[i;j;k]) = CHF_DTERM[
+     &          CC(CHF_IX[i;j;k],dir0) * (FC0(CHF_IX[i+ii0;j+jj0;k+kk0]) - FC0(CHF_IX[i;j;k])) * invdx0;
+     &        + CC(CHF_IX[i;j;k],dir1) * (FC1(CHF_IX[i+ii1;j+jj1;k+kk1]) - FC1(CHF_IX[i;j;k])) * invdx1;
+     &        + CC(CHF_IX[i;j;k],dir2) * (FC2(CHF_IX[i+ii2;j+jj2;k+kk2]) - FC2(CHF_IX[i;j;k])) * invdx2]
+
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ---------------------------------------------------------------
+c DONEFORMCC
+c omega is a CC one-form.
+c alpha will be a CC two-form equal to d(omega).
+c ----------------------------------------------------------------
+      subroutine DONEFORMCC (
+     &      CHF_FRA[alpha],
+     &      CHF_CONST_FRA[omega],
+     &      CHF_BOX[region],
+     &      CHF_CONST_REALVECT[dx])
+
+      ! Declare variables
+      integer CHF_DDECL[i; j; k]
+      integer CHF_DDECL[ii1; jj1; kk1]
+      integer CHF_DDECL[ii2; jj2; kk2]
+      REAL_T CHF_AUTODECL[scale]
+
+#ifndef NDEBUG
+      ! Sanity checks
+      if (CH_SPACEDIM .eq. 2 .and. CHF_NCOMP[alpha] .eq. 1) then
+        ! OK
+      else if (CH_SPACEDIM .eq. 3 .and. CHF_NCOMP[alpha] .eq. 3) then
+        ! OK
+      else
+        print*, 'DONEFORMCC: alpha has bad number of comps, ', CHF_NCOMP[alpha], ' or SpaceDim is invalid,', CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      if (CHF_NCOMP[omega] .ne. CH_SPACEDIM) then
+        print*, 'DONEFORMCC: omega has bad number of comps ', CHF_NCOMP[omega]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ! Derivative stencils are 2*dx wide
+      CHF_DTERM[
+      scale0 = half / dx(0);
+      scale1 = half / dx(1);
+      scale2 = half / dx(2)]
+
+#if CH_SPACEDIM == 2
+      ! Loop through this grid and do calculation
+      CHF_MULTIDO[region; i; j; k]
+        alpha(CHF_IX[i;j;k],0) = (omega(CHF_IX[i+1;j  ;k  ],1) - omega(CHF_IX[i-1;j  ;k  ],1)) * scale0
+     &                         - (omega(CHF_IX[i  ;j+1;k  ],0) - omega(CHF_IX[i  ;j-1;k  ],0)) * scale1
+      CHF_ENDDO
+
+#elif CH_SPACEDIM == 3
+      ! Loop through this grid and do calculation
+      CHF_MULTIDO[region; i; j; k]
+        alpha(CHF_IX[i;j;k],0) = (omega(CHF_IX[i  ;j+1;k  ],2) - omega(CHF_IX[i  ;j-1;k  ],2)) * scale1
+     &                         - (omega(CHF_IX[i  ;j  ;k+1],1) - omega(CHF_IX[i  ;j  ;k-1],1)) * scale2
+
+        alpha(CHF_IX[i;j;k],1) = (omega(CHF_IX[i  ;j  ;k+1],0) - omega(CHF_IX[i  ;j  ;k-1],0)) * scale2
+     &                         - (omega(CHF_IX[i+1;j  ;k  ],2) - omega(CHF_IX[i-1;j  ;k  ],2)) * scale0
+
+        alpha(CHF_IX[i;j;k],2) = (omega(CHF_IX[i+1;j  ;k  ],1) - omega(CHF_IX[i-1;j  ;k  ],1)) * scale0
+     &                         - (omega(CHF_IX[i  ;j+1;k  ],0) - omega(CHF_IX[i  ;j-1;k  ],0)) * scale1
+      CHF_ENDDO
+
+#else
+#  error Bad SPACEDIM
+#endif
+
+      return
+      end
+
+
+C -----------------------------------------------------------------
+C MAPPEDFLUXDIVERGENCE1D
+C  Computes the divergence of fluxes at faces over the cell-centered
+C  box a_region.
+C  DIV[fluxes] = Sum of flux at faces of cell / (J*dx)
+C ------------------------------------------------------------------
+      subroutine MAPPEDFLUXDIVERGENCE1D (
+     &    CHF_FRA[div],
+     &    CHF_CONST_FRA[flux0],
+     &    CHF_CONST_FRA1[Jinv],
+     &    CHF_BOX[region],
+     &    CHF_CONST_REAL[dx])
+
+      REAL_T dxinv
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp
+
+      ncomp = CHF_NCOMP[div]
+      dxinv = one / dx
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[flux0]) then
+         print*, 'MAPPEDFLUXDIVERGENCE1D: div and flux0 incompatible'
+         call MAYDAYERROR()
+      endif
+
+#     if CH_SPACEDIM == 2
+          ! 2D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;1] .ne. 0) .or. (CHF_UBOUND[region;1] .ne. 0)) then
+            print*, "MAPPEDFLUXDIVERGENCE1D: Called 1D function while CH_SPACEDIM = 2 and region is not flat"
+            call MAYDAYERROR()
+          endif
+#     else
+        ! 3D code should never call this function.
+        ! 5D is right out.
+        print*, "MAPPEDFLUXDIVERGENCE1D: Called 1D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(div,0,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE1D: div does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(flux0,1,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE1D: flux0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE1D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+        CHF_MULTIDO[region; i; j; k]
+          div(CHF_IX[i;j;k],n) = Jinv(CHF_IX[i;j;k]) * dxinv
+     &                         * (flux0(CHF_IX[i+1;j;k],n) - flux0(CHF_IX[i;j;k],n))
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+C ------------------------------------------------------------------
+C MAPPEDFLUXDIVERGENCE2D
+C  Computes the divergence of fluxes at faces over the cell-centered
+C  box a_region.
+C  DIV[fluxes] = Sum of flux at faces of cell / (J*dx)
+C ------------------------------------------------------------------
+      subroutine MAPPEDFLUXDIVERGENCE2D (
+     &    CHF_FRA[div],
+     &    CHF_CONST_FRA[flux0],
+     &    CHF_CONST_FRA[flux1],
+     &    CHF_CONST_FRA1[Jinv],
+     &    CHF_BOX[region],
+     &    CHF_CONST_REALVECT[dx])
+
+      REAL_T CHF_AUTODECL[dxinv]
+      integer CHF_DDECL[i;j;k]
+      integer n,ncomp
+
+      ncomp = CHF_NCOMP[div]
+
+      CHF_DTERM[
+      dxinv0 = one / dx(0);
+      dxinv1 = one / dx(1);]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[flux0]) then
+         print*, 'MAPPEDFLUXDIVERGENCE2D: div and flux0 incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if(ncomp .ne. CHF_NCOMP[flux1]) then
+         print*, 'MAPPEDFLUXDIVERGENCE2D: div and flux1 incompatible'
+         call MAYDAYERROR()
+      endif
+
+#     if CH_SPACEDIM == 2
+        ! No problem here !
+#     else
+#       if CH_SPACEDIM == 3
+          ! 3D code may call this function to perform a flat Poisson solve.
+          ! If the region is flat, then assume this is the case.
+          if ((CHF_LBOUND[region;2] .ne. 0) .or. (CHF_UBOUND[region;2] .ne. 0)) then
+            print*, "MAPPEDFLUXDIVERGENCE2D: Called 2D function while CH_SPACEDIM = 3 and region is not flat"
+            call MAYDAYERROR()
+          endif
+#       else
+          ! 1D code should never call this function.
+          ! 5D is right out.
+          print*, "MAPPEDFLUXDIVERGENCE2D: Called 2D function while CH_SPACEDIM = ", CH_SPACEDIM
+          call MAYDAYERROR()
+#       endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(div,0,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE2D: div does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(flux0,1,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE2D: flux0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(flux1,0,1,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE2D: flux1 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE2D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+        CHF_MULTIDO[region; i; j; k]
+          div(CHF_IX[i;j;k],n) = Jinv(CHF_IX[i;j;k]) * (CHF_DTERM[
+     &                             (flux0(CHF_IX[i+1;j  ;k  ],n) - flux0(CHF_IX[i  ;j  ;k  ],n)) * dxinv0;
+     &                           + (flux1(CHF_IX[i  ;j+1;k  ],n) - flux1(CHF_IX[i  ;j  ;k  ],n)) * dxinv1;])
+        CHF_ENDDO
+      enddo
+
+      return
+      end
+
+
+C ------------------------------------------------------------------
+C MAPPEDFLUXDIVERGENCE3D
+C  Computes the divergence of fluxes at faces over the cell-centered
+C  box a_region.
+C  DIV[fluxes] = Sum of flux at faces of cell / (J*dx)
+C ------------------------------------------------------------------
+      subroutine MAPPEDFLUXDIVERGENCE3D (
+     &    CHF_FRA[div],
+     &    CHF_CONST_FRA[flux0],
+     &    CHF_CONST_FRA[flux1],
+     &    CHF_CONST_FRA[flux2],
+     &    CHF_CONST_FRA1[Jinv],
+     &    CHF_BOX[region],
+     &    CHF_CONST_REALVECT[dx])
+
+      REAL_T CHF_AUTODECL[dxinv]
+      integer n,ncomp
+
+      ncomp = CHF_NCOMP[div]
+
+      CHF_DTERM[
+      dxinv0 = one / dx(0);
+      dxinv1 = one / dx(1);
+      dxinv2 = one / dx(2)]
+
+#ifndef NDEBUG
+      ! Check dims
+      if (CH_SPACEDIM .ne. 3) then
+        print*, "MAPPEDFLUXDIVERGENCE3D: Called 3D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      ! Check comps
+      if(ncomp .ne. CHF_NCOMP[flux0]) then
+         print*, 'MAPPEDFLUXDIVERGENCE3D: div and flux0 incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if(ncomp .ne. CHF_NCOMP[flux1]) then
+         print*, 'MAPPEDFLUXDIVERGENCE3D: div and flux1 incompatible'
+         call MAYDAYERROR()
+      endif
+
+#     if CH_SPACEDIM == 3
+        if(ncomp .ne. CHF_NCOMP[flux2]) then
+          print*, 'MAPPEDFLUXDIVERGENCE3D: div and flux2 incompatible'
+          call MAYDAYERROR()
+        endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(div,0,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE3D: div does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(flux0,1,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE3D: flux0 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(flux1,0,1,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE3D: flux1 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(flux2,0,0,1, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE3D: flux2 does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'MAPPEDFLUXDIVERGENCE3D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+#if CH_SPACEDIM > 2
+        div(iregionlo0:iregionhi0, iregionlo1:iregionhi1, iregionlo2:iregionhi2, n)
+     &    = Jinv(iregionlo0:iregionhi0, iregionlo1:iregionhi1, iregionlo2:iregionhi2) * (
+     &      (  flux0(iregionlo0+1:iregionhi0+1, iregionlo1  :iregionhi1  , iregionlo2  :iregionhi2  , n)
+     &       - flux0(iregionlo0  :iregionhi0  , iregionlo1  :iregionhi1  , iregionlo2  :iregionhi2  , n)  ) * dxinv0
+     &    + (  flux1(iregionlo0  :iregionhi0  , iregionlo1+1:iregionhi1+1, iregionlo2  :iregionhi2  , n)
+     &       - flux1(iregionlo0  :iregionhi0  , iregionlo1  :iregionhi1  , iregionlo2  :iregionhi2  , n)  ) * dxinv1
+     &    + (  flux2(iregionlo0  :iregionhi0  , iregionlo1  :iregionhi1  , iregionlo2+1:iregionhi2+1, n)
+     &       - flux2(iregionlo0  :iregionhi0  , iregionlo1  :iregionhi1  , iregionlo2  :iregionhi2  , n)  ) * dxinv2)
+#else
+        div(iregionlo0:iregionhi0, iregionlo1:iregionhi1 , n)
+     &    = Jinv(iregionlo0:iregionhi0, iregionlo1:iregionhi1) * (
+     &      (  flux0(iregionlo0+1:iregionhi0+1, iregionlo1  :iregionhi1  , n)
+     &       - flux0(iregionlo0  :iregionhi0  , iregionlo1  :iregionhi1  , n)  ) * dxinv0
+     &    + (  flux1(iregionlo0  :iregionhi0  , iregionlo1+1:iregionhi1+1, n)
+     &       - flux1(iregionlo0  :iregionhi0  , iregionlo1  :iregionhi1  , n)  ) * dxinv1)
+#endif
+      enddo
+
+      return
+      end
+
+
+C ------------------------------------------------------------------
+C MappedMACDivScale*D
+C  Computes the divergence of fluxes at faces over the cell-centered
+C  box a_region.
+C  DIV[fluxes] = Sum of flux at faces of cell / (J*dx)
+C ------------------------------------------------------------------
+      subroutine MappedMACDivScale2D (
+     &    CHF_FRA[div],
+     &    CHF_CONST_FRA[flux0],
+     &    CHF_CONST_FRA[flux1],
+     &    CHF_CONST_FRA1[Jinv],
+     &    CHF_BOX[region],
+     &    CHF_CONST_REALVECT[dx],
+     &    CHF_CONST_REALVECT[pdScale])
+
+      REAL_T dxinv(0:1)
+      integer n,ncomp
+
+      ncomp = CHF_NCOMP[div]
+
+      CHF_DTERM[
+      dxinv(0) = pdScale(0) / dx(0);
+      dxinv(1) = pdScale(1) / dx(1);]
+
+#ifndef NDEBUG
+      ! Check dims
+      if (CH_SPACEDIM .ne. 2) then
+        print*, "MappedMACDivScale2D: Called 2D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      ! Check comps
+      if (pdScale(0) .ne. 0) then
+        if(ncomp .ne. CHF_NCOMP[flux0]) then
+           print*, 'MappedMACDivScale2D: div and flux0 incompatible'
+           call MAYDAYERROR()
+        endif
+      endif
+
+      if (pdScale(1) .ne. 0) then
+        if(ncomp .ne. CHF_NCOMP[flux1]) then
+           print*, 'MappedMACDivScale2D: div and flux1 incompatible'
+           call MAYDAYERROR()
+        endif
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(div,0,0,0, region,0,0,0)) then
+        print*, 'MappedMACDivScale2D: div does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (pdScale(0) .ne. 0) then
+        if (.not. CHECK_CONTAINS(flux0,1,0,0, region,0,0,0)) then
+          print*, 'MappedMACDivScale2D: flux0 does not contain region'
+          call MAYDAYERROR()
+        endif
+      endif
+
+      if (pdScale(1) .ne. 0) then
+        if (.not. CHECK_CONTAINS(flux1,0,1,0, region,0,0,0)) then
+          print*, 'MappedMACDivScale2D: flux1 does not contain region'
+          call MAYDAYERROR()
+        endif
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'MappedMACDivScale2D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+        if (CHF_DTERM[dxinv(0).ne.zero; .and. dxinv(1).ne.zero; ]) then
+          div(CHF_DDECL[iregionlo0:iregionhi0; iregionlo1:iregionhi1; iregionlo2:iregionhi2], n)
+     &      = Jinv(CHF_DDECL[iregionlo0:iregionhi0; iregionlo1:iregionhi1; iregionlo2:iregionhi2]) * (
+     &        (  flux0(CHF_DDECL[iregionlo0+1:iregionhi0+1; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)
+     &         - flux0(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)  ) * dxinv(0)
+     &      + (  flux1(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1+1:iregionhi1+1; iregionlo2  :iregionhi2  ], n)
+     &         - flux1(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)  ) * dxinv(1))
+
+        else if (CHF_DTERM[dxinv(0).ne.zero; .and. dxinv(1).eq.zero; ]) then
+          div(CHF_DDECL[iregionlo0:iregionhi0; iregionlo1:iregionhi1; iregionlo2:iregionhi2], n)
+     &      = Jinv(CHF_DDECL[iregionlo0:iregionhi0; iregionlo1:iregionhi1; iregionlo2:iregionhi2]) * (
+     &        (  flux0(CHF_DDECL[iregionlo0+1:iregionhi0+1; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)
+     &         - flux0(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)  ) * dxinv(0) )
+
+        else
+          print*, 'MappedMACDivScale2D needs to be expanded.'
+          call MAYDAYERROR()
+        endif
+      enddo
+
+      return
+      end
+
+
+      subroutine MappedMACDivScale3D (
+     &    CHF_FRA[div],
+     &    CHF_CONST_FRA[flux0],
+     &    CHF_CONST_FRA[flux1],
+     &    CHF_CONST_FRA[flux2],
+     &    CHF_CONST_FRA1[Jinv],
+     &    CHF_BOX[region],
+     &    CHF_CONST_REALVECT[dx],
+     &    CHF_CONST_REALVECT[pdScale])
+
+      REAL_T dxinv(0:2)
+      integer n,ncomp
+
+      ncomp = CHF_NCOMP[div]
+
+      CHF_DTERM[
+      dxinv(0) = pdScale(0) / dx(0);
+      dxinv(1) = pdScale(1) / dx(1);
+      dxinv(2) = pdScale(2) / dx(2)]
+
+#ifndef NDEBUG
+      ! Check dims
+      if (CH_SPACEDIM .ne. 3) then
+        print*, "MappedMACDivScale3D: Called 3D function while CH_SPACEDIM = ", CH_SPACEDIM
+        call MAYDAYERROR()
+      endif
+
+      ! Check comps
+      if (pdScale(0) .ne. 0) then
+        if(ncomp .ne. CHF_NCOMP[flux0]) then
+           print*, 'MappedMACDivScale3D: div and flux0 incompatible'
+           call MAYDAYERROR()
+        endif
+      endif
+
+      if (pdScale(1) .ne. 0) then
+        if(ncomp .ne. CHF_NCOMP[flux1]) then
+           print*, 'MappedMACDivScale3D: div and flux1 incompatible'
+           call MAYDAYERROR()
+        endif
+      endif
+
+#     if CH_SPACEDIM == 3
+        if (pdScale(2) .ne. 0) then
+          if(ncomp .ne. CHF_NCOMP[flux2]) then
+            print*, 'MappedMACDivScale3D: div and flux2 incompatible'
+            call MAYDAYERROR()
+          endif
+        endif
+#     endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(div,0,0,0, region,0,0,0)) then
+        print*, 'MappedMACDivScale3D: div does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (pdScale(0) .ne. 0) then
+        if (.not. CHECK_CONTAINS(flux0,1,0,0, region,0,0,0)) then
+          print*, 'MappedMACDivScale3D: flux0 does not contain region'
+          call MAYDAYERROR()
+        endif
+      endif
+
+      if (pdScale(1) .ne. 0) then
+        if (.not. CHECK_CONTAINS(flux1,0,1,0, region,0,0,0)) then
+          print*, 'MappedMACDivScale3D: flux1 does not contain region'
+          call MAYDAYERROR()
+        endif
+      endif
+
+#     if CH_SPACEDIM == 3
+        if (pdScale(2) .ne. 0) then
+          if (.not. CHECK_CONTAINS(flux2,0,0,1, region,0,0,0)) then
+            print*, 'MappedMACDivScale3D: flux2 does not contain region'
+            call MAYDAYERROR()
+          endif
+        endif
+#     endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'MappedMACDivScale3D: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      do n = 0, ncomp-1
+        if (CHF_DTERM[dxinv(0).ne.zero; .and. dxinv(1).ne.zero; .and. dxinv(2).ne.zero]) then
+          div(CHF_DDECL[iregionlo0:iregionhi0; iregionlo1:iregionhi1; iregionlo2:iregionhi2], n)
+     &      = Jinv(CHF_DDECL[iregionlo0:iregionhi0; iregionlo1:iregionhi1; iregionlo2:iregionhi2]) * (
+     &        (  flux0(CHF_DDECL[iregionlo0+1:iregionhi0+1; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)
+     &         - flux0(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)  ) * dxinv(0)
+     &      + (  flux1(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1+1:iregionhi1+1; iregionlo2  :iregionhi2  ], n)
+     &         - flux1(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)  ) * dxinv(1)
+     &      + (  flux2(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2+1:iregionhi2+1], n)
+     &         - flux2(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)  ) * dxinv(2))
+
+        else if (CHF_DTERM[dxinv(0).ne.zero; .and. dxinv(1).ne.zero; .and. dxinv(2).eq.zero]) then
+          div(CHF_DDECL[iregionlo0:iregionhi0; iregionlo1:iregionhi1; iregionlo2:iregionhi2], n)
+     &      = Jinv(CHF_DDECL[iregionlo0:iregionhi0; iregionlo1:iregionhi1; iregionlo2:iregionhi2]) * (
+     &        (  flux0(CHF_DDECL[iregionlo0+1:iregionhi0+1; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)
+     &         - flux0(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)  ) * dxinv(0)
+     &      + (  flux1(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1+1:iregionhi1+1; iregionlo2  :iregionhi2  ], n)
+     &         - flux1(CHF_DDECL[iregionlo0  :iregionhi0  ; iregionlo1  :iregionhi1  ; iregionlo2  :iregionhi2  ], n)  ) * dxinv(1))
+
+        else
+          print*, 'MappedMACDivScale3D needs to be expanded.'
+          call MAYDAYERROR()
+        endif
+      enddo
+
+      return
+      end
+
+
+C ------------------------------------------------------------------
+C MappedCCDivScale
+C  Computes the CC divergence using a simple, star shaped stencil.
+C  flux requires exactly SPACEDIM comps!
+C ------------------------------------------------------------------
+      subroutine MappedCCDivScale (
+     &    CHF_FRA1[div],
+     &    CHF_CONST_FRA[flux],
+     &    CHF_CONST_FRA1[Jinv],
+     &    CHF_BOX[region],
+     &    CHF_CONST_REALVECT[dx],
+     &    CHF_CONST_REALVECT[pdScale])
+
+      REAL_T dxinv(0:CH_SPACEDIM-1)
+      integer CHF_AUTODECL[i]
+
+      CHF_DTERM[
+      dxinv(0) = half * pdScale(0) / dx(0);
+      dxinv(1) = half * pdScale(1) / dx(1);
+      dxinv(2) = half * pdScale(2) / dx(2);]
+
+#ifndef NDEBUG
+      ! Check comps
+      if(CHF_NCOMP[flux] .ne. CH_SPACEDIM) then
+         print*, 'MappedCCDivScale: flux must have SpaceDim comps, ', CHF_NCOMP[flux]
+         call MAYDAYERROR()
+      endif
+
+      ! Check data regions
+      if (.not. CHECK_CONTAINS(div,0,0,0, region,0,0,0)) then
+        print*, 'MappedCCDivScale: div does not contain region'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(flux,0,0,0, region,1,1,1)) then
+        print*, 'MappedCCDivScale: flux does not contain region + 1 ghost'
+        call MAYDAYERROR()
+      endif
+
+      if (.not. CHECK_CONTAINS(Jinv,0,0,0, region,0,0,0)) then
+        print*, 'MappedCCDivScale: Jinv does not contain region'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      CHF_AUTOMULTIDO[region;i]
+        div(CHF_AUTOIX[i]) = Jinv(CHF_AUTOIX[i]) * (CHF_DTERM[
+     &        (flux(CHF_IX[i0+1;i1  ;i2  ],0) - flux(CHF_IX[i0-1;i1  ;i2  ],0)) * dxinv(0);
+     &      + (flux(CHF_IX[i0  ;i1+1;i2  ],1) - flux(CHF_IX[i0  ;i1-1;i2  ],1)) * dxinv(1);
+     &      + (flux(CHF_IX[i0  ;i1  ;i2+1],2) - flux(CHF_IX[i0  ;i1  ;i2-1],2)) * dxinv(2)])
+      CHF_ENDDO
+
+      return
+      end
