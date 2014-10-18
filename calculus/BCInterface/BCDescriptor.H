@@ -1,13 +1,30 @@
 #ifdef CH_LANG_CC
 /*******************************************************************************
- *    FILE: BCDescriptor.H
- *    DESC: A set of classes that help the PoissonOp identify what BCs are
- *          being applyed in an attempt to minimize numerical noise.
- *    DATE: Thu 06 Jun 2013 10:50:38 PM EDT
- *    MAIL: EdSantilli@gmail.com
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
-#endif // CH_LANG_CC
 
+// This file contains a set of classes that help the elliptic operators identify
+// what BCs are being applyed in an attempt to minimize numerical noise.
+#endif // CH_LANG_CC
 
 #ifndef __BCDescriptor_H__INCLUDED__
 #define __BCDescriptor_H__INCLUDED__

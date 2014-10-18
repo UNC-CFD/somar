@@ -1,10 +1,24 @@
 /*******************************************************************************
- *  FILE: VelBCHolder.H
- *  DESC: BC interface for the VelocityAMRPoissonOp class.
- *  DATE: Some time around Thu 24 May 2012, I think.
- *  MAIL: santilli@physics.unc.edu
- *  NOTE: This is a rework of VelBCHolder in Chombo's AMRINS example.
- *        Make sure this class DOES NOT own level-dependent data.
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
 #ifndef __VELBCHOLDER_H__INCLUDED__
 #define __VELBCHOLDER_H__INCLUDED__
@@ -14,12 +28,14 @@
 #include "Tuple.H"
 
 
+// -----------------------------------------------------------------------------
 // This is a physical BC class designed to handle all velocity components.
 // It is used by VelocityAMRPoissonOp.
 //
 // TODO: I don't like this. Either BCMethodHolder should be altered to work
 // properly on multi-component datasets, or this should specialize (be a child
 // of) BCMethodHolder. When SOMAR gets revamped, this class will not survive.
+// -----------------------------------------------------------------------------
 class VelBCHolder
 {
 public:
