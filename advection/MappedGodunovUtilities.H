@@ -1,14 +1,25 @@
 /*******************************************************************************
- *    FILE: MappedGodunovUtilities.H
- *    DESC: Utility class for higher-order Godunov methods: slopes, parabolic
- *          interpolants, limiters. Contains no physics-dependent methods, but
- *          one of the member functions (PPMFaceValues()) may require a pointer
- *          to a GodunovPhysics class in order to set boundary slopes.
- *          Basically, this is a rewrite of Chombo's GodunovUtilities.
- *    DATE: Wed 30 Oct 2013 10:26:26 PM EDT
- *    MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
-
 #ifndef __MappedGodunovUtilities_H__INCLUDED__
 #define __MappedGodunovUtilities_H__INCLUDED__
 
@@ -19,6 +30,13 @@
 #include "FluxBox.H"
 
 
+// -----------------------------------------------------------------------------
+// Utility class for higher-order Godunov methods: slopes, parabolic
+// interpolants, limiters. Contains no physics-dependent methods, but
+// one of the member functions (PPMFaceValues()) may require a pointer
+// to a GodunovPhysics class in order to set boundary slopes.
+// Basically, this is a rewrite of Chombo's GodunovUtilities.
+// -----------------------------------------------------------------------------
 class MappedGodunovUtilities
 {
 public:
