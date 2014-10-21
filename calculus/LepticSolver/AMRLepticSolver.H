@@ -1,10 +1,26 @@
 /*******************************************************************************
- *    FILE: AMRLepticSolver.H
- *    DESC: The AMR version of the leptic solver, as the file name suggests.
- *    DATE: Sun 18 May 2014 12:49:21 PM EDT  (UTC-0400)
- *    MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Developed by Ed Santilli & Alberto Scotti
+ *  Copyright (C) 2014 University of North Carolina at Chapel Hill
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
-
 #ifndef AMRLepticSolver_H__INCLUDED__
 #define AMRLepticSolver_H__INCLUDED__
 
@@ -12,6 +28,17 @@
 #include "LevelLepticSolver.H"
 
 
+// -----------------------------------------------------------------------------
+// The AMR version of the leptic solver.
+//
+// You are looking at the prototype of the AMR leptic method. This solver has
+// been working well for us, but the class itself is not 100% user-friendly.
+// There are a lot of parameters to set -- many of which are hard coded. In the
+// next version of this code, we hope to create a more versatile solver that is
+// a bit more automatic. That is, if you just need to solve equations without
+// getting under the hood, we should be able to provide a leptic solver with
+// less knobs to turn. -ES
+// -----------------------------------------------------------------------------
 class AMRLepticSolver: public AMREllipticSolver<LevelData<FArrayBox> >
 {
 public:

@@ -127,8 +127,8 @@ endif
 
 
 DIM           = 2
-DEBUG         = FALSE
-OPT           = HIGH	# FALSE, TRUE, HIGH
+DEBUG         = TRUE
+OPT           = FALSE	# FALSE, TRUE, HIGH
 PRECISION     = DOUBLE
 PROFILE       = FALSE
 MPI           = TRUE

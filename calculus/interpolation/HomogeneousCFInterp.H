@@ -1,17 +1,38 @@
 /*******************************************************************************
- *    FILE: HomogeneousCFInterp.H
- *    DESC: Assumes 0 on a coarser level and interpolates ghosts.
- *    DATE: Fri 22 Nov 2013 02:49:43 PM EST
- *    MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Developed by Ed Santilli & Alberto Scotti
+ *  Copyright (C) 2014 University of North Carolina at Chapel Hill
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
-
-#ifndef __FileName_H__INCLUDED__
-#define __FileName_H__INCLUDED__
+#ifndef __HomogeneousCFInterp_H__INCLUDED__
+#define __HomogeneousCFInterp_H__INCLUDED__
 
 #include "CFRegion.H"
 #include "IntVectSet.H"
 #include "LevelData.H"
 #include "RealVect.H"
+
+
+// Utilities that interpolate ghosts assuming 0 on a coarser level.
+// These functions are modifications of functions originally found in Chombo's
+// AMRPoissonOp class.
 
 
 // Interpolate ghosts at CF interface using zeros on coarser grids.
@@ -42,4 +63,4 @@ void homogeneousCFInterp (LevelData<FArrayBox>& a_phif,
                           const IntVect&        a_applyDirs = IntVect::Unit);
 
 
-#endif //!__FileName_H__INCLUDED__
+#endif //!__HomogeneousCFInterp_H__INCLUDED__

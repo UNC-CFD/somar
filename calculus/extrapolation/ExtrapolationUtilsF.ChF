@@ -1,112 +1,34 @@
+c*******************************************************************************
+c  SOMAR - Stratified Ocean Model with Adaptive Refinement
+c  Developed by Ed Santilli & Alberto Scotti
+c  Copyright (C) 2014 University of North Carolina at Chapel Hill
+c
+c  This library is free software; you can redistribute it and/or
+c  modify it under the terms of the GNU Lesser General Public
+c  License as published by the Free Software Foundation; either
+c  version 2.1 of the License, or (at your option) any later version.
+c
+c  This library is distributed in the hope that it will be useful,
+c  but WITHOUT ANY WARRANTY; without even the implied warranty of
+c  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+c  Lesser General Public License for more details.
+c
+c  You should have received a copy of the GNU Lesser General Public
+c  License along with this library; if not, write to the Free Software
+c  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+c  USA
+c
+c  For up-to-date contact information, please visit the repository homepage,
+c  https://github.com/somarhub.
+c*******************************************************************************
 #include "CONSTANTS.H"
-#define IMPLEMENT_HOEXTRAP
+
+
+! If you plan to use cubic or quartic extrapolation, then define this macro.
+! #define IMPLEMENT_HOEXTRAP
 
 
 C     ------------------------------------------------------------------
-      subroutine ExtrapolateDiagEdgeF (
-     &     CHF_FRA[dest],
-     &     CHF_CONST_FRA[src],
-     &     CHF_BOX[toRegion],
-     &     CHF_CONST_INT[dir1],
-     &     CHF_CONST_INT[sidesign1],
-     &     CHF_CONST_INT[dir2],
-     &     CHF_CONST_INT[sidesign2],
-     &     CHF_CONST_INT[order])
-
-      integer n,ncomp,tmp
-      integer CHF_AUTODECL[i]
-      integer CHF_AUTODECL[ii]
-
-#ifndef NDEBUG
-      if (CHF_NCOMP[dest] .ne. ncomp) then
-         print*, 'ExtrapolateDiagEdgeF: src and dest are incompatible'
-         call MAYDAYERROR()
-      endif
-
-      if (dir1 .lt. 0 .or. CH_SPACEDIM .le. dir1) then
-         print*, 'ExtrapolateDiagEdgeF: bad dir1 = ', dir1
-         call MAYDAYERROR()
-      endif
-
-      if (dir2 .lt. 0 .or. CH_SPACEDIM .le. dir2) then
-         print*, 'ExtrapolateDiagEdgeF: bad dir2 = ', dir2
-         call MAYDAYERROR()
-      endif
-
-      if (dir1 .eq. dir2) then
-         print*, 'ExtrapolateDiagEdgeF: dir1 cannot equal dir2'
-         call MAYDAYERROR()
-      endif
-#endif
-
-      ! Set dir1 < dir2
-      if (dir1.gt.dir2) then
-        tmp = dir1
-        dir1 = dir2
-        dir2 = tmp
-
-        tmp = sidesign1
-        sidesign1 = sidesign2
-        sidesign2 = tmp
-      endif
-
-      ! Set ii to point in direction of toRegion from valid cells
-      if (dir1.eq.0 .and. dir2.eq.1) then
-        CHF_DTERM[
-        ii0 = sidesign1;
-        ii1 = sidesign2;
-        ii2 = 0]
-      else if (dir1.eq.0 .and. dir2.eq.2) then
-        CHF_DTERM[
-        ii0 = sidesign1;
-        ii1 = 0;
-        ii2 = sidesign2]
-      else
-        CHF_DTERM[
-        ii0 = 0;
-        ii1 = sidesign1;
-        ii2 = sidesign2]
-      endif
-
-      if (order .eq. 0) then
-        do n = 0, ncomp-1
-          CHF_AUTOMULTIDO[toRegion; i]
-            dest(CHF_AUTOIX[i],n)
-     &        = src(CHF_OFFSETIX[i;-ii],n)
-          CHF_ENDDO
-        enddo
-
-      else if (order .eq. 1) then
-        do n = 0, ncomp-1
-          CHF_AUTOMULTIDO[toRegion; i]
-            dest(CHF_AUTOIX[i],n)
-     &        = two * src(CHF_OFFSETIX[i;-  ii],n)
-     &        -       src(CHF_OFFSETIX[i;-2*ii],n)
-          CHF_ENDDO
-        enddo
-
-      else if (order .eq. 2) then
-        do n = 0, ncomp-1
-          CHF_AUTOMULTIDO[toRegion; i]
-            dest(CHF_AUTOIX[i],n)
-     &        = three * ( src(CHF_OFFSETIX[i;-  ii],n)
-     &                   -src(CHF_OFFSETIX[i;-2*ii],n) )
-     &        + src(CHF_OFFSETIX[i;-3*ii],n)
-          CHF_ENDDO
-        enddo
-
-      else
-         print*, 'ExtrapolateDiagEdgeF: order is invalid'
-         call MAYDAYERROR()
-      endif
-
-      return
-      end
-
-
-
-C     ------------------------------------------------------------------
-C     subroutine EXTRAPOLATEFACENOEV
 C     Extrapolation BCs for a side, specified component interval
 C     ------------------------------------------------------------------
       subroutine EXTRAPOLATEFACENOEV (
@@ -211,10 +133,114 @@ C     ------------------------------------------------------------------
       end
 
 
+C     ------------------------------------------------------------------
+C     Diagonally extrapolates CC corner ghost cells.
+C     This is not acutally used by SOMAR, but provided for convenience.
+C     ------------------------------------------------------------------
+      subroutine ExtrapolateDiagEdgeF (
+     &     CHF_FRA[dest],
+     &     CHF_CONST_FRA[src],
+     &     CHF_BOX[toRegion],
+     &     CHF_CONST_INT[dir1],
+     &     CHF_CONST_INT[sidesign1],
+     &     CHF_CONST_INT[dir2],
+     &     CHF_CONST_INT[sidesign2],
+     &     CHF_CONST_INT[order])
+
+      integer n,ncomp,tmp
+      integer CHF_AUTODECL[i]
+      integer CHF_AUTODECL[ii]
+
+#ifndef NDEBUG
+      if (CHF_NCOMP[dest] .ne. ncomp) then
+         print*, 'ExtrapolateDiagEdgeF: src and dest are incompatible'
+         call MAYDAYERROR()
+      endif
+
+      if (dir1 .lt. 0 .or. CH_SPACEDIM .le. dir1) then
+         print*, 'ExtrapolateDiagEdgeF: bad dir1 = ', dir1
+         call MAYDAYERROR()
+      endif
+
+      if (dir2 .lt. 0 .or. CH_SPACEDIM .le. dir2) then
+         print*, 'ExtrapolateDiagEdgeF: bad dir2 = ', dir2
+         call MAYDAYERROR()
+      endif
+
+      if (dir1 .eq. dir2) then
+         print*, 'ExtrapolateDiagEdgeF: dir1 cannot equal dir2'
+         call MAYDAYERROR()
+      endif
+#endif
+
+      ! Set dir1 < dir2
+      if (dir1.gt.dir2) then
+        tmp = dir1
+        dir1 = dir2
+        dir2 = tmp
+
+        tmp = sidesign1
+        sidesign1 = sidesign2
+        sidesign2 = tmp
+      endif
+
+      ! Set ii to point in direction of toRegion from valid cells
+      if (dir1.eq.0 .and. dir2.eq.1) then
+        CHF_DTERM[
+        ii0 = sidesign1;
+        ii1 = sidesign2;
+        ii2 = 0]
+      else if (dir1.eq.0 .and. dir2.eq.2) then
+        CHF_DTERM[
+        ii0 = sidesign1;
+        ii1 = 0;
+        ii2 = sidesign2]
+      else
+        CHF_DTERM[
+        ii0 = 0;
+        ii1 = sidesign1;
+        ii2 = sidesign2]
+      endif
+
+      if (order .eq. 0) then
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            dest(CHF_AUTOIX[i],n)
+     &        = src(CHF_OFFSETIX[i;-ii],n)
+          CHF_ENDDO
+        enddo
+
+      else if (order .eq. 1) then
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            dest(CHF_AUTOIX[i],n)
+     &        = two * src(CHF_OFFSETIX[i;-  ii],n)
+     &        -       src(CHF_OFFSETIX[i;-2*ii],n)
+          CHF_ENDDO
+        enddo
+
+      else if (order .eq. 2) then
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            dest(CHF_AUTOIX[i],n)
+     &        = three * ( src(CHF_OFFSETIX[i;-  ii],n)
+     &                   -src(CHF_OFFSETIX[i;-2*ii],n) )
+     &        + src(CHF_OFFSETIX[i;-3*ii],n)
+          CHF_ENDDO
+        enddo
+
+      else
+         print*, 'ExtrapolateDiagEdgeF: order is invalid'
+         call MAYDAYERROR()
+      endif
+
+      return
+      end
+
 
 C     -----------------------------------------------------------------
-C     subroutine EXTRAPOLATEFACEFROMCC
-C     Extrapolation BCs for a fluxes derived from CC data
+C     Extrapolation BCs for a fluxes derived from CC data.
+C     This is not acutally used by SOMAR, but provided for convenience.
 C     ------------------------------------------------------------------
       subroutine EXTRAPOLATEFACEFROMCC (
      &     CHF_FRA[dest],

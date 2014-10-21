@@ -1,16 +1,37 @@
 /*******************************************************************************
- *	FILE: ExtrapolationUtils.hpp
- *	DESC: Conveinience functions and classes that extrapolate ghosts.
- *	DATE: Mon 28 May 2012 02:57:58 PM EDT
- *	MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Developed by Ed Santilli & Alberto Scotti
+ *  Copyright (C) 2014 University of North Carolina at Chapel Hill
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
-#ifndef __EXTRAPOLATIONUTILSUTILS_HPP__INCLUDED__
-#define __EXTRAPOLATIONUTILSUTILS_HPP__INCLUDED__
+#ifndef __EXTRAPOLATIONUTILSUTILS_H__INCLUDED__
+#define __EXTRAPOLATIONUTILSUTILS_H__INCLUDED__
 
 #include "LevelData.H"
 class CFRegion;
 
+// This file contains convenience functions that extrapolate ghosts...
 
+
+// -----------------------------------------------------------------------------
+// Linear extrapolation formula. Assumes all data points are equidistant.
 // -----------------------------------------------------------------------------
 inline Real linearExtrap (const Real& a_nearVal,
                           const Real& a_farVal)
@@ -21,6 +42,8 @@ inline Real linearExtrap (const Real& a_nearVal,
 
 
 // -----------------------------------------------------------------------------
+// Quadratic extrapolation formula. Assumes all data points are equidistant.
+// -----------------------------------------------------------------------------
 inline Real quadraticExtrap (const Real& a_nearVal,
                              const Real& a_midVal,
                              const Real& a_farVal)
@@ -29,6 +52,9 @@ inline Real quadraticExtrap (const Real& a_nearVal,
     return retval;
 }
 
+
+// -----------------------------------------------------------------------------
+// Cubic extrapolation formula. Assumes all data points are equidistant.
 // -----------------------------------------------------------------------------
 inline Real cubicExtrap (const Real& a_val1,   // closest to extraped value
                          const Real& a_val2,
@@ -39,6 +65,9 @@ inline Real cubicExtrap (const Real& a_val1,   // closest to extraped value
     return retval;
 }
 
+
+// -----------------------------------------------------------------------------
+// Quartic extrapolation formula. Assumes all data points are equidistant.
 // -----------------------------------------------------------------------------
 inline Real quarticExtrap (const Real& a_val1, // closest to extraped value
                            const Real& a_val2,
@@ -161,5 +190,5 @@ void ExtrapolateAllCF(FArrayBox&       a_state,
                       int              a_order);
 
 
-#endif //!__EXTRAPOLATIONUTILSUTILS_HPP__INCLUDED__
+#endif //!__EXTRAPOLATIONUTILSUTILS_H__INCLUDED__
 
