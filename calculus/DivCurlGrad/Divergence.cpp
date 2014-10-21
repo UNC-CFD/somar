@@ -1,6 +1,7 @@
 /*******************************************************************************
  *  SOMAR - Stratified Ocean Model with Adaptive Refinement
- *  Copyright (C) 2014 Edward Santilli & Alberto Scotti
+ *  Developed by Ed Santilli & Alberto Scotti
+ *  Copyright (C) 2014 University of North Carolina at Chapel Hill
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
