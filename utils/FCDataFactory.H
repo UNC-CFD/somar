@@ -1,14 +1,33 @@
 /*******************************************************************************
- *    FILE: FCDataFactory.H
- *    DESC: Create one comp of a LevelData<FluxBox> (useful for saving memory).
- *    DATE: Thu 27 Jun 2013 01:50:19 PM EDT
- *    MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Developed by Ed Santilli & Alberto Scotti
+ *  Copyright (C) 2014 University of North Carolina at Chapel Hill
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
-
 #ifndef __FCDataFactory_H__INCLUDED__
 #define __FCDataFactory_H__INCLUDED__
 
 
+// -----------------------------------------------------------------------------
+// Creates a face-centered data holder. This avoids the creation of a
+// LevelData<FluxBox> when only one component is needed.
 // -----------------------------------------------------------------------------
 class FCDataFactory: public DataFactory<FArrayBox>
 {
@@ -42,6 +61,8 @@ protected:
 
 
 // -----------------------------------------------------------------------------
+// Creates a node-centered data holder.
+// -----------------------------------------------------------------------------
 class NodeDataFactory: public DataFactory<FArrayBox>
 {
 public:
@@ -62,6 +83,12 @@ public:
 };
 
 
+// -----------------------------------------------------------------------------
+// Creates a node-centered data holder that has been projected (flattened) in
+// the directions designated by a_flatDirs.
+//
+// If a_flatDirs[d] = 0, then the grids will not be flattened in direction d.
+// If a_flatDirs[d] = 1, then the grids will be flattened in direction d.
 // -----------------------------------------------------------------------------
 class FlatNodeDataFactory: public DataFactory<FArrayBox>
 {
@@ -101,6 +128,8 @@ protected:
 };
 
 
+// -----------------------------------------------------------------------------
+// Allows us to alias just one face-centered component of a LevelData<FluxBox>.
 // -----------------------------------------------------------------------------
 inline void aliasLevelData (LevelData<FArrayBox>& a_alias,
                             LevelData<FluxBox>*   a_original,

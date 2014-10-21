@@ -23,7 +23,6 @@
  ******************************************************************************/
 #include "CartesianMap.H"
 #include "CartesianMapF_F.H"
-#include "UsingNamespace.H"
 
 
 

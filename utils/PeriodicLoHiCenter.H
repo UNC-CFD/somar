@@ -1,19 +1,38 @@
 /*******************************************************************************
- * FILE: PeriodicLoHiCenter.H
- * DESC: Same as Chombo's LoHiCenter, but considers ghosts in periodic
- *       directions as valid.
- * DATE: Thu 31 Oct 2013 12:18:38 AM EDT
- * MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Developed by Ed Santilli & Alberto Scotti
+ *  Copyright (C) 2014 University of North Carolina at Chapel Hill
  *
- * NOTE: These functions assume _FOUR_ ghost cells! It would be better to
- *       create a more general version of these functions that assumes nothing.
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
-
 #ifndef __PeriodicLoHiCenter_H__INCLUDED__
 #define __PeriodicLoHiCenter_H__INCLUDED__
 
 #include "Box.H"
 #include "ProblemDomain.H"
+
+
+// This is the same as Chombo's LoHiCenter, but considers ghosts in periodic
+// directions as valid.
+//
+// NOTE: These functions assume _FOUR_ ghost cells! It would be better to
+// create a more general version of these functions that assumes nothing.
 
 
 ///

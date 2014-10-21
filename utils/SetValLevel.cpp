@@ -1,5 +1,5 @@
-// Source: Chombo/example/AMRINS/util
-
+// This file was copied from Chombo/example/AMRINS/util.
+// Chombo's copyright applies.
 #include "SetValLevel.H"
 #include "FluxBox.H"
 

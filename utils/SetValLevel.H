@@ -1,5 +1,5 @@
-// Source: Chombo/example/AMRINS/util
-
+// This file was copied from Chombo/example/AMRINS/util.
+// Chombo's copyright applies.
 #ifndef _SETVALLEVEL_H_
 #define _SETVALLEVEL_H_
 
