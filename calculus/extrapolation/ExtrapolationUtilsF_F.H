@@ -8,6 +8,40 @@
 extern "C"
 {
 
+#ifndef GUARDEXTRAPOLATEFACENOEV 
+#define GUARDEXTRAPOLATEFACENOEV 
+// Prototype for Fortran procedure EXTRAPOLATEFACENOEV ...
+//
+void FORTRAN_NAME( EXTRAPOLATEFACENOEV ,extrapolatefacenoev )(
+      CHFp_FRA(dest)
+      ,CHFp_CONST_FRA(src)
+      ,CHFp_BOX(toRegion)
+      ,CHFp_CONST_INT(dir)
+      ,CHFp_CONST_INT(sidesign)
+      ,CHFp_CONST_INT(order) );
+
+#define FORT_EXTRAPOLATEFACENOEV FORTRAN_NAME( inlineEXTRAPOLATEFACENOEV, inlineEXTRAPOLATEFACENOEV)
+#define FORTNT_EXTRAPOLATEFACENOEV FORTRAN_NAME( EXTRAPOLATEFACENOEV, extrapolatefacenoev)
+
+inline void FORTRAN_NAME(inlineEXTRAPOLATEFACENOEV, inlineEXTRAPOLATEFACENOEV)(
+      CHFp_FRA(dest)
+      ,CHFp_CONST_FRA(src)
+      ,CHFp_BOX(toRegion)
+      ,CHFp_CONST_INT(dir)
+      ,CHFp_CONST_INT(sidesign)
+      ,CHFp_CONST_INT(order) )
+{
+ CH_TIMELEAF("FORT_EXTRAPOLATEFACENOEV");
+ FORTRAN_NAME( EXTRAPOLATEFACENOEV ,extrapolatefacenoev )(
+      CHFt_FRA(dest)
+      ,CHFt_CONST_FRA(src)
+      ,CHFt_BOX(toRegion)
+      ,CHFt_CONST_INT(dir)
+      ,CHFt_CONST_INT(sidesign)
+      ,CHFt_CONST_INT(order) );
+}
+#endif  // GUARDEXTRAPOLATEFACENOEV 
+
 #ifndef GUARDEXTRAPOLATEDIAGEDGEF 
 #define GUARDEXTRAPOLATEDIAGEDGEF 
 // Prototype for Fortran procedure ExtrapolateDiagEdgeF ...
@@ -47,40 +81,6 @@ inline void FORTRAN_NAME(inlineEXTRAPOLATEDIAGEDGEF, inlineEXTRAPOLATEDIAGEDGEF)
       ,CHFt_CONST_INT(order) );
 }
 #endif  // GUARDEXTRAPOLATEDIAGEDGEF 
-
-#ifndef GUARDEXTRAPOLATEFACENOEV 
-#define GUARDEXTRAPOLATEFACENOEV 
-// Prototype for Fortran procedure EXTRAPOLATEFACENOEV ...
-//
-void FORTRAN_NAME( EXTRAPOLATEFACENOEV ,extrapolatefacenoev )(
-      CHFp_FRA(dest)
-      ,CHFp_CONST_FRA(src)
-      ,CHFp_BOX(toRegion)
-      ,CHFp_CONST_INT(dir)
-      ,CHFp_CONST_INT(sidesign)
-      ,CHFp_CONST_INT(order) );
-
-#define FORT_EXTRAPOLATEFACENOEV FORTRAN_NAME( inlineEXTRAPOLATEFACENOEV, inlineEXTRAPOLATEFACENOEV)
-#define FORTNT_EXTRAPOLATEFACENOEV FORTRAN_NAME( EXTRAPOLATEFACENOEV, extrapolatefacenoev)
-
-inline void FORTRAN_NAME(inlineEXTRAPOLATEFACENOEV, inlineEXTRAPOLATEFACENOEV)(
-      CHFp_FRA(dest)
-      ,CHFp_CONST_FRA(src)
-      ,CHFp_BOX(toRegion)
-      ,CHFp_CONST_INT(dir)
-      ,CHFp_CONST_INT(sidesign)
-      ,CHFp_CONST_INT(order) )
-{
- CH_TIMELEAF("FORT_EXTRAPOLATEFACENOEV");
- FORTRAN_NAME( EXTRAPOLATEFACENOEV ,extrapolatefacenoev )(
-      CHFt_FRA(dest)
-      ,CHFt_CONST_FRA(src)
-      ,CHFt_BOX(toRegion)
-      ,CHFt_CONST_INT(dir)
-      ,CHFt_CONST_INT(sidesign)
-      ,CHFt_CONST_INT(order) );
-}
-#endif  // GUARDEXTRAPOLATEFACENOEV 
 
 #ifndef GUARDEXTRAPOLATEFACEFROMCC 
 #define GUARDEXTRAPOLATEFACEFROMCC 

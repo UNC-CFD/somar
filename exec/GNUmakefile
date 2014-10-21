@@ -6,7 +6,7 @@ export makefiles += examples_somar
 ebase := somar
 
 # Don't mess with this block
-CHOMBO_HOME = ../Chombo/lib
+CHOMBO_HOME = ../../lib/Chombo/lib
 MACHINE = $(shell uname)
 UNAMEM = $(shell uname -m)
 TRAPFPE=FALSE
@@ -18,7 +18,6 @@ LibNames :=  AMRElliptic AMRTools AMRTimeDependent BoxTools
 base_dir =  .
 src_dirs = $(shell find ../* -maxdepth 256 -type d \
              -not \( -name .svn   -prune \) \
-             -not \( -name Chombo -prune \) \
              -not \( -name exec   -prune \) \
              -not \( -name tests  -prune \) \
              -not \( -name post   -prune \) \
