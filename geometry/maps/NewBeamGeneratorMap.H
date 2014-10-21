@@ -1,13 +1,32 @@
 /*******************************************************************************
- *    FILE: NewBeamGeneratorMap.H
- *    DESC: A total rewrite of the beam topogrophy. This uses interpolation
- *          to resolve the locations of points interior to cells.
- *    DATE: Thu 26 Jun 2014 02:36 PM EDT
- *    MAIL: santilli@physics.unc.edu
+ *  SOMAR - Stratified Ocean Model with Adaptive Refinement
+ *  Developed by Ed Santilli & Alberto Scotti
+ *  Copyright (C) 2014 University of North Carolina at Chapel Hill
  *
- *    NOTE: NOT FOR PUBLIC USE!!! This is a work in progress.
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
  *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+ *  USA
+ *
+ *  For up-to-date contact information, please visit the repository homepage,
+ *  https://github.com/somarhub.
  ******************************************************************************/
+
+
+// A total rewrite of the beam topogrophy. This uses interpolation
+// to resolve the locations of points interior to cells.
+// NOT FOR PUBLIC USE!!! This is a work in progress.
+
 
 #ifndef __NEWBEAMGENERATORMAP_H__INCLUDED__
 #define __NEWBEAMGENERATORMAP_H__INCLUDED__

@@ -1,15 +1,38 @@
-#include "CONSTANTS.H"
+c*******************************************************************************
+c  SOMAR - Stratified Ocean Model with Adaptive Refinement
+c  Developed by Ed Santilli & Alberto Scotti
+c  Copyright (C) 2014 University of North Carolina at Chapel Hill
+c
+c  This library is free software; you can redistribute it and/or
+c  modify it under the terms of the GNU Lesser General Public
+c  License as published by the Free Software Foundation; either
+c  version 2.1 of the License, or (at your option) any later version.
+c
+c  This library is distributed in the hope that it will be useful,
+c  but WITHOUT ANY WARRANTY; without even the implied warranty of
+c  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+c  Lesser General Public License for more details.
+c
+c  You should have received a copy of the GNU Lesser General Public
+c  License along with this library; if not, write to the Free Software
+c  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+c  USA
+c
+c  For up-to-date contact information, please visit the repository homepage,
+c  https://github.com/somarhub.
+c*******************************************************************************#include "CONSTANTS.H"
 
 
 c ----------------------------------------------------------------
 c TWISTED_FILL_PHYSCOOR
 c ----------------------------------------------------------------
-      subroutine TWISTED0_FILL_PHYSCOOR (CHF_FRA1[dest],
-     &                                   CHF_CONST_INT[mu],
-     &                                   CHF_CONST_REALVECT[dXi],
-     &                                   CHF_CONST_REAL[pert],
-     &                                   CHF_BOX[destBox],
-     &                                   CHF_CONST_INTVECT[destBoxType])
+      subroutine TWISTED0_FILL_PHYSCOOR (
+     &      CHF_FRA1[dest],
+     &      CHF_CONST_INT[mu],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REAL[pert],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INTVECT[destBoxType])
 
       ! Declare variables
       integer CHF_AUTODECL[i]
@@ -83,12 +106,13 @@ c ----------------------------------------------------------------
 c ----------------------------------------------------------------
 c TWISTED_FILL_PHYSCOOR_ALL_COMPS
 c ----------------------------------------------------------------
-      subroutine TWISTED0_FILL_PHYSCOOR_ALL_COMPS (CHF_FRA[dest],
-     &                                             CHF_CONST_REALVECT[dXi],
-     &                                             CHF_CONST_REALVECT[pert],
-     &                                             CHF_CONST_REALVECT[mult],
-     &                                             CHF_BOX[destBox],
-     &                                             CHF_CONST_INTVECT[destBoxType])
+      subroutine TWISTED0_FILL_PHYSCOOR_ALL_COMPS (
+     &      CHF_FRA[dest],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REALVECT[pert],
+     &      CHF_CONST_REALVECT[mult],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INTVECT[destBoxType])
 
       ! Declare variables
       integer CHF_AUTODECL[i]
@@ -140,14 +164,15 @@ c ----------------------------------------------------------------
 c ----------------------------------------------------------------
 c TWISTED_FILL_DXDXI
 c ----------------------------------------------------------------
-      subroutine TWISTED0_FILL_DXDXI (CHF_FRA1[dest],
-     &                                CHF_CONST_INT[mu],
-     &                                CHF_CONST_INT[nu],
-     &                                CHF_CONST_REALVECT[dXi],
-     &                                CHF_CONST_REAL[pert],
-     &                                CHF_CONST_REAL[mult],
-     &                                CHF_BOX[destBox],
-     &                                CHF_CONST_INTVECT[destBoxType])
+      subroutine TWISTED0_FILL_DXDXI (
+     &      CHF_FRA1[dest],
+     &      CHF_CONST_INT[mu],
+     &      CHF_CONST_INT[nu],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REAL[pert],
+     &      CHF_CONST_REAL[mult],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INTVECT[destBoxType])
 
       ! Declare variables
       integer CHF_AUTODECL[i]
@@ -242,12 +267,13 @@ c ----------------------------------------------------------------
 c ----------------------------------------------------------------
 c TWISTED_FILL_J
 c ----------------------------------------------------------------
-      subroutine TWISTED0_FILL_J (CHF_FRA1[dest],
-     &                            CHF_CONST_REALVECT[dXi],
-     &                            CHF_CONST_REALVECT[pert],
-     &                            CHF_CONST_REAL[mult],
-     &                            CHF_BOX[destBox],
-     &                            CHF_CONST_INTVECT[destBoxType])
+      subroutine TWISTED0_FILL_J (
+     &      CHF_FRA1[dest],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REALVECT[pert],
+     &      CHF_CONST_REAL[mult],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INTVECT[destBoxType])
 
       ! Declare variables
       integer CHF_AUTODECL[i]
@@ -327,13 +353,14 @@ c ----------------------------------------------------------------
 c ----------------------------------------------------------------
 c TWISTED1_FILL_PHYSCOOR
 c ----------------------------------------------------------------
-      subroutine TWISTED1_FILL_PHYSCOOR (CHF_FRA1[dest],
-     &                                   CHF_CONST_INT[mu],
-     &                                   CHF_CONST_REALVECT[dXi],
-     &                                   CHF_CONST_REALVECT[domLen],
-     &                                   CHF_CONST_REAL[pert],
-     &                                   CHF_BOX[destBox],
-     &                                   CHF_CONST_INTVECT[destBoxType])
+      subroutine TWISTED1_FILL_PHYSCOOR (
+     &      CHF_FRA1[dest],
+     &      CHF_CONST_INT[mu],
+     &      CHF_CONST_REALVECT[dXi],
+     &      CHF_CONST_REALVECT[domLen],
+     &      CHF_CONST_REAL[pert],
+     &      CHF_BOX[destBox],
+     &      CHF_CONST_INTVECT[destBoxType])
 
       ! Declare variables
       integer CHF_AUTODECL[i]
