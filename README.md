@@ -3,6 +3,7 @@ The Stratified Ocean Model with Adaptive Refinement (SOMAR)
 
 Introduction
 -----
+TODO
 
 
 Software prerequisites
@@ -53,9 +54,3 @@ OPT   = HIGH
 ```
 Next, run `make all` from the `exec` directory. This will create an executable with an `OPTHIGH.MPI.ex` suffix. This executable must be given an input file as a parameter. For example, to run a simulation on 8 processors, use `mpirun -np 8 amrins2d.OPTHIGH.MPI.ex inputs.lockexchange.topsail`. The result should be two sets of HDF5 files -- one set of checkpoint files that are used to restart a simulation, and one set of plot files that can be viewed in [VisIt](https://wci.llnl.gov/simulation/computer-codes/visit).
 
-
-
-
-
-
-**TODO**
