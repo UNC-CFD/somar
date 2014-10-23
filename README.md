@@ -8,7 +8,7 @@ SOMAR is [free software](https://www.gnu.org/licenses/lgpl-2.1.html 'The GNU Les
 
 Features
 -----
-- **Nonhydrostatic -** Our model solves the Boussinesq Navier-Stokes equations (NSE) *without* the hydrostatic approximation in order to properly model the internal waves and tides that are ubiquitous in the ocean.
+- **Nonhydrostatic -** Our model solves the Boussinesq Navier-Stokes equations *without* the hydrostatic approximation in order to properly model the internal waves and tides that are ubiquitous in the ocean.
 
 
 - **Complex topography -** We have maintained general covariance so that the domain can be described in curvilinear coordinates. This allows us to model irregular boundaries with stretched grids and a logically rectangular coordinate system.
