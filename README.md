@@ -8,22 +8,22 @@ TODO
 
 Features
 -----
-- ** *Nonhydrostatic:* ** Our model uses the Boussinesq Navier-Stokes equations (NSE) *without* the hydrostatic approximation in order to properly model the internal waves and tides that are ubiquitous in the ocean.
+- **Nonhydrostatic:** Our model uses the Boussinesq Navier-Stokes equations (NSE) *without* the hydrostatic approximation in order to properly model the internal waves and tides that are ubiquitous in the ocean.
 
 
-- ** *Complex topography:* ** We have maintained general covariance so that the domain can be described in curvilinear coordinates. This allows us to model irregular boundaries and stretched grids to be mapped into a logically rectangular coordinate system.
+- **Complex topography:** We have maintained general covariance so that the domain can be described in curvilinear coordinates. This allows us to model irregular boundaries and stretched grids to be mapped into a logically rectangular coordinate system.
 
 
-- ** *Separation of background density and its deviation.* ** By splitting the density field into a vertical background stratification and a deviation, we relieve the Poisson solver of computing the associated hydrostatic component of the pressure. This treatment, already implemented in some regional models including MITgcm, also prevents diffusion of oceanic features that are maintained by unmodeled phenomena.
+- **Separation of background density and its deviation.** By splitting the density field into a vertical background stratification and a deviation, we relieve the Poisson solver of computing the associated hydrostatic component of the pressure. This treatment, already implemented in some regional models including MITgcm, also prevents diffusion of oceanic features that are maintained by unmodeled phenomena.
 
 
-- ** *Stable integration of stiff forcing terms.* ** The forcing terms that lead to buoyancy oscillations often impose instabilities in the form of fast, high-frequency waves. To quell these unphysical modes, we developed an integration method that updates all of the state variables semi-implicitly without requiring additional costly Poisson solves, as is the case with implicit Runge-Kutta schemes.
+- **Stable integration of stiff forcing terms.** The forcing terms that lead to buoyancy oscillations often impose instabilities in the form of fast, high-frequency waves. To quell these unphysical modes, we developed an integration method that updates all of the state variables semi-implicitly without requiring additional costly Poisson solves, as is the case with implicit Runge-Kutta schemes.
 
 
-- ** *Anisotropic grid refinement.* ** A coarse underlying grid along with dynamic local refinement over transient features eliminates unnecessary computation in large portions of the domain. Since the background stratification requires some level of vertical resolution, it is often the case that we only need further resolution in the horizontal. Our anisotropic refinement methods are capable of providing additional cells only in those directions that are under-resolved. Furthermore, our coarse grids operate on larger timesteps than the finer grids. This refinement in both time and space provides a drastic speedup of computation, minimizes the number of required Poisson solves, and ensures all levels are evolving at a Courant number close to one, reducing numerical dissipation.
+- **Anisotropic grid refinement.** A coarse underlying grid along with dynamic local refinement over transient features eliminates unnecessary computation in large portions of the domain. Since the background stratification requires some level of vertical resolution, it is often the case that we only need further resolution in the horizontal. Our anisotropic refinement methods are capable of providing additional cells only in those directions that are under-resolved. Furthermore, our coarse grids operate on larger timesteps than the finer grids. This refinement in both time and space provides a drastic speedup of computation, minimizes the number of required Poisson solves, and ensures all levels are evolving at a Courant number close to one, reducing numerical dissipation.
 
 
-- ** *Anisotropic Poisson solvers:* ** In the absence of the hydrostatic approximation, we are faced with an ill-conditioned and exceedingly expensive Poisson problem for the pressure. To that end, we provide a leptic Poisson solver as well as a sophisticated semicoarsening multigrid solver to efficiently enforce the incompressibility condition. The leptic iterative method is a well-behaved, perturbative solution to highly anisotropic elliptic problems that has been demonstrated to work over several different geometries and degrees of anisotropy (See: [Santilli & Scotti, 2011](http://dx.doi.org/10.1016/j.jcp.2011.06.022 '"An efficient method for solving highly anisotropic elliptic equations",   J. Comput. Phys. 230, 23 (September 2011), 8342-8359.')).
+- **Anisotropic Poisson solvers:** In the absence of the hydrostatic approximation, we are faced with an ill-conditioned and exceedingly expensive Poisson problem for the pressure. To that end, we provide a leptic Poisson solver as well as a sophisticated semicoarsening multigrid solver to efficiently enforce the incompressibility condition. The leptic iterative method is a well-behaved, perturbative solution to highly anisotropic elliptic problems that has been demonstrated to work over several different geometries and degrees of anisotropy (See: [Santilli & Scotti, 2011](http://dx.doi.org/10.1016/j.jcp.2011.06.022 '"An efficient method for solving highly anisotropic elliptic equations",   J. Comput. Phys. 230, 23 (September 2011), 8342-8359.')).
 
 
 Software prerequisites
