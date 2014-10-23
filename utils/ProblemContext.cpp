@@ -27,10 +27,6 @@
 #include <cstdio>
 #include <sstream>
 
-// Need these for enums
-#include "LevelGeometry.H"
-#include "RelaxationMethod.H"
-
 
 ProblemContext* ProblemContext::s_singletonPtr = NULL;
 bool ProblemContext::s_AMRParamsRead = false;
@@ -983,7 +979,7 @@ void ProblemContext::readSolver ()
         ppAMRMG.get("verbosity", AMRMG_verbosity);
         pout() << "\tAMRMG.verbosity = " << AMRMG_verbosity << endl;
 
-        AMRMG_relaxMode = RelaxationMethod::LEVEL_GSRB;
+        AMRMG_relaxMode = RelaxMode::LEVEL_GSRB;
         ppAMRMG.get("relax_mode", AMRMG_relaxMode);
         pout() << "\tAMRMG.relaxMode = " << AMRMG_relaxMode << endl;
 

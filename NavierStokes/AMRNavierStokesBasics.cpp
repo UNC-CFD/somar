@@ -113,8 +113,8 @@ Real AMRNavierStokes::s_AMRMG_hang = 1e-15;                 // Defaults to 1e-15
 Real AMRNavierStokes::s_AMRMG_normThresh = 1e-30;           // Defaults to 1e-30
 int AMRNavierStokes::s_AMRMG_maxDepth = -1;                 // Max MG depth (-1 for as deep as possible)
 int AMRNavierStokes::s_AMRMG_verbosity = AMRNavierStokes::s_verbosity;
-int AMRNavierStokes::s_AMRMG_relaxMode = RelaxationMethod::LEVEL_GSRB;
-int AMRNavierStokes::s_AMRMG_precondMode = RelaxationMethod::LEVEL_GSRB;
+int AMRNavierStokes::s_AMRMG_relaxMode = ProblemContext::RelaxMode::LEVEL_GSRB;
+int AMRNavierStokes::s_AMRMG_precondMode = ProblemContext::RelaxMode::LEVEL_GSRB;
 
 Real AMRNavierStokes::s_bottom_eps = 1e-6;                  // Bottom solver tolerance
 Real AMRNavierStokes::s_bottom_reps = 1e-12;                // Bottom solver relative tolerance
@@ -137,8 +137,8 @@ int AMRNavierStokes::s_viscous_AMRMG_imax = 20;                     // Max numbe
 Real AMRNavierStokes::s_viscous_AMRMG_hang = 1e-15;                 // Defaults to 1e-15
 Real AMRNavierStokes::s_viscous_AMRMG_normThresh = 1e-30;           // Defaults to 1e-30
 int AMRNavierStokes::s_viscous_AMRMG_maxDepth = -1;                 // Max MG depth (-1 for as deep as possible)
-int AMRNavierStokes::s_viscous_AMRMG_relaxMode = RelaxationMethod::LEVEL_GSRB;
-int AMRNavierStokes::s_viscous_AMRMG_precondMode = RelaxationMethod::LEVEL_GSRB;
+int AMRNavierStokes::s_viscous_AMRMG_relaxMode = ProblemContext::RelaxMode::LEVEL_GSRB;
+int AMRNavierStokes::s_viscous_AMRMG_precondMode = ProblemContext::RelaxMode::LEVEL_GSRB;
 int AMRNavierStokes::s_viscous_AMRMG_verbosity = AMRNavierStokes::s_verbosity;
 
 Real AMRNavierStokes::s_viscous_bottom_eps = 1e-6;                  // Bottom solver tolerance

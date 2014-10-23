@@ -24,17 +24,6 @@
 class RelaxationMethod
 {
 public:
-    // The relaxation methods. If you add a method,
-    // you should add it to this list.
-    enum {
-        NORELAX     = -1,
-        JACOBI      =  0,
-        LEVEL_GSRB  =  1,
-        LOOSE_GSRB  =  2,
-        LINE_GSRB   =  3,
-        NUM_RELAXATION_METHODS
-    };
-
     // Constructor -- leaves object unusable.
     RelaxationMethod ();
 

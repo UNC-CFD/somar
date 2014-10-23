@@ -39,6 +39,7 @@
 #include "Debug.H"
 #include "Constants.H"
 #include "AMRLESMeta.H"
+#include "ProblemContext.H"
 
 
 // LevelLepticSolver static members
@@ -222,7 +223,7 @@ void LevelLepticSolver::define (LinearOp<LevelData<FArrayBox> >* a_operator,
                           0,
                           0,        // preCondSmoothIters
                           0,        // precondMode
-                          RelaxationMethod::NORELAX,
+                          ProblemContext::RelaxMode::NORELAX,
                           false);   // horizontal factory?
 
             m_opPtr = RefCountedPtr<MappedAMRLevelOp<LevelData<FArrayBox> > >(opFact.AMRnewOp(m_domain));
@@ -416,7 +417,7 @@ void LevelLepticSolver::setDefaultParameters ()
                          4,         // a_numSmoothBottom
                          4,         // a_numSmoothUp
                          2,         // a_numSmoothPreCond
-                         RelaxationMethod::LEVEL_GSRB,
+                         ProblemContext::RelaxMode::LEVEL_GSRB,
                          -1,        // a_maxDepth
                          1.0e-12,   // a_eps
                          1.0e-15,   // a_hang

@@ -26,6 +26,7 @@
 #include "AnisotropicRefinementTools.H"
 #include "MappedCoarseAverage.H"
 #include "Constants.H"
+#include "ProblemContext.H"
 
 #include "Jacobi.H"
 #include "GSRB.H"
@@ -118,7 +119,7 @@ void MappedAMRPoissonOpFactory::define(const ProblemDomain&                a_coa
     m_preCondSmoothIters = a_preCondSmoothIters;
     m_precondMode = a_precondMode;
 
-    CH_assert(-1 <= a_relaxMode && a_relaxMode < RelaxationMethod::NUM_RELAXATION_METHODS);
+    CH_assert(-1 <= a_relaxMode && a_relaxMode < ProblemContext::RelaxMode::NUM_RELAX_MODES);
     m_relaxMode = a_relaxMode;
 
     m_bc = a_bc;
@@ -231,7 +232,7 @@ void MappedAMRPoissonOpFactory::define(const RefCountedPtr<LevelData<FluxBox> >&
     m_preCondSmoothIters = a_preCondSmoothIters;
     m_precondMode = a_precondMode;
 
-    CH_assert(-1 <= a_relaxMode && a_relaxMode < RelaxationMethod::NUM_RELAXATION_METHODS);
+    CH_assert(-1 <= a_relaxMode && a_relaxMode < ProblemContext::RelaxMode::NUM_RELAX_MODES);
     m_relaxMode = a_relaxMode;
 
     m_bc = a_bc;
@@ -596,16 +597,16 @@ MappedAMRPoissonOpFactory::MGnewOp(const ProblemDomain&   a_indexSpace,
     if (m_horizontalFactory) activeDirs[SpaceDim-1] = 0;
 
     // Set the relaxation method.
-    if (m_relaxMode == RelaxationMethod::NORELAX) {
+    if (m_relaxMode == ProblemContext::RelaxMode::NORELAX) {
         // If you don't have your relaxation, you can't have any MG.
         MayDay::Error("How can you have any MG if you don't have relaxation?");
-    } else if (m_relaxMode == RelaxationMethod::JACOBI) {
+    } else if (m_relaxMode == ProblemContext::RelaxMode::JACOBI) {
         newOp->m_relaxPtr = new Jacobi(newOp, newOp->m_alpha, newOp->m_beta);
-    } else if (m_relaxMode == RelaxationMethod::LEVEL_GSRB) {
+    } else if (m_relaxMode == ProblemContext::RelaxMode::LEVEL_GSRB) {
         newOp->m_relaxPtr = new LevelGSRB;
-    } else if (m_relaxMode == RelaxationMethod::LOOSE_GSRB) {
+    } else if (m_relaxMode == ProblemContext::RelaxMode::LOOSE_GSRB) {
         newOp->m_relaxPtr = new LooseGSRB;
-    } else if (m_relaxMode == RelaxationMethod::LINE_GSRB) {
+    } else if (m_relaxMode == ProblemContext::RelaxMode::LINE_GSRB) {
         newOp->m_relaxPtr = new LineGSRB;
     } else {
         MayDay::Warning("Relaxation method not yet converted...using LevelGSRB");
@@ -802,15 +803,15 @@ MappedAMRPoissonOpFactory::AMRnewOp(const ProblemDomain& a_indexSpace)
     if (m_horizontalFactory) activeDirs[SpaceDim-1] = 0;
 
     // Set the relaxation method.
-    if (m_relaxMode == RelaxationMethod::NORELAX) {
+    if (m_relaxMode == ProblemContext::RelaxMode::NORELAX) {
         newOp->m_relaxPtr = NULL;
-    } else if (m_relaxMode == RelaxationMethod::JACOBI) {
+    } else if (m_relaxMode == ProblemContext::RelaxMode::JACOBI) {
         newOp->m_relaxPtr = new Jacobi(newOp, newOp->m_alpha, newOp->m_beta);
-    } else if (m_relaxMode == RelaxationMethod::LEVEL_GSRB) {
+    } else if (m_relaxMode == ProblemContext::RelaxMode::LEVEL_GSRB) {
         newOp->m_relaxPtr = new LevelGSRB;
-    } else if (m_relaxMode == RelaxationMethod::LOOSE_GSRB) {
+    } else if (m_relaxMode == ProblemContext::RelaxMode::LOOSE_GSRB) {
         newOp->m_relaxPtr = new LooseGSRB;
-    } else if (m_relaxMode == RelaxationMethod::LINE_GSRB) {
+    } else if (m_relaxMode == ProblemContext::RelaxMode::LINE_GSRB) {
         newOp->m_relaxPtr = new LineGSRB;
     } else {
         MayDay::Warning("Relaxation method not yet converted...using LevelGSRB");

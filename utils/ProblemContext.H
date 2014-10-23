@@ -290,6 +290,17 @@ public:
         };
     };
 
+    struct RelaxMode {
+        enum {
+            NORELAX     = -1,
+            JACOBI      =  0,
+            LEVEL_GSRB  =  1,
+            LOOSE_GSRB  =  2,
+            LINE_GSRB   =  3,
+            NUM_RELAX_MODES
+        };
+    };
+
     Real AMRMG_eps;                        // Solver tolerance
     int AMRMG_num_smooth_down;             // MG pre smoothing iters
     int AMRMG_num_smooth_up;               // MG post smoothing iters
