@@ -38,7 +38,8 @@ TwistedMap::TwistedMap ()
 
     // 0 = Original, 1+eps*sin version (JCOMP 2952-2976)
     // 1 = New, 1+cos*cos*sin version.
-    m_twistType = 1;
+    // WARNING: type 1 is not freestream preserving.
+    m_twistType = 0;
 }
 
 

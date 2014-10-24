@@ -220,7 +220,6 @@ void GeoSourceInterface::fill_dXidx (FArrayBox&       a_dest,
     CH_assert((0 <= a_mu) && (a_mu < SpaceDim));
     CH_assert((0 <= a_nu) && (a_nu < SpaceDim));
 
-    // CH_assert(SpaceDim == 3);   // TODO: Create a 2D version of this function
     const Box& destBox = a_dest.box();
 
 #if CH_SPACEDIM == 2
