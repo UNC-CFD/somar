@@ -205,8 +205,7 @@ void ProblemContext::readAMR ()
 
         pout() << "\tlevel " << lev << " ref ratio = " << refRatios[lev] << endl;
     }
-    refRatios[max_level] = IntVect::Unit;
-    pout() << "\tlevel " << max_level << " ref ratio = " << refRatios[max_level] << endl;
+    refRatios[max_level] = IntVect::Unit; // This is needed by Chombo.
 
     block_factor = 8;
     ppAMR.query("block_factor", block_factor);
@@ -433,15 +432,15 @@ void ProblemContext::readAMR ()
     if (max_dt <= 0.0) max_dt = 1.0e8;
     pout() << "\tmax_dt = " << max_dt << endl;
 
-    limitDtViaViscosity = true;
+    limitDtViaViscosity = false;
     ppAMR.query("limitDtViaViscosity", limitDtViaViscosity);
     pout() << "\tlimitDtViaViscosity = " << limitDtViaViscosity << endl;
 
-    limitDtViaDiffusion = true;
+    limitDtViaDiffusion = false;
     ppAMR.query("limitDtViaDiffusion", limitDtViaDiffusion);
     pout() << "\tlimitDtViaDiffusion = " << limitDtViaDiffusion << endl;
 
-    limitDtViaPressureGradient = false;
+    limitDtViaPressureGradient = true;
     ppAMR.query("limitDtViaPressureGradient", limitDtViaPressureGradient);
     pout() << "\tlimitDtViaPressureGradient = " << limitDtViaPressureGradient << endl;
 
@@ -502,11 +501,11 @@ void ProblemContext::readAMR ()
         pout() << "\tgravityTheta = " << gravityTheta << endl;
     }
 
-    viscSolverScheme = HeatSolverScheme::TGA;
+    viscSolverScheme = HeatSolverScheme::CRANK_NICOLSON;
     ppAMR.query("viscous_solver_type", viscSolverScheme);
     pout() << "\tviscSolverScheme = " << viscSolverScheme << endl;
 
-    diffSolverScheme = HeatSolverScheme::TGA;
+    diffSolverScheme = HeatSolverScheme::CRANK_NICOLSON;
     ppAMR.query("diffusive_solver_type", diffSolverScheme);
     pout() << "\tdiffSolverScheme = " << diffSolverScheme << endl;
 
@@ -906,7 +905,7 @@ void ProblemContext::readAdvection ()
     ppAdvection.query("useLimitingScal", useLimitingScal);
     pout() << "\tuseLimitingScal = " << useLimitingScal << endl;
 
-    useHighOrderLimiterScal = false;
+    useHighOrderLimiterScal = true;
     ppAdvection.query("useHighOrderLimiterScal", useHighOrderLimiterScal);
     pout() << "\tuseHighOrderLimiterScal = " << useHighOrderLimiterScal << endl;
 

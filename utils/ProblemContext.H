@@ -114,8 +114,8 @@ public:
     struct NonlinearDifferencingForm {
         enum {
             NONE         = -1,
-            CONSERVATIVE = 0,
-            ADVECTIVE,
+            CONSERVATIVE =  0,
+            ADVECTIVE    =  1,
             _NUM_NONLINEAR_DIFFERENCING_FORMS
         };
     };
