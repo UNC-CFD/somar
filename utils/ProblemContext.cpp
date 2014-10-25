@@ -113,7 +113,7 @@ void ProblemContext::readAMR ()
     pout() << "\tdomainLength = " << domainLength << endl;
 
     RealVect dx = domainLength / RealVect(nx);
-    pout() << "\t coarse level dx = " << dx << endl;
+    pout() << "\tcoarse level dx = " << dx << endl;
 
     Real lepticity = Min(dx[0], dx[SpaceDim-2]) / domainLength[SpaceDim-1];
     pout() << "leptic ratio = " << lepticity << endl;
