@@ -6,32 +6,14 @@ ibc.useBackgroundScalar = 0
 
 
 ### Coordinate map
-geometry.coordMap = 5                   # 0=Cartesian, 5=Ledge
-geometry.ledgeMapTransitionOrder = 1    # 1=linear, 3=cubic
-geometry.ledgeMapHl = 0.0
-geometry.ledgeMapHr = 1.5
-geometry.ledgeMapXl = 18.0
-geometry.ledgeMapXr = 20.0
-
-# geometry.ledgeMapTransitionOrder = 3    # 1=linear, 3=cubic
-# geometry.ledgeMapHl = 1.0
-# geometry.ledgeMapHr = 0.0
-# geometry.ledgeMapXl = 10.0
-# geometry.ledgeMapXr = 14.0
-
-# geometry.ledgeMapTransitionOrder = 3    # 1=linear, 3=cubic
-# geometry.ledgeMapHl = 0.0
-# geometry.ledgeMapHr = 1.0
-# geometry.ledgeMapXl = 8.0
-# geometry.ledgeMapXr = 14.0
+geometry.coordMap = 0                   # 0=Cartesian, 5=Ledge
 
 
 ### Base grid
 amr.length = 30.0 2.0
 amr.nx = 128 64
-# amr.splitDirs = 1 0
-AMRMG.precond_mode = 1
-# amr.vert_extrude_tags = 1
+amr.nx_offset = -64 0
+
 
 ### Regridding
 amr.maxlevel = 1

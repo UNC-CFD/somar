@@ -80,8 +80,14 @@ void LockExchangeBCUtil::setScalarIC (FArrayBox&           a_scalarFAB,
         LevelGeometry::getGeoSourcePtr()->fill_physCoor(yposFAB, 0, 1, dx);
 
         // Define IC parameters
-        const Real x0 = Real(domBox.smallEnd(0)) * dx[0];
-        const Real xhalf = x0 + 0.5 * a_levGeo.getDomainLength(0);
+
+        // Option #1: Interface at center of domain.
+        // const Real x0 = Real(domBox.smallEnd(0)) * dx[0];
+        // const Real xhalf = x0 + 0.5 * a_levGeo.getDomainLength(0);
+
+        // Option #2: Interface at x = 0.
+        const Real xhalf = 0.0;
+
         const Real pertA = 0.0; //0.025;
         const Real pertK = 2.0 * Pi / a_levGeo.getDomainLength(1);
         const Real smoothingFactor = 2.0;
