@@ -41,8 +41,8 @@ LedgeMap::LedgeMap ()
     m_xl = ctx->ledgeMapXl;
     m_xr = ctx->ledgeMapXr;
 
-    Real dh = m_hl - m_hr;
-    Real dx = m_xl - m_xr;
+    Real dh = m_hr - m_hl;
+    Real dx = m_xr - m_xl;
     Real invdx3 = pow(dx, -3.0);
 
     if (m_transitionOrder == 1) {
