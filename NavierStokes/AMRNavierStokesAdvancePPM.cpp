@@ -314,7 +314,7 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
                                     const Real                  a_oldTime,
                                     const Real                  a_dt,
                                     const Real                  a_FRscale,
-                                    const Real                  a_comp)
+                                    const int                   a_comp)
 {
     CH_TIME("AMRNavierStokes::getNewScalar");
 

@@ -224,7 +224,7 @@ protected:
                                const Real                  a_old_time,
                                const Real                  a_dt,
                                const Real                  a_FRscale,
-                               const Real                  a_comp);
+                               const int                   a_comp);
 
     // Calculate d(velocity)/dt = RHS centered at the time of a_old_vel + a_dt/2
     virtual void getNewVelocity (LevelData<FArrayBox>&       a_rhs,
