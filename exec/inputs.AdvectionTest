@@ -1,12 +1,14 @@
 ibc.problem = 0                # 0 = Advection test
-# amr.restart_file = chkpt_000010.2d.hdf5
-amr.verbosity = 4              # [0]
-amr.gravityMethod = 0          # [1]   0=none, 1=explicit, 2=implicit
+# amr.restart_file = chkpt_000000.2d.hdf5
+amr.verbosity = 1              # [0]
+amr.gravityMethod = 0          # [1]   0=none, 1=explicit, 2=implicit (only with bg scalar)
 ibc.useBackgroundScalar = 0
+
 
 ### Coordinate map
 geometry.coordMap = 0           # 0 = Cartesian, 1 = Twisted
 geometry.perturbations = 0.1 0.1
+
 
 ### Base grid
 amr.length = 1.0 1.0
@@ -39,7 +41,7 @@ amr.limitDtViaPressureGradient = 0      # [1]
 amr.limitDtViaInternalWaveSpeed = 0     # [0]
 
 
-# ### Viscosity / diffusion
+### Viscosity / diffusion
 amr.scal_diffusion_coeffs = 0.00
 amr.viscosity = 0.00
 amr.viscous_solver_type = 1             # [1] 0=backwardEuler, 1=CrankNicolson, 2=TGA
@@ -87,6 +89,7 @@ advection.useHighOrderLimiterScal = 1   # [1]
 
 ### Projection & pressure initialization settings
 projection.isIncompressible = 0         # [1]
+
 
 ### Solver settings
 AMRMG.eps = 1e-6                # [1e-6]    Solver tolerance
