@@ -88,7 +88,7 @@ void LockExchangeBCUtil::setScalarIC (FArrayBox&           a_scalarFAB,
         // Option #2: Interface at x = 0.
         const Real xhalf = 0.0;
 
-        const Real pertA = 0.0; //0.025;
+        const Real pertA = 0.025;
         const Real pertK = 2.0 * Pi / a_levGeo.getDomainLength(1);
         const Real smoothingFactor = 2.0;
 

@@ -5,4 +5,5 @@ exec/p/
 exec/*.ex
 exec/*.hdf5
 exec/pout.*
-
+*.sublime-project
+*.sublime-workspace
