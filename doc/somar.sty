@@ -1,0 +1,77 @@
+\usepackage{amsmath}
+\usepackage{graphicx,amssymb}
+\usepackage{mathrsfs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{rotating}
+%\usepackage{natbib}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{hyperref} % Comment this out to lose the boxes around the links.
+\usepackage[font=small,labelfont=bf]{caption}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes,shadows,arrows}
+\tikzset{>=stealth'}
+
+\interfootnotelinepenalty=10000
+
+\newcommand{\Zcv}[1]{\frac{\partial \xi^{#1}}{\partial z}}
+\newcommand{\Zco}[1]{\frac{\partial z}{\partial \xi^{#1}}}
+
+\newcommand{\dt}[1]{\frac{\partial {#1}}{\partial t}}
+\newcommand{\dx}[2]{\frac{\partial {#2}}{\partial x^{#1}}}
+\newcommand{\dxi}[2]{\frac{\partial {#2}}{\partial \xi^{#1}}}
+
+\newcommand{\jac}[2]{\frac{\partial x^{#1}}{\partial \xi^{#2}}}
+\newcommand{\ijac}[2]{\frac{\partial \xi^{#1}}{\partial x^{#2}}}
+\newcommand{\jacz}[1]{\frac{\partial z}{\partial \xi^{#1}}}
+\newcommand{\ijacz}[1]{\frac{\partial \xi^{#1}}{\partial z}}
+
+\newcommand{\uad}{u_{\text{AD}}}
+
+\newcommand{\AvFCtoCC}{\text{Av}^{\text{FC}\rightarrow\text{CC}}}
+\newcommand{\AvCCtoFC}{\text{Av}^{\text{CC}\rightarrow\text{FC}}}
+
+%\documentclass{article}
+%\usepackage{amsmath}
+%\newcommand{\Zcv}[1]{{\cal Z}^{#1}}
+%\newcommand{\Zco}[1]{{\cal Z}_{#1}}
+
+% Just for debugging
+\usepackage{color}
+\newcommand{\hilight}[1]{\colorbox{yellow}{#1}}
+
+
+\definecolor{listinggray}{gray}{0.9}
+\definecolor{lbcolor}{rgb}{0.9,0.9,0.9}
+\lstset{
+	backgroundcolor=\color{lbcolor},
+	tabsize=4,    
+	%rulecolor=,
+	language=[GNU]C++,
+	captionpos=b,
+	basicstyle=\scriptsize,
+	upquote=true,
+	aboveskip={1.5\baselineskip},
+	columns=fixed,
+	showstringspaces=false,
+	extendedchars=false,
+	breaklines=true,
+	prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+	frame=single,
+	numbers=left,
+	showtabs=false,
+	showspaces=false,
+	showstringspaces=false,
+	identifierstyle=\ttfamily,
+	keywordstyle=\color{blue},
+	commentstyle=\color[rgb]{0.0, 0.5, 0.0},
+	stringstyle=\color[rgb]{0.627 ,0.126, 0.341},
+	numberstyle=\color[rgb]{0.205, 0.142, 0.73},
+	%\lstdefinestyle{C++}{language=C++,style=numbers}’.
+}
