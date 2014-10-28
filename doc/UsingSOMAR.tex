@@ -3,8 +3,18 @@
 \graphicspath{ {./img/} }
 
 \title{Getting Started with SOMAR}
-\author{Ed Santilli}
+\author{Ed Santilli \& Alberto Scotti}
 \date{\today}
+
+%\author{Edward Santilli}
+%\ead{santilli@physics.unc.edu}
+%\address[Santilli]{Dept. of Physics, 214 Phillips Hall, UNC, Chapel Hill, NC 27599}
+%\cortext[cor1]{Corresponding author}
+
+%\author{Alberto Scotti}
+%\ead{ascotti@unc.edu}
+%\address[Scotti]{Dept. of Marine Sciences, 3117H Venable Hall, UNC, Chapel Hill, NC 27599}
+
  
 \begin{document}
  
@@ -15,6 +25,159 @@
 %\listoffigures
 %\listoftables
 % 
+
+\section{Introduction}
+
+\subsection{Notation}\label{sec:notation}
+\begin{itemize}
+  \item $b_T$ = the total buoyancy (reduced gravity) field.
+  \item $\bar{b} = \bar{b}(z)$ = the background buoyancy profile.
+  \item $b$ = the buoyancy deviation.
+  \item $u^\alpha$ = Cartesian component of the vector $\vec{u}$.
+  \item $w$ = vertical Cartesian velocity component.
+  \item $u^i$ = Curvilinear (mapped) component of the vector $\vec{u}$.
+%  \item $u^{n,i}$ = $u^i$ at time $t^n$. $n$ will never be used as an index.
+%  \item $u^{\star,i}$ = an unprojected velocity component.
+%  \item $\uad^i$ = the time and face centered, projected advecting velocity.
+%  \item $u_H^i$ = interpolation of $\uad^i$ to all cell faces.
+  \item $\nu$, $\kappa$ = kinematic viscosity and scalar diffusion parameters.
+  \item \{$x$, $y$, $z$\} or \{$x^\alpha$\} = Cartesian coordinates.
+  \item \{$\xi$, $\eta$, $\zeta$\} or \{$\xi^i$\} = general curvilinear coordinates.
+  \item $g_{i j}$, $g^{i j}$ = the metric tensor and its inverse.
+  \item $J$ = $\sqrt{\left|\det(g_{ij})\right|}$ = $\det\left(\frac{\partial x^i}{\partial \xi^j}\right)$ = the Jacobian determinant.
+%  \item CC = cell centered.
+%  \item FC = face centered.
+%  \item PPM = Piecewise parabolic method.
+%  \item MAC = Marker-and-cell scheme that describes the exact, discrete projection method. \cite{HarlowWelch1965}
+%  \item $\phi$ = scalar used during the MAC projection.
+%  \item $\pi^l$ = pressure computed during the level $l$, CC velocity projection.
+%  \item $\text{Av}^{\text{CC}\rightarrow\text{FC}}$ = averaging operator that sends CC data to FC data.
+%  \item $\text{Av}^{\text{FC}\rightarrow\text{CC}}$ = averaging operator that sends FC data to CC data.
+%  \item $\epsilon$ = average rate of dissipation of turbulence kinetic energy per unit mass.
+%  \item $\epsilon_{ijk}$ = the totally anti-symmetric permutation symbol.
+%  \item $\varepsilon_{ijk} = J \epsilon_{ijk}$ = the covariant
+%Levi-Civita tensor.
+  \item $\varepsilon_{ijk}$ = the covariant Levi-Civita tensor.
+\end{itemize}
+
+
+\subsection{Equations of Motion}\label{sec:eom}
+We wish to calculate numerically the baroclinic response of a
+stratified fluid 
+of arbitrary depth to arbitrary forcing. To the extent that the barotropic
+forcing is assumed as given, we assume that the fluid is capped by a rigid
+lid. Future implementations will relax this assumption. 
+Our main interest lies with geophysical flows as they occur in coastal
+areas, which are characterized by the following properties: 
+\begin{enumerate}
+\item The density variation, $\Delta\rho/\rho_0$, within the fluid, 
+normalized with a suitable 
+characteristic density, $\rho_0$, is small.
+\item The fluid velocity, $u$, is much smaller than the speed of sound, $c$. 
+\item The extent of the vertical excursion engendered by the flow, $h$, is
+  small relative to the vertical distance over which compressibility
+  effects due to the increase of pressure become important, $c^2/g$. 
+ \item The equation of state is linear and a single species (usually
+  temperature) determines the density. Inclusion of second species (e.g.,
+  salinity) is straightforward provided the equation of state remains linear. 
+\item The horizontal to vertical dimensions ratio (aspect ratio) 
+of the domain may be large, but we allow motion to occur on horizontal scales
+that may be comparable or even smaller than the total depth. 
+\end{enumerate}  
+Under these conditions, the appropriate dynamic model is provided by the 
+ Navier-Stokes equations in the Boussinesq approximation (NSE
+from here on) \cite{Cushman1994} 
+\begin{subequations}\label{NSE}\begin{align}
+  &\dt{\vec{u}} = -\nabla\cdot\left(\vec{u} \vec{u}\right) - \nabla p +
+    \nabla\cdot\tensorarrow{{\cal F}}_u - b_T \hat{z} + 2\vec{\Omega}\times\vec{u}+\vec{f}_\text{ext}, \\
+  &\dt{b_T} = -\nabla \cdot \left( \vec{u} b_T \right) +\nabla\cdot\vec{\cal F}_b,\\
+  &\nabla \cdot \vec{u} = 0.
+\end{align}\end{subequations}
+We define $b_T=g (\rho-\rho_0)/\rho_0$ as the reduced gravity, or buoyancy,
+where $\rho_0$ is a representative density scale and $2\vec{\Omega}$ is the Coriolis parameter. Both $p$ and
+$\vec{f}_\text{ext}$ are similarly defined as specific (per density) values of
+pressure and body force.
+The terms ${\tensorarrow{\cal F}}_u$ and ${\vec{\cal F}}_b$ represent  frictional and
+diffusive effects respectively. For a Newtonian fluid,
+\begin{subequations}
+  \begin{equation}
+    {\tensorarrow{\cal F}}_u = \nu \left( \nabla\vec{u}-(\nabla\vec{u})^T \right)
+  \end{equation}
+  and
+  \begin{equation}
+    {\vec{\cal F}}_b = \kappa \nabla b_T,
+  \end{equation}
+\end{subequations}
+where
+$\kappa$  is the diffusivity of the stratifying agent and $\nu$ the viscosity.
+These terms become effective only  
+at scales comparable or smaller than the Kolmogorov, $\eta_{\rm K}=\mathcal{O}(
+\nu^{3/4}\epsilon^{-1/4})$, and Batchelor scales, $\eta_{\rm
+  B}=\mathcal{O}(\eta_{\rm K}\kappa^{1/2}\nu^{-1/2})$, which in  typical 
+geophysical conditions are $\mathcal{O}(1\rm{mm})$ or smaller. Therefore, in all
+cases when 
+the numerical grid is not fine enough to capture these scales, ${\tensorarrow{\cal{F}}}_u$ and $\vec{\cal F}_b$ need to be modified to include the effect of
+the unresolved scales, either by increasing the value of the viscosity and
+diffusivity above their molecular values (so called ``eddy'' viscosity and
+diffusivity), or considering more sophisticated closure schemes. 
+Since diffusive terms can
+be included at little extra cost, even when viscosity and diffusivity are not
+uniform, we retain them.\\
+
+Note that the body force is made up of the sum of the gravitational term,
+$b_T\hat{z}$, and a generic body force which may include the effect of barotropic forcing (surface tide). The reason for the
+split will become clear in the following.\\
+
+In geophysical applications, the fluid is generally stably stratified, at least
+over  sufficiently large scales. 
+It is thus advantageous to split the buoyancy into a
+background and deviation, 
+\begin{equation*}
+	b_T(\vec{x},t) = \bar{b}(z) + b(\vec{x},t),
+\end{equation*}
+where $\bar{b}(z)$ is chosen to describe the static vertical profile of the
+fluid. The equations of motion now become
+\begin{subequations}\label{BVNSE}
+  \begin{align}
+    &\dt{\vec{u}} = -\nabla\cdot\left(\vec{u} \vec{u}\right) - \nabla p +
+      \nabla\cdot{\nu\nabla\vec{u}} - b\hat{z} + 2\vec{\Omega}\times\vec{u} + \vec{f}_\text{ext}, \\
+    &\dt{b} = N^2 w -\nabla \cdot \left( \vec{u} b \right) + \nabla\cdot\kappa\nabla b,\\
+    &\nabla \cdot \vec{u} = 0,
+  \end{align}
+\end{subequations} 
+where the Brunt-V\"ais\"al\"a (BV) frequency is defined as $N^2=-d\bar{b}/dz$ and the background buoyancy forcing term has been swept into the pressure field. 
+By solving for the fluctuations, $b$, rather than the whole field, $b_T$,
+ we avoid diffusion of the background stratification and
+allow for a special treatment of the stiff forcing terms.  There is a further reason for the
+split. A stably stratified fluid supports internal waves, which propagate with
+speeds that can be  larger than the physical fluid velocity.  Separating the mean stratification from the
+fluctuations allows us to deal with  the corresponding hyperbolic problem with
+an appropriate time integration scheme which is unconditionally stable.   
+Setting $N=0$
+recovers the original set of equations.
+\\
+
+%To accommodate complex topography, 
+%we wish to write the NSE in a general curvilinear coordinate
+%system. There are many ways to do this, but we choose a form that simplifies
+%discretization and avoids connection coefficients.
+To accommodate complex topography, we write the NSE in a general curvilinear coordinate system. One form that simplifies
+discretization and avoids connection coefficients is
+\begin{subequations}\label{GCNSE}\begin{align}
+  &\dt{u^\alpha} = -\frac{1}{J}\partial_j Ju^j u^\alpha - g^{\alpha i}\partial_i p + \nu\nabla^2 u^\alpha - b\hat{z}^\alpha + 2{\varepsilon^{\alpha}}_{i j} \Omega^i u^j + f^\alpha_\text{ext}, \\
+  &\dt{b} = \left[ N^2 w - \frac{1}{J}\partial_i J u^i b \right] + \kappa\nabla^2 b,\\
+  &\partial_i J u^i = 0.
+\end{align}\end{subequations}
+The terms in square brackets are analytically identical to
+$\nabla \cdot (\vec{u} b_T)$, the divergence of all scalar advective fluxes. In this paper, the symbol $w$ will always refer to the vertical Cartesian
+velocity component. We use Latin indices to indicate tensor components
+in the curvilinear basis while Greek indices refer to components in the Cartesian basis. For
+example, $g^{\alpha j} = \jac{\alpha}{i} g^{ij}$ by definition. (See section
+\ref{sec:notation} for a more complete description of the notation used in
+this document.) The symbol $\nabla^2=J^{-1}\partial_i J g^{ij}\partial_j$ is
+the Laplace-Beltrami operator. 
+\\
+
 
 \section{Requirements and compilation details}
 This software uses the Chombo library\footnote{Chombo has been developed and is being distributed by the Applied Numerical Algorithms Group of Lawrence Berkeley National Lab.}, which in turn uses the HDF5 library \cite{hdf5}. (If you plan to compute in parallel, MPI-2 compliant software must also be installed.) When installing the HDF5 libraries, be sure to use version 1.6.9 and compile with the \texttt{--enable-production} configuration option. Listings \ref{lstHDF5serial} and \ref{lstHDF5parallel} provide examples of how to compile and install the HDF5 library for Chombo. In these listings, \texttt{\$\{ROOT\_DIR\}} can be replaced with your folder of choice.

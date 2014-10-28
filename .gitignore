@@ -1,9 +1,23 @@
+# SOMAR output files
+exec/*.hdf5
+exec/pout.*
+*.sublime-project
+*.sublime-workspace
+
+# SOMAR build files
 exec/d/
 exec/f/
 exec/o/
 exec/p/
 exec/*.ex
-exec/*.hdf5
-exec/pout.*
-*.sublime-project
-*.sublime-workspace
+
+# Latex build files
+doc/*.aux
+doc/*.bbl
+doc/*.blg
+doc/*.log
+doc/*.out
+doc/*.pdf
+doc/*.synctex.gz
+doc/*.toc
+doc/*.log
