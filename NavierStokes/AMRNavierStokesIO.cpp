@@ -1671,9 +1671,11 @@ void AMRNavierStokes::getPlotData (LevelData<FArrayBox>& a_plot_data) const
         Real unorm0 = computeMappedNorm(velError, NULL, *m_levGeoPtr, 0) / uSolNorm0;
         Real unorm1 = computeMappedNorm(velError, NULL, *m_levGeoPtr, 1) / uSolNorm1;
         Real unorm2 = computeMappedNorm(velError, NULL, *m_levGeoPtr, 2) / uSolNorm2;
-        pout() << "u: inf, 1, and 2 norms / solNorms = " << unorm0 << ", " << unorm1 << ", " << unorm2 << endl;
+        pout() << "Level " << m_level << " u: inf, 1, and 2 norms / solNorms = "
+               << unorm0 << ", " << unorm1 << ", " << unorm2 << endl;
         if (procID() == 0) {
-            std::cout << "u: inf, 1, and 2 norms / solNorms = " << unorm0 << ", " << unorm1 << ", " << unorm2 << endl;
+            std::cout << "Level " << m_level << " u: inf, 1, and 2 norms / solNorms = "
+                      << unorm0 << ", " << unorm1 << ", " << unorm2 << endl;
         }
 
         Real pSolNorm0 = computeMappedNorm(pSolRef, NULL, *m_levGeoPtr, 0);
@@ -1683,7 +1685,8 @@ void AMRNavierStokes::getPlotData (LevelData<FArrayBox>& a_plot_data) const
         Real pnorm0 = computeMappedNorm(pError, NULL, *m_levGeoPtr, 0) / pSolNorm0;
         Real pnorm1 = computeMappedNorm(pError, NULL, *m_levGeoPtr, 1) / pSolNorm1;
         Real pnorm2 = computeMappedNorm(pError, NULL, *m_levGeoPtr, 2) / pSolNorm2;
-        pout() << "p: inf, 1, and 2 norms / solNorms = " << pnorm0 << ", " << pnorm1 << ", " << pnorm2 << endl;
+        pout() << "Level " << m_level << " p: inf, 1, and 2 norms / solNorms = "
+               << pnorm0 << ", " << pnorm1 << ", " << pnorm2 << endl;
 
         // Increment plot counter
         plot_data_counter += SpaceDim;  // velocity
