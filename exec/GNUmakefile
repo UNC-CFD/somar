@@ -4,9 +4,6 @@ ebase := somar
 # Where do the Chombo libraries live?
 CHOMBO_HOME = ../../lib/Chombo/lib
 
-# When searching for source files, we will skip these directories.
-not_src_dirs = exec tests post docs
-
 # Do you want to trap floating point errors?
 TRAPFPE = FALSE
 
@@ -20,9 +17,7 @@ include $(CHOMBO_HOME)/mk/Make.defs.config
 LibNames :=  AMRElliptic AMRTools AMRTimeDependent BoxTools
 
 base_dir =  .
-src_dirs = $(shell find ../* -maxdepth 256 -type d \
-             $(foreach dir,$(not_src_dirs),-not \( -name $(dir) -prune \) ) \
-             | tr '\n' ' ')
+src_dirs = $(shell find ../src -maxdepth 256 -type d | tr '\n' ' ')
 inc_dirs = $(CHOMBO_HOME)/include $(src_dirs)
 
 include $(CHOMBO_HOME)/mk/Make.example
