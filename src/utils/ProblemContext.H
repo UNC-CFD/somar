@@ -29,6 +29,7 @@
 #include "RealVect.H"
 #include "Tuple.H"
 #include <string>
+class PhysBCUtil;
 
 
 // -----------------------------------------------------------------------------
@@ -215,6 +216,10 @@ private:
     static bool s_IBCParamsRead;
 
 public:
+    // Use this to request a new (undefined) PhysBCUtil cast from the
+    // appropriate child.
+    PhysBCUtil* newPhysBCUtil () const;
+
     struct ProblemType {
         enum {
             ADVECTION_TEST  = 0,

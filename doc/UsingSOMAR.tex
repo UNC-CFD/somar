@@ -239,7 +239,7 @@ Now it is time to compile a 2D simulation with debugging off. Make sure that the
 \end{lstlisting}
 Next, run \texttt{make all} from the \texttt{exec} directory. This will create an executable with an \texttt{OPTHIGH.MPI.ex} suffix. This executable must be given an input file as a parameter. For example, to run a simulation on 8 processors, use \texttt{mpirun -np 8 somar2d.OPTHIGH.MPI.ex inputs.LockExchange.HAL}. The result should be two sets of HDF5 files -- one set of checkpoint files that are used to restart a simulation, and one set of plot files that can be viewed in VisIt\footnote{VisIt is freely available at \url{https://wci.llnl.gov/simulation/computer-codes/visit}.}.\\
 
-In the interest of efficiency, be sure to set the \texttt{amr.max\_base\_grid\_size} input parameter to be commensurate with \texttt{amr.nx}, and yet be large enough for the multigrid solver to take advantage of. It is also wise to ensure that the total number of grids is a multiple of the number of processors. If you neglect to add a \texttt{amr.max\_base\_grid\_size} line to your input file, the solver will try to decompose the domain automatically, but it does not always do a perfect job. It's best to get into the habit of manually setting the \texttt{amr.max\_base\_grid\_size} and checking it each time you change the problem setup.\\
+In the interest of efficiency, be sure to set the \texttt{amr.max\_base\_grid\_size} input parameter to be commensurate with \texttt{amr.nx}, and yet be large enough for the multigrid solver to be effective. It is also wise to ensure that the total number of grids is a multiple of the number of processors. If you neglect to add a \texttt{amr.max\_base\_grid\_size} line to your input file, the solver will try to decompose the domain automatically, but it does not always do a perfect job. It's best to get into the habit of manually setting the \texttt{amr.max\_base\_grid\_size} and checking it each time you change the problem setup.\\
 
 To add AMR features, consider the input parameters shown in listing \ref{lstRegriddingParams}. Setting \texttt{maxlevel=1} will give us the base level ($0$) and a single refined level ($1$). When AMR is turned on, we must supply \texttt{regrid\_intervals} and \texttt{refratio} values. (For the sake of brevity, I will not write input prefixes every time I reference a parameter.)
 \begin{lstlisting}[caption={The regridding input parameters.},label=lstRegriddingParams]
@@ -383,7 +383,7 @@ void InternalWaveBCUtil::setScalarIC (FArrayBox&           a_scalarFAB,
 }
 \end{lstlisting}
 
-Once this class is written, we need to register it with the list of problem types. This is done in two steps. First, open \texttt{exec/ProblemContext.H} and look for a enumeration called \texttt{ProblemType}. Add a new entry to this  list called \texttt{INTERNAL\_WAVE}. It is extremely important that you do not alter any of the other entries. Doing so will cause other problems to stop working. Next, open a file called \texttt{NavierStokes/AMRNavierStokesFactory.cpp}. In the constructor of this class, there is a switch statement that ensures the AMR solver creates the correct PhysBCUtil. You must add your new PhysBCUtil to this list of cases.
+Once this class is written, we need to register it with the list of problem types. This is done in two steps. First, open \texttt{util/ProblemContext.H} and look for a enumeration called \texttt{ProblemType}. Add a new entry to this list called \texttt{INTERNAL\_WAVE}. It is important that you do not alter any of the other entries or you will cause other problems to stop working. Next, open the associated .cpp file, \texttt{util/ProblemContext.cpp}, and go to the \texttt{newPhysBCUtil} function. This function contains a switch block that associates each problem with its appropriate boundary conditions. You must add your new \texttt{PhysBCUtil} to this list of cases.
 \begin{lstlisting}[caption={The \texttt{ProblemContext} enumeration.},label=lstPhysBCUtilEnumerations]
     enum ProblemType {
         ADVECTION_TEST  = 0,
@@ -395,13 +395,13 @@ Once this class is written, we need to register it with the list of problem type
         _NUM_PROBLEM_TYPES
     };
 \end{lstlisting}
-\begin{lstlisting}[caption={The new addition to the \texttt{AMRNavierStokesFactory} switch block.}]
+\begin{lstlisting}[caption={The new addition to the \texttt{ProblemContext::newPhysBCUtil} switch block.}]
     case ProblemContext::INTERNAL_WAVE:
-        m_physBCPtr = new InternalWaveBCUtil;
+        physBCPtr = new InternalWaveBCUtil;
         break;
 \end{lstlisting}
 
-At this point, all of the code is in place. Now, we go to our input file and set \texttt{ibc.problem} equal to the number assigned in the enumeration. In the code of listing \ref{lstPhysBCUtilEnumerations}, this is $5$, but your code may be different. When the code runs, \texttt{ProblemContext} will read the input file, including the \texttt{ibc.problem} value. This value is then passed to the \texttt{AMRNavierStokesFactory} object, and is used to generate the appropriate IBCs for the solver.\\
+At this point, all of the code is in place. Now, we go to our input file and set \texttt{ibc.problem} equal to the number assigned in the enumeration. In the code of listing \ref{lstPhysBCUtilEnumerations}, \texttt{INTERNAL\_WAVE} was assigned the number $5$, but your code may be different. When the code runs, \texttt{ProblemContext} will read the input file, including the \texttt{ibc.problem} value. This value is then used in the \texttt{PtoblemContext::newPhysBCUtil} function to generate the appropriate IBCs for the solver.\\
 
 Feel free to play with the input file, increase the number of levels, adjust the maximum grid size and tagging parameters, and so forth. Find the settings that produce the best results and the shortest run time. If an instability forms, remember that we have not yet added diffusion. To do so, simply set the \texttt{amr.scal\_diffusion\_coeffs} and \texttt{amr.viscosity} input parameters. Setting the viscosity to anything other than zero will automatically change the velocity BCs from free-slip to no-slip.
 

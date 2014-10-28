@@ -27,6 +27,16 @@
 #include <cstdio>
 #include <sstream>
 
+#include "AdvectionTestBCUtil.H"
+#include "LockExchangeBCUtil.H"
+#include "BeamGenerationBCUtil.H"
+#include "InternalWaveBCUtil.H"
+#include "TaylorGreenBCUtil.H"
+#include "VortexStreetBCUtil.H"
+#include "HorizConvBCUtil.H"
+#include "SolitaryWaveBCUtil.H"
+#include "DJLBCUtil.H"
+
 
 ProblemContext* ProblemContext::s_singletonPtr = NULL;
 bool ProblemContext::s_AMRParamsRead = false;
@@ -847,6 +857,53 @@ void ProblemContext::readIBC ()
     // End problem-specific stuff ---------------------------
 
     pout() << endl;
+}
+
+
+// -----------------------------------------------------------------------------
+// Use this to request a new (undefined) PhysBCUtil cast from the
+// appropriate child.
+// -----------------------------------------------------------------------------
+PhysBCUtil* ProblemContext::newPhysBCUtil () const
+{
+    CH_assert(s_IBCParamsRead);
+
+    PhysBCUtil* physBCPtr = NULL;
+
+    switch (problem) {
+    case ProblemType::ADVECTION_TEST:
+        physBCPtr = new AdvectionTestBCUtil;
+        break;
+    case ProblemType::LOCK_EXCHANGE:
+        physBCPtr = new LockExchangeBCUtil;
+        break;
+    case ProblemType::BEAM_GENERATION:
+        physBCPtr = new BeamGenerationBCUtil;
+        break;
+    case ProblemType::INTERNAL_WAVE:
+        physBCPtr = new InternalWaveBCUtil;
+        break;
+    case ProblemType::TAYLOR_GREEN:
+        physBCPtr = new TaylorGreenBCUtil;
+        break;
+    case ProblemType::VORTEX_STREET:
+        physBCPtr = new VortexStreetBCUtil;
+        break;
+    case ProblemType::HORIZ_CONV:
+        physBCPtr = new HorizConvBCUtil;
+        break;
+    case ProblemType::SOLITARYWAVE:
+        physBCPtr = new SolitaryWaveBCUtil;
+        break;
+    case ProblemType::DJL:
+        physBCPtr = new DJLBCUtil;
+        break;
+    default:
+        // Undefined problem
+        MayDay::Error("Bad problem type");
+    }
+
+    return physBCPtr;
 }
 
 

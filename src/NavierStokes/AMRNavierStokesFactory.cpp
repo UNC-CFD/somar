@@ -25,16 +25,6 @@
 #include "AMRNavierStokes.H"
 #include "ProblemContext.H"
 
-#include "AdvectionTestBCUtil.H"
-#include "LockExchangeBCUtil.H"
-#include "BeamGenerationBCUtil.H"
-#include "InternalWaveBCUtil.H"
-#include "TaylorGreenBCUtil.H"
-#include "VortexStreetBCUtil.H"
-#include "HorizConvBCUtil.H"
-#include "SolitaryWaveBCUtil.H"
-#include "DJLBCUtil.H"
-
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -44,40 +34,8 @@ AMRNavierStokesFactory::AMRNavierStokesFactory ()
 
     m_cfl = ctx->cfl;
 
-    // Determine the correct PhysBCUtil to pass to the AMRLevels.
-    switch (ctx->problem) {
-    case ProblemContext::ProblemType::ADVECTION_TEST:
-        m_physBCPtr = new AdvectionTestBCUtil;
-        break;
-    case ProblemContext::ProblemType::LOCK_EXCHANGE:
-        m_physBCPtr = new LockExchangeBCUtil;
-        break;
-    case ProblemContext::ProblemType::BEAM_GENERATION:
-        m_physBCPtr = new BeamGenerationBCUtil;
-        break;
-    case ProblemContext::ProblemType::INTERNAL_WAVE:
-        m_physBCPtr = new InternalWaveBCUtil;
-        break;
-    case ProblemContext::ProblemType::TAYLOR_GREEN:
-        m_physBCPtr = new TaylorGreenBCUtil;
-        break;
-    case ProblemContext::ProblemType::VORTEX_STREET:
-        m_physBCPtr = new VortexStreetBCUtil;
-        break;
-    case ProblemContext::ProblemType::HORIZ_CONV:
-        m_physBCPtr = new HorizConvBCUtil;
-        break;
-    case ProblemContext::ProblemType::SOLITARYWAVE:
-        m_physBCPtr = new SolitaryWaveBCUtil;
-        break;
-    case ProblemContext::ProblemType::DJL:
-        m_physBCPtr = new DJLBCUtil;
-        break;
-    default:
-        // Undefined problem
-        MayDay::Error("Bad problem type");
-    }
-
+    // Create a new PhysBCUtil for this level.
+    m_physBCPtr = ctx->newPhysBCUtil();
     m_physBCPtr->define();
 }
 
