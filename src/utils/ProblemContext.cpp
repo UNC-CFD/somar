@@ -27,6 +27,14 @@
 #include <cstdio>
 #include <sstream>
 
+#include "CartesianMap.H"
+#include "TwistedMap.H"
+#include "BeamGeneratorMap.H"
+#include "NewBeamGeneratorMap.H"
+#include "CylindricalMap.H"
+#include "LedgeMap.H"
+#include "MassBayMap.H"
+
 #include "AdvectionTestBCUtil.H"
 #include "LockExchangeBCUtil.H"
 #include "BeamGenerationBCUtil.H"
@@ -604,6 +612,55 @@ void ProblemContext::readGeometry ()
     }
 
     pout() << endl;
+}
+
+
+// -----------------------------------------------------------------------------
+// Use this to request a new GeoSourceInterface cast from the
+// appropriate child.
+// -----------------------------------------------------------------------------
+GeoSourceInterface* ProblemContext::newGeoSourceInterface () const
+{
+    CH_assert(s_geometryParamsRead);
+
+    GeoSourceInterface* geoSourcePtr = NULL;
+
+    switch (coordMap) {
+    case ProblemContext::CoordMap::UNDEFINED:
+        MayDay::Error("ProblemContext::newGeoSourceInterface received "
+                      "coordMap = UNDEFINED");
+        break;
+    case ProblemContext::CoordMap::CARTESIAN:
+        geoSourcePtr = new CartesianMap;
+        break;
+    case ProblemContext::CoordMap::TWISTED:
+        geoSourcePtr = new TwistedMap;
+        break;
+    case ProblemContext::CoordMap::BEAMGENERATOR:
+        geoSourcePtr = new BeamGeneratorMap;
+        break;
+    case ProblemContext::CoordMap::VERTBDRYSTRETCH:
+        MayDay::Error("ProblemContext::newGeoSourceInterface received "
+                      "coordMap = VERTBDRYSTRETCH, which is obsolete");
+        break;
+    case ProblemContext::CoordMap::CYLINDRICAL:
+        geoSourcePtr = new CylindricalMap;
+        break;
+    case ProblemContext::CoordMap::LEDGE:
+        geoSourcePtr = new LedgeMap;
+        break;
+    case ProblemContext::CoordMap::MASSBAY:
+        geoSourcePtr = new MassBayMap;
+        break;
+    case ProblemContext::CoordMap::NEWBEAMGENERATOR:
+        geoSourcePtr = new NewBeamGeneratorMap;
+        break;
+    default:
+        MayDay::Error("ProblemContext::newGeoSourceInterface received "
+                      "an invalid s_coordMap");
+    }
+
+    return geoSourcePtr;
 }
 
 

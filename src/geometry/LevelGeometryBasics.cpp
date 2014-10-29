@@ -29,17 +29,8 @@
 #include "CubicSpline.H"
 #include "MiscUtils.H"
 #include "BoxIterator.H"
-
-#include "CartesianMap.H"
-#include "TwistedMap.H"
-#include "BeamGeneratorMap.H"
-#include "NewBeamGeneratorMap.H"
-#include "CylindricalMap.H"
-#include "LedgeMap.H"
-#include "MassBayMap.H"
-
-#include "Debug.H"
 #include "NodeAMRIO.H"
+#include "Debug.H"
 
 
 // Define the constants used to look up tensor indices.
@@ -110,49 +101,7 @@ void LevelGeometry::staticDefine ()
     s_domainLength = ctx->domainLength;
     s_lev0dXi = s_domainLength / RealVect(ctx->nx);
     s_coordMap = ctx->coordMap;
-
-    // Set the coordinate mapping and metric source.
-    switch (s_coordMap) {
-    case ProblemContext::CoordMap::UNDEFINED:
-        MayDay::Error("LevelGeometry::fillBaseFields received s_coordMap = UNDEFINED");
-        break;
-
-    case ProblemContext::CoordMap::CARTESIAN:
-        s_metricSourcePtr = RefCountedPtr<GeoSourceInterface>(new CartesianMap);
-        break;
-
-    case ProblemContext::CoordMap::TWISTED:
-        s_metricSourcePtr = RefCountedPtr<GeoSourceInterface>(new TwistedMap);
-        break;
-
-    case ProblemContext::CoordMap::BEAMGENERATOR:
-        s_metricSourcePtr = RefCountedPtr<GeoSourceInterface>(new BeamGeneratorMap);
-        break;
-
-    case ProblemContext::CoordMap::VERTBDRYSTRETCH:
-        MayDay::Error("LevelGeometry::fillBaseFields received "
-                      "s_coordMap = VERTBDRYSTRETCH, which is obsolete");
-        break;
-
-    case ProblemContext::CoordMap::CYLINDRICAL:
-        s_metricSourcePtr = RefCountedPtr<GeoSourceInterface>(new CylindricalMap);
-        break;
-
-    case ProblemContext::CoordMap::LEDGE:
-        s_metricSourcePtr = RefCountedPtr<GeoSourceInterface>(new LedgeMap);
-        break;
-
-    case ProblemContext::CoordMap::MASSBAY:
-        s_metricSourcePtr = RefCountedPtr<GeoSourceInterface>(new MassBayMap);
-        break;
-
-    case ProblemContext::CoordMap::NEWBEAMGENERATOR:
-        s_metricSourcePtr = RefCountedPtr<GeoSourceInterface>(new NewBeamGeneratorMap);
-        break;
-
-    default:
-        MayDay::Error("LevelGeometry::fillBaseFields received an invalid s_coordMap");
-    }
+    s_metricSourcePtr = RefCountedPtr<GeoSourceInterface>(ctx->newGeoSourceInterface());
 
     // Sanity check
     CH_assert(isStaticDefined());

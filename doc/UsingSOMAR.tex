@@ -559,7 +559,7 @@ In section \ref{NewIBCSetup}, we saw that setting up a customized IBC class invo
   \item Assigning an integer to your new class that can be used by the input files.
   \item Telling whoever constructs new \texttt{PhysBCUtil}s about your new child.
 \end{enumerate}
-Creating your own topography follows the same procedure, except the class structure is slightly different (see figure \ref{fig:MappingClassDia}). Every mapping class you will ever make inherits from \texttt{GeoSourceInterface}, which is well commented and I encourage you to look over. At a minimum, you can create a new coordinate map by creating a child class of \texttt{GeoSourceInterface} and overriding the \texttt{fill\_physCoor} function to produce $x^{\alpha}(\xi^i)$. It will be \texttt{GeoSourceInterface}'s job to use \texttt{fill\_physCoor} to construct all other geometric quantities needed by the AMR solver such as the Jacobian and metric tensor.\\
+Creating your own topography follows the same procedure, except the class structure is slightly different (see figure \ref{fig:MappingClassDia}). Every mapping class you will ever create inherits from \texttt{GeoSourceInterface}. At a minimum, you can create a new coordinate map by creating a child class of \texttt{GeoSourceInterface} and overriding the \texttt{fill\_physCoor} function to produce $x^{\alpha}(\xi^i)$. The parent \texttt{GeoSourceInterface} will then use the child's \texttt{fill\_physCoor} to construct all other geometric quantities needed by the AMR solver such as the Jacobian and metric tensor.\\
 
 \begin{figure}
 \centering
@@ -611,7 +611,9 @@ Creating your own topography follows the same procedure, except the class struct
 \label{fig:MappingClassDia}
 \end{figure}
 
-Most of the time, we are only interested in creating a terrain-following coordinate system. Specifying all three functions, $x^{\alpha}(\xi^i)$, throughout the entire domain is unnecessary -- we really only need to specify the elevation of the ocean bottom at each point in the horizontal domain, $h(x,y)$. For this purpose, we can instead create a child of \texttt{BathymetricBaseMap} and override the \texttt{fill\_bathymetry} function. An example of this is the \texttt{BeamGenerationMap} class used to create the submarine ridge of figure \ref{fig:uBeams}. Creating a terrain-following coordinate system via \texttt{BathymetricBaseMap} will be the focus of the rest of this section.
+Most of the time, we are only interested in creating a terrain-following coordinate system. Specifying all three functions, $x^{\alpha}(\xi^i)$, throughout the entire domain is unnecessary -- we really only need to specify the elevation of the ocean bottom at each point in the horizontal domain, $h(x,y)$. For this purpose, we can instead create a child of \texttt{BathymetricBaseMap} and override the \texttt{fill\_bathymetry} function.
+%An example of this is the \texttt{BeamGenerationMap} class used to create the submarine ridge of figure \ref{fig:uBeams}.
+Creating a terrain-following coordinate system via \texttt{BathymetricBaseMap} will be the focus of the rest of this section.
 
 \begin{lstlisting}[caption={The \texttt{LedgeMap} class header.},label=lstLedgeMapH]
 /*************************************************************************
@@ -659,9 +661,9 @@ protected:
 #endif //!__LedgeMap_H__INCLUDED__
 \end{lstlisting}
 
-Listing \ref{lstLedgeMapH} shows the functions that we will need to write. The constructor will set up the member variables and the \texttt{fill\_bathymetry} function will be the workhorse. The remaining two functions are trivial and can be inlined if desired.\\
+Listing \ref{lstLedgeMapH} shows the code that we need to write. The constructor will set up the member variables and the \texttt{fill\_bathymetry} function will be the workhorse. The remaining two functions are trivial and can be inlined if desired.\\
 
-As a first version, we will make the constructor do nothing and the \texttt{fill\_bathymetry} function will simply create two regions of distinct elevation separated by a linear transition region (figure \ref{fig:LedgeMapICLinear}).
+As a first version, we will make the constructor do nothing and the \texttt{fill\_bathymetry} function will simply create two regions of distinct elevation separated by a linear transition region (figure \ref{fig:LedgeMapICLinear}).\\
 
 \begin{lstlisting}[caption={Our first version of the \texttt{fill\_bathymetry} function. This will provide a linear transition region. All geometric parameters are hard-coded.},float=h]
 	// The geometric parameters.
@@ -715,20 +717,20 @@ As a first version, we will make the constructor do nothing and the \texttt{fill
 \label{fig:LedgeMapICs}
 \end{figure}
 
-Once this code compiles, you need to register your new mapping class with the \texttt{CoordMap} enumeration in \texttt{ProblemContext.H}. Then, you must open the \texttt{LevelGeometryBasics.cpp} file, look for the \texttt{switch} block that creates new \texttt{GeoSourceInterface}s, and add a \texttt{case} that creates your new map. This process is extremely similar to what we have done in the \texttt{InternalWaveBCUtil} example and is left to the reader. Once completed, you should be able to run your simulation and watch the internal wave travel across the ledge.\\
+Once this code compiles, you need to register your new mapping class with the \texttt{CoordMap} enumeration in \texttt{ProblemContext.H}. Then, you must open the \texttt{newGeoSourceInterface} function in the \texttt{ProblemContext.cpp} file and add a \texttt{case} to the \texttt{switch} block that creates your new map. This process is extremely similar to what we have done in the \texttt{InternalWaveBCUtil} example and is left to the reader. Once completed, you should be able to run your simulation and watch the internal wave travel across the ledge.\\
 
 Although this code works just fine, there are some points that need to be addressed. First of all, we hard-coded the geometric parameters. This is clearly bad programming practice because we will have to remember to change these values and recompile every time we change the geometric parameters in the input file. The proper way to obtain these values is by reading them from the input file along with all other geometric parameters. This will be the focus of section \ref{HowToReadFromTheInputFile}.\\
 
-Another point worth mentioning is that we are re-calculating the exact same linear coefficients every time this function is called. In this case, we may not see much of a performance impact because the coefficients are so cheap to compute, but what if we had a more complex geometry? Or worse -- what if we were reading the ledge elevations from an input file? Although the AMR code is smart enough to cache commonly used metrics, this function will still be called quite a bit and we should do our best to optimize it. Luckily, there is an easy fix -- move the repetitive computation to the constructor. (This is why I made the \texttt{m\_*} variables class members in the first place!)\\
+Another point worth mentioning is that we are re-calculating the exact same linear coefficients every time this function is called. In this case, we may not see much of a performance impact because the coefficients are so cheap to compute, but what if we had a more complex geometry? Or worse -- what if we were reading the ledge elevations from an input file? Although the AMR code is smart enough to cache commonly used metrics, this function will still be called quite a bit and we should do our best to optimize it. Luckily, there is an easy fix -- move the repetitive computation to the constructor.\\
 
-Once the coefficient calculations are moved to the constructor, we can create more complex geometries with minimal performance impact. For example, we can smooth-out the transition region with a cubic spline. I suggest you try this for yourself (without looking at the final version of the code). For convenience, I will supply the the cubic's coefficients.
+Once the coefficient calculations are moved to the constructor, we can create more complex geometries with minimal performance impact. For example, we can smooth-out the transition region with a cubic spline. You should try this for yourself (without looking at the final version of the code). For convenience, here are the cubic's coefficients.
 \begin{align*}
 	c_0 &= h_r + x_r^2 (h_l-h_r) (3x_l-x_r) / (x_l-x_r)^3\\
 	c_1 &= -6 x_l x_r (h_l-h_r) / (x_l-x_r)^3\\
 	c_2 &= 3 (x_l+x_r) (h_l-h_r) / (x_l-x_r)^3\\
 	c_3 &= -2 (h_l-h_r) / (x_l-x_r)^3
 \end{align*}
-Here, $c_i$ is the coefficient of $x^i$ and each parameter is easily identified with its coded version (e.g. $h_l$ $\leftrightarrow$ \texttt{m\_hl}). Figure \ref{fig:LedgeMapICCubic} shows what this cubic transition region should look like.
+Here, $c_i$ is the coefficient of the $i^{th}$ power of $x$ and each parameter is easily identified with its coded version (e.g. $h_l$ $\leftrightarrow$ \texttt{m\_hl}). Figure \ref{fig:LedgeMapICCubic} shows what this cubic transition region should look like.
 
 \subsection{Reading the input file}\label{HowToReadFromTheInputFile}
 You may have noticed that Chombo includes a nice class called \texttt{ParmParse}. This does not just blindly read data from a text file, but actually parses it, as the name suggests. This allows the input file to contain comments and an arbitrary amount of whitespace, which helps make the input file human-readable. \texttt{ParmParse} also allows the code to not just ask for parameters, but ask whether parameters were provided at all. It also asks for prefixes on all of the input parameters, which gives each part of code its own namespace. This prevents a clash if, say, the AMR projector and the LES both need a parameter called \texttt{numiters}. I highly suggest that all portions of the code read from a single input file that completely defines the simulation.\\

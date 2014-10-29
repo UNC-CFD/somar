@@ -30,6 +30,7 @@
 #include "Tuple.H"
 #include <string>
 class PhysBCUtil;
+class GeoSourceInterface;
 
 
 // -----------------------------------------------------------------------------
@@ -156,6 +157,10 @@ private:
     static bool s_geometryParamsRead;
 
 public:
+    // Use this to request a new GeoSourceInterface cast from the
+    // appropriate child.
+    GeoSourceInterface* newGeoSourceInterface () const;
+
     struct CoordMap {
         enum {
             UNDEFINED        =-1,
