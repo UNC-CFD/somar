@@ -43,7 +43,7 @@ amr.max_dt_grow = 1.5                   # [1.5]
 amr.limitDtViaViscosity = 1             # [1]
 amr.limitDtViaDiffusion = 1             # [1]
 amr.limitDtViaPressureGradient = 1      # [0]
-amr.limitDtViaInternalWaveSpeed = 0     # [0]
+amr.limitDtViaInternalWaveSpeed = 0     # [ibc.useBackgroundScalar]
 
 
 ### Viscosity / diffusion
@@ -58,7 +58,7 @@ plot.plot_interval = 1
 plot.checkpoint_interval = 100
 
 plot.writeScalars = 1                   # [1]
-plot.writeScalarsMinusBackground = 0    # [1]
+plot.writeScalarsMinusBackground = 0    # [ibc.useBackgroundScalar]
 plot.writePressure = 1                  # [1]
 plot.writeDivergence = 1                # [0]
 plot.writeVorticity = 0                 # [0]

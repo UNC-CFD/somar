@@ -463,6 +463,13 @@ void ProblemContext::readAMR ()
     pout() << "\tlimitDtViaPressureGradient = " << limitDtViaPressureGradient << endl;
 
     limitDtViaInternalWaveSpeed = false;
+    {
+        int useBackgroundScalar = 0;
+        ParmParse("ibc").query("useBackgroundScalar", useBackgroundScalar);
+        if (useBackgroundScalar) {
+            limitDtViaInternalWaveSpeed = true;
+        }
+    }
     ppAMR.query("limitDtViaInternalWaveSpeed", limitDtViaInternalWaveSpeed);
     pout() << "\tlimitDtViaInternalWaveSpeed = " << limitDtViaInternalWaveSpeed << endl;
 
