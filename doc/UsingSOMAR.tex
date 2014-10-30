@@ -863,24 +863,23 @@ void LedgeMap::fill_bathymetry (FArrayBox&       a_dest,
 \subsection{Adding tidal forcing and sponges}
 
 At this point, you should be quite familiar with the way the code is organized and how BoxTools is used, so turning on the tidal forcing and sponges should be rather simple. Consider the input parameters shown in listing \ref{lstTidalSpongeParams}.
-\begin{lstlisting}[label=lstTidalSpongeParams,caption={Some tidal and sponge forcing input parameters.}]
+\begin{lstlisting}[label=lstTidalSpongeParams,caption={Sample tidal and sponge forcing input parameters.}]
   ### tidal parameters
   ibc.tidalOmega = 0.0001407
   ibc.tidalU0 = 0.01407
 
   ### Sponge layer parameters
   ibc.useSpongeLayer = 1
-  # ibc.spongeWidthLo = 0.12 0.0
-  # ibc.spongeWidthHi = 0.12 0.0
-  ibc.spongeWidthFracLo = 0.08 0.00
-  ibc.spongeWidthFracHi = 0.08 0.00
+  ibc.spongeWidthLo = 0.12 0.0
+  ibc.spongeWidthHi = 0.12 0.0
+  # ibc.spongeWidthFracLo = 0.08 0.00
+  # ibc.spongeWidthFracHi = 0.08 0.00
   ibc.spongeDtMultLo = 15.0 15.0
   ibc.spongeDtMultHi = 15.0 15.0  
 \end{lstlisting}
-The first two set the tidal frequency ($rad/s$) and maximum tidal speed. If these parameters are present in the input file and non-zero, then tidal forcing will be used. The rest of the parameters control the sponge sizes and strengths. \texttt{spongeWidthLo} is a vector specifying the absolute thickness of the sponges in each direction on the lower faces of the domain while \texttt{spongeWidthHi} does the same for the upper faces. The \texttt{spongeWidthFrac*} parameters are similar, but they specify fractions of the domain lengths in each direction rather than absolute lengths. For example, the \texttt{spongeWidthFrac*} parameters shown in listing \ref{lstTidalSpongeParams} would create sponges in the x-direction that each span $8\%$ of the domain, if they hadn't been commented out. If you choose to specify \texttt{spongeWidthFrac*}, then you must not specify \texttt{spongeWidth*}.\\
+The first two parameters set the tidal frequency ($rad/s$) and maximum tidal speed. If these parameters are non-zero and present in the input file, then tidal forcing will be used. The rest of the parameters control the sponge sizes and strengths. \texttt{spongeWidthLo} is a vector specifying the absolute thickness of the sponges in each direction on the lower faces of the domain while \texttt{spongeWidthHi} does the same for the upper faces. The \texttt{spongeWidthFrac*} parameters are similar, but they specify fractions of the domain lengths in each direction rather than absolute lengths. For example, the \texttt{spongeWidthFrac*} parameters shown in listing \ref{lstTidalSpongeParams} would create sponges in the x-direction that each span $8\%$ of the domain, if they hadn't been commented out. If you choose to provide \texttt{spongeWidthFrac*}, then you must not provide \texttt{spongeWidth*}.\\
 
 If you decide to use a sponge, you must also specify what the target velocity and scalar values will be. To do this, you must override two \texttt{PhysBCUtil} functions, \texttt{fillVelSpongeLayerTarget} and \texttt{fillScalarSpongeLayerTarget}. By default, these functions throw an error and halt execution.
-
 
 % 
 %\appendix
