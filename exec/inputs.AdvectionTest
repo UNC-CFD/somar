@@ -1,8 +1,8 @@
 ibc.problem = 0                # 0 = Advection test
-# amr.restart_file = chkpt_000000.2d.hdf5
-amr.verbosity = 1              # [0]
-amr.gravityMethod = 0          # [1]   0=none, 1=explicit, 2=implicit (only with bg scalar)
 ibc.useBackgroundScalar = 0
+amr.gravityMethod = 0          # [1]   0=none, 1=explicit, 2=implicit (only with bg scalar)
+amr.verbosity = 1              # [0]
+# amr.restart_file = chkpt_000000.2d.hdf5
 
 
 ### Coordinate map
@@ -74,14 +74,14 @@ amr.advective_lambda_reflux = 0         # [0]
 
 ### Advection scheme parameters
 # Velocity
-advection.normalPredOrderVel = 2        # [1] 0=CTU, 1=PLM, 2=PPM
+advection.normalPredOrderVel = 2        # [2] 0=CTU, 1=PLM, 2=PPM
 advection.useFourthOrderSlopesVel = 1   # [1]
 advection.useLimitingVel = 0            # [0]
 advection.useHighOrderLimiterVel = 0    # [0]
 advection.nonlinearDifferencingForm = 1 # [0] -1=None, 0=Conservative, 1=Advective
 
 # Buoyancy
-advection.normalPredOrderScal = 2       # [1] 0=CTU, 1=PLM, 2=PPM
+advection.normalPredOrderScal = 2       # [2] 0=CTU, 1=PLM, 2=PPM
 advection.useFourthOrderSlopesScal = 1  # [1]
 advection.useLimitingScal = 1           # [1]
 advection.useHighOrderLimiterScal = 1   # [1]

@@ -730,7 +730,7 @@ void ProblemContext::readPlot ()
     pout() << "\twrite_grad_eLambda = " << write_grad_eLambda << endl;
 
     write_pressure = true;
-    ppPlot.get("writePressure", write_pressure);
+    ppPlot.query("writePressure", write_pressure);
     pout() << "\twrite_pressure = " << write_pressure << endl;
 
     write_vorticity = false;
@@ -742,11 +742,18 @@ void ProblemContext::readPlot ()
     pout() << "\twrite_streamfunction = " << write_streamfunction << endl;
 
     write_scalars = true;
-    ppPlot.get("writeScalars", write_scalars);
+    ppPlot.query("writeScalars", write_scalars);
     pout() << "\twrite_scalars = " << write_scalars << endl;
 
-    write_scalarsMinusBackground = true;
-    ppPlot.get("writeScalarsMinusBackground", write_scalarsMinusBackground);
+    write_scalarsMinusBackground = false;
+    {
+        int useBackgroundScalar = 0;
+        ParmParse("ibc").query("useBackgroundScalar", useBackgroundScalar);
+        if (useBackgroundScalar) {
+            write_scalarsMinusBackground = true;
+        }
+    }
+    ppPlot.query("writeScalarsMinusBackground", write_scalarsMinusBackground);
     pout() << "\twrite_scalarsMinusBackground = " << write_scalarsMinusBackground << endl;
 
     write_proc_ids = false;
@@ -1045,55 +1052,55 @@ void ProblemContext::readSolver ()
         ParmParse ppAMRMG("AMRMG");
 
         AMRMG_eps = 1e-6;
-        ppAMRMG.get("eps", AMRMG_eps);
+        ppAMRMG.query("eps", AMRMG_eps);
         pout() << "\tAMRMG.eps = " << AMRMG_eps << endl;
 
         AMRMG_num_smooth_down = 2;
-        ppAMRMG.get("num_smooth_down", AMRMG_num_smooth_down);
+        ppAMRMG.query("num_smooth_down", AMRMG_num_smooth_down);
         pout() << "\tAMRMG.num_smooth_down = " << AMRMG_num_smooth_down << endl;
 
         AMRMG_num_smooth_up = 2;
-        ppAMRMG.get("num_smooth_up", AMRMG_num_smooth_up);
+        ppAMRMG.query("num_smooth_up", AMRMG_num_smooth_up);
         pout() << "\tAMRMG.num_smooth_up = " << AMRMG_num_smooth_up << endl;
 
         AMRMG_num_smooth_bottom = 2;
-        ppAMRMG.get("num_smooth_bottom", AMRMG_num_smooth_bottom);
+        ppAMRMG.query("num_smooth_bottom", AMRMG_num_smooth_bottom);
         pout() << "\tAMRMG.num_smooth_bottom = " << AMRMG_num_smooth_bottom << endl;
 
         AMRMG_num_smooth_precond = 2;
-        ppAMRMG.get("num_smooth_precond", AMRMG_num_smooth_precond);
+        ppAMRMG.query("num_smooth_precond", AMRMG_num_smooth_precond);
         pout() << "\tAMRMG.num_smooth_precond = " << AMRMG_num_smooth_precond << endl;
 
         AMRMG_numMG = 1;
-        ppAMRMG.get("numMG", AMRMG_numMG);
+        ppAMRMG.query("numMG", AMRMG_numMG);
         pout() << "\tAMRMG.numMG = " << AMRMG_numMG << endl;
 
         AMRMG_imin = 5;
-        ppAMRMG.get("imin", AMRMG_imin);
+        ppAMRMG.query("imin", AMRMG_imin);
         pout() << "\tAMRMG.imin = " << AMRMG_imin << endl;
 
         AMRMG_imax = 20;
-        ppAMRMG.get("imax", AMRMG_imax);
+        ppAMRMG.query("imax", AMRMG_imax);
         pout() << "\tAMRMG.imax = " << AMRMG_imax << endl;
 
         AMRMG_hang = 1e-15;
-        ppAMRMG.get("hang", AMRMG_hang);
+        ppAMRMG.query("hang", AMRMG_hang);
         pout() << "\tAMRMG.hang = " << AMRMG_hang << endl;
 
         AMRMG_normThresh = 1e-30;
-        ppAMRMG.get("normThresh", AMRMG_normThresh);
+        ppAMRMG.query("normThresh", AMRMG_normThresh);
         pout() << "\tAMRMG.normThresh = " << AMRMG_normThresh << endl;
 
         AMRMG_maxDepth = -1;
-        ppAMRMG.get("maxDepth", AMRMG_maxDepth);
+        ppAMRMG.query("maxDepth", AMRMG_maxDepth);
         pout() << "\tAMRMG.maxDepth = " << AMRMG_maxDepth << endl;
 
         AMRMG_verbosity = verbosity;
-        ppAMRMG.get("verbosity", AMRMG_verbosity);
+        ppAMRMG.query("verbosity", AMRMG_verbosity);
         pout() << "\tAMRMG.verbosity = " << AMRMG_verbosity << endl;
 
         AMRMG_relaxMode = RelaxMode::LEVEL_GSRB;
-        ppAMRMG.get("relax_mode", AMRMG_relaxMode);
+        ppAMRMG.query("relax_mode", AMRMG_relaxMode);
         pout() << "\tAMRMG.relaxMode = " << AMRMG_relaxMode << endl;
 
         AMRMG_precondMode = PrecondMode::DiagRelax;
@@ -1103,35 +1110,35 @@ void ProblemContext::readSolver ()
         ParmParse ppBottom("bottom");
 
         bottom_eps = 1e-6;
-        ppBottom.get("eps", bottom_eps);
+        ppBottom.query("eps", bottom_eps);
         pout() << "\tbottom.eps = " << bottom_eps << endl;
 
         bottom_reps = 1e-12;
-        ppBottom.get("reps", bottom_reps);
+        ppBottom.query("reps", bottom_reps);
         pout() << "\tbottom.reps = " << bottom_reps << endl;
 
         bottom_imax = 80;
-        ppBottom.get("imax", bottom_imax);
+        ppBottom.query("imax", bottom_imax);
         pout() << "\tbottom.imax = " << bottom_imax << endl;
 
         bottom_numRestarts = 5;
-        ppBottom.get("numRestarts", bottom_numRestarts);
+        ppBottom.query("numRestarts", bottom_numRestarts);
         pout() << "\tbottom.numRestarts = " << bottom_numRestarts << endl;
 
         bottom_hang = 1e-15;
-        ppBottom.get("hang", bottom_hang);
+        ppBottom.query("hang", bottom_hang);
         pout() << "\tbottom.hang = " << bottom_hang << endl;
 
         bottom_small = 1e-30;
-        ppBottom.get("small", bottom_small);
+        ppBottom.query("small", bottom_small);
         pout() << "\tbottom.small = " << bottom_small << endl;
 
         bottom_normType = 2;
-        ppBottom.get("normType", bottom_normType);
+        ppBottom.query("normType", bottom_normType);
         pout() << "\tbottom.normType = " << bottom_normType << endl;
 
         bottom_verbosity = verbosity;
-        ppBottom.get("verbosity", bottom_verbosity);
+        ppBottom.query("verbosity", bottom_verbosity);
         pout() << "\tbottom.verbosity = " << bottom_verbosity << endl;
 
         pout() << endl;

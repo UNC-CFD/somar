@@ -83,14 +83,14 @@ amr.advective_lambda_reflux = 1         # [0]
 
 ### Advection scheme parameters
 # Velocity
-advection.normalPredOrderVel = 2        # [1] 0=CTU, 1=PLM, 2=PPM
+advection.normalPredOrderVel = 2        # [2] 0=CTU, 1=PLM, 2=PPM
 advection.useFourthOrderSlopesVel = 1   # [1]
 advection.useLimitingVel = 0            # [0]
 advection.useHighOrderLimiterVel = 0    # [0]
 advection.nonlinearDifferencingForm = 0 # [0] -1=None, 0=Conservative, 1=Advective
 
 # Buoyancy
-advection.normalPredOrderScal = 2       # [1] 0=CTU, 1=PLM, 2=PPM
+advection.normalPredOrderScal = 2       # [2] 0=CTU, 1=PLM, 2=PPM
 advection.useFourthOrderSlopesScal = 1  # [1]
 advection.useLimitingScal = 0           # [1]
 advection.useHighOrderLimiterScal = 0   # [1]

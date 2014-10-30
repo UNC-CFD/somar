@@ -1,0 +1,73 @@
+############################################
+##### A very basic input file template #####
+############################################
+ibc.problem = -1
+ibc.useBackgroundScalar = 0
+# amr.gravityMethod =                     # [1]   0=none, 1=explicit, 2=implicit (only with bg scalar)
+# amr.verbosity =                         # [0]
+# amr.restart_file =
+
+
+### Coordinate map
+geometry.coordMap = 0
+
+
+### Base grid
+amr.length = 1.0 1.0
+amr.nx = 32 32
+# amr.nx_offset =                         # [0 0 0]
+# amr.max_base_grid_size =
+# amr.max_grid_size =
+# amr.isPeriodic =                        # [0 0 0]
+
+
+### Regridding
+amr.maxlevel = 0
+amr.refratio = 4 4 4
+amr.regrid_intervals = 4 4 4
+# amr.vel_tag_tol =                       # [0.0] 0 to turn off
+# amr.buoyancy_tag_tol =                  # [0.0] 0 to turn off
+# amr.magvort_tag_quota =                 # [0.0] Fraction of max|vort| on each level. 0 to turn off.
+# amr.vort_tag_factor =                   # [0 0 0] Tags if |vort*dA| >= factor. In 2D, only z-comp is used.
+# amr.pressure_tag_tol =                  # [0.0] 0 to turn off
+
+
+### Timestepping
+amr.final = 1.0
+amr.maxsteps = 100
+amr.cfl = 0.95
+# amr.max_dt =                            # [-1.0]
+# amr.useSubcycling =                     # [1]
+
+# amr.limitDtViaViscosity =               # [0]
+# amr.limitDtViaDiffusion =               # [0]
+# amr.limitDtViaPressureGradient =        # [1]
+# amr.limitDtViaInternalWaveSpeed =       # [0]
+
+
+### Viscosity / diffusion
+amr.scal_diffusion_coeffs = 0.0
+amr.viscosity = 0.0
+
+
+### Plot files
+# plot.plot_prefix =                      # [plot_]
+# plot.checkpoint_prefix =                # [chkpt_]
+# plot.plot_period =
+plot.plot_interval = 1
+plot.checkpoint_interval = 100
+
+
+# ### Advection scheme parameters
+# # Velocity
+# advection.normalPredOrderVel = 2        # [2] 0=CTU, 1=PLM, 2=PPM
+# advection.useFourthOrderSlopesVel = 1   # [1]
+# advection.useLimitingVel = 0            # [0]
+# advection.useHighOrderLimiterVel = 0    # [0]
+# advection.nonlinearDifferencingForm = 0 # [0] -1=None, 0=Conservative, 1=Advective
+
+# # Buoyancy
+# advection.normalPredOrderScal = 2       # [2] 0=CTU, 1=PLM, 2=PPM
+# advection.useFourthOrderSlopesScal = 1  # [1]
+# advection.useLimitingScal = 1           # [1]
+# advection.useHighOrderLimiterScal = 1   # [1]
