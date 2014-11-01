@@ -64,7 +64,7 @@ public:
                          const IntVect&           a_refRatio,
                          const IntVect&           a_ghostVect = IntVect::Zero);
 
-    // Is this object in a useable state?
+    // Is this object in a usable state?
     virtual bool isDefined () const;
 
     // Do the averaging
@@ -133,7 +133,7 @@ public:
                          const int                a_numComps,
                          const IntVect&           a_refRatio);
 
-    // Is this object in a useable state?
+    // Is this object in a usable state?
     virtual bool isDefined () const;
 
     // Averages fine-level data to coarse level.

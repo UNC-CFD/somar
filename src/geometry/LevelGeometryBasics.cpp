@@ -172,7 +172,7 @@ LevelGeometry::LevelGeometry (const RealVect& a_dXi)
 
 
 // -----------------------------------------------------------------------------
-// Puts this Geometry object in a useable state. Called by the full constructor.
+// Puts this Geometry object in a usable state. Called by the full constructor.
 // This is the single-level version
 // -----------------------------------------------------------------------------
 void LevelGeometry::define (const RealVect& a_dXi)
@@ -208,7 +208,7 @@ void LevelGeometry::define (const RealVect& a_dXi)
 
 
 // -----------------------------------------------------------------------------
-// Puts this Geometry object in a useable state. Called by the full constructor.
+// Puts this Geometry object in a usable state. Called by the full constructor.
 // This version links this with the coarser level, which sets the refRatios.
 // The finer pointer will still be NULL. It is expected that these defines will
 // be called from coarsest to finest.

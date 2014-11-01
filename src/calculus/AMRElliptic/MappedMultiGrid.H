@@ -238,7 +238,7 @@ protected:
     void clear ();
 
 
-    bool                        m_defined;          // Is this solver in a useable state?
+    bool                        m_defined;          // Is this solver in a usable state?
     int                         m_bottomCells;      // The number of cells at the max depth.
     ProblemDomain               m_topLevelDomain;   // The uncoarsened domain.
     Vector<MappedMGLevelOp<T>*> m_op;               // The ops at every depth.
@@ -399,7 +399,7 @@ void MappedMultiGrid<T>::define (MappedMGLevelOpFactory<T>& a_factory,
         m_maxForcedDepth = a_forceAllMGRefRatiosPtr->size();
     }
 
-    // We are done. This solver is useable.
+    // We are done. This solver is usable.
     m_defined = true;
 }
 

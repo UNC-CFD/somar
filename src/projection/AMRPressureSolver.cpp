@@ -159,7 +159,7 @@ void AMRPressureSolver::setBottomParameters (const Real a_bottom_imax,
 
 
 // -----------------------------------------------------------------------------
-// Allocates everything and leaves object useable.
+// Allocates everything and leaves object usable.
 // This will not erase the solver parameters.
 // -----------------------------------------------------------------------------
 void AMRPressureSolver::levelDefine (BCMethodHolder           a_bc,
@@ -296,13 +296,13 @@ void AMRPressureSolver::levelDefine (BCMethodHolder           a_bc,
         m_amrmgSolverPtr = amrmgPtr;
     }
 
-    // We are done. This object is now useable.
+    // We are done. This object is now usable.
     m_isDefined = true;
 }
 
 
 // -----------------------------------------------------------------------------
-// Allocates everything and leaves object useable.
+// Allocates everything and leaves object usable.
 // This will not erase the solver parameters.
 // -----------------------------------------------------------------------------
 void AMRPressureSolver::define (BCMethodHolder           a_bc,
@@ -432,13 +432,13 @@ void AMRPressureSolver::define (BCMethodHolder           a_bc,
         m_amrmgSolverPtr = amrmgPtr;
     }
 
-    // We are done. This object is now useable.
+    // We are done. This object is now usable.
     m_isDefined = true;
 }
 
 
 // -----------------------------------------------------------------------------
-// Frees memory and leaves object unuseable.
+// Frees memory and leaves object unusable.
 // This will not erase the solver parameters.
 // -----------------------------------------------------------------------------
 void AMRPressureSolver::undefine ()

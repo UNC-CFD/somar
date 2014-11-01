@@ -29,7 +29,7 @@ static const Real BOGUS_TIME = -1.0e300;
 
 // -----------------------------------------------------------------------------
 // Default constructor.
-// This object will not be useable until BCMethods are added.
+// This object will not be usable until BCMethods are added.
 // -----------------------------------------------------------------------------
 BCMethodHolder::BCMethodHolder ()
 {

@@ -225,7 +225,7 @@ class BCMethodHolder
 public:
 
     // Default constructor.
-    // This object will not be useable until BCMethods are added.
+    // This object will not be usable until BCMethods are added.
     BCMethodHolder ();
 
     // Add a BCGhostFunc method.

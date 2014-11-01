@@ -74,7 +74,7 @@ AMRCCProjector::~AMRCCProjector ()
 
 
 // -----------------------------------------------------------------------------
-// Allocates memory and leaves object useable.
+// Allocates memory and leaves object usable.
 // -----------------------------------------------------------------------------
 void AMRCCProjector::define (Vector<LevelData<FArrayBox>*>& a_amrPressure,
                              const PhysBCUtil&              a_physBCUtil,
@@ -177,7 +177,7 @@ void AMRCCProjector::define (Vector<LevelData<FArrayBox>*>& a_amrPressure,
 
 
 // -----------------------------------------------------------------------------
-// Frees memory and leaves object unuseable.
+// Frees memory and leaves object unusable.
 // -----------------------------------------------------------------------------
 void AMRCCProjector::undefine ()
 {

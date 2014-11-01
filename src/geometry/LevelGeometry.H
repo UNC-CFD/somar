@@ -120,7 +120,7 @@ public:
 
     // Basic accessors ---------------------------------------------------------
 
-    // Tests if this LevelGeometry is in a useable state
+    // Tests if this LevelGeometry is in a usable state
     inline bool isDefined () const;
 
     // Returns the ProblemDomain
@@ -505,7 +505,7 @@ RefCountedPtr<GeoSourceInterface> LevelGeometry::getGeoSourcePtr ()
 }
 
 
-// Tests if this LevelGeometry is in a useable state
+// Tests if this LevelGeometry is in a usable state
 bool LevelGeometry::isDefined () const
 {
     CH_assert(isStaticDefined());

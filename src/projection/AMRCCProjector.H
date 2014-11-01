@@ -45,16 +45,16 @@ public:
     // Destructor
     virtual ~AMRCCProjector ();
 
-    // Allocates memory and leaves object useable.
+    // Allocates memory and leaves object usable.
     virtual void define (Vector<LevelData<FArrayBox>*>& a_amrPressure,
                          const PhysBCUtil&              a_physBCUtil,
                          const LevelGeometry&           a_levGeo,
                          const FillJgupInterface*       a_customFillJgupPtr = NULL);
 
-    // Frees memory and leaves object unuseable.
+    // Frees memory and leaves object unusable.
     virtual void undefine ();
 
-    // Is this object in a useable state?
+    // Is this object in a usable state?
     virtual inline bool isDefined() const;
 
 protected:
@@ -79,7 +79,7 @@ protected:
                                   const int                            a_lmin,
                                   const int                            a_lmax) const;
 
-    // Is this object in a useable state?
+    // Is this object in a usable state?
     bool m_isDefined;
 
     Vector<const LevelGeometry*>               m_amrLevGeo;
@@ -101,7 +101,7 @@ private:
 
 
 // -----------------------------------------------------------------------------
-// Is this object in a useable state?
+// Is this object in a usable state?
 // -----------------------------------------------------------------------------
 inline bool AMRCCProjector::isDefined () const
 {

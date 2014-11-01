@@ -63,7 +63,7 @@ public:
     // Deallocates all memory and brings this solver back to an undefined state.
     virtual void undefine ();
 
-    // Full define -- leave object in a useable state.
+    // Full define -- leave object in a usable state.
     // This is an override of the pure virtual LinearSolver function.
     //
     // The operator is needed to calculate residuals, to provide metric data,

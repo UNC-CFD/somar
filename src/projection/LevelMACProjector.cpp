@@ -71,7 +71,7 @@ LevelMACProjector::~LevelMACProjector ()
 
 
 // -----------------------------------------------------------------------------
-// Allocates memory and leaves object useable.
+// Allocates memory and leaves object usable.
 // -----------------------------------------------------------------------------
 void LevelMACProjector::define (LevelData<FArrayBox>*       a_phiPtr,
                                 const LevelData<FArrayBox>* a_crsePhiPtr,
@@ -128,7 +128,7 @@ void LevelMACProjector::define (LevelData<FArrayBox>*       a_phiPtr,
 
 
 // -----------------------------------------------------------------------------
-// Frees memory and leaves object unuseable.
+// Frees memory and leaves object unusable.
 // -----------------------------------------------------------------------------
 void LevelMACProjector::undefine ()
 {

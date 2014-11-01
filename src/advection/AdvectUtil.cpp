@@ -565,7 +565,7 @@ void MappedAdvectionUtil::predictScalar (LevelData<FluxBox>&             a_Whalf
         CH_assert(a_sourceTermPtr->getBoxes().compatible(grids));
     }
 
-    // Make sure we were given useable data.
+    // Make sure we were given usable data.
     nanCheck(a_Wold);
     nanCheck(a_oldVel);
     nanCheck(a_advVel);

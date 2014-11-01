@@ -76,14 +76,14 @@ public:
                                       const int  a_bottom_normType,
                                       const int  a_bottom_verbosity);
 
-    // Allocates everything and leaves object useable.
+    // Allocates everything and leaves object usable.
     // This will not erase the solver parameters.
     virtual void levelDefine (BCMethodHolder           a_bc,
                               const LevelGeometry&     a_levGeo,
                               const int                a_numLevels,
                               const FillJgupInterface* a_customFillJgupPtr = NULL);
 
-    // Allocates everything and leaves object useable.
+    // Allocates everything and leaves object usable.
     // This will not erase the solver parameters.
     virtual void define (BCMethodHolder           a_bc,
                          const LevelGeometry&     a_levGeo,
@@ -91,7 +91,7 @@ public:
                          const int                a_numLevels,
                          const FillJgupInterface* a_customFillJgupPtr = NULL);
 
-    // Frees memory and leaves object unuseable.
+    // Frees memory and leaves object unusable.
     // This will not erase the solver parameters.
     virtual void undefine ();
 
@@ -110,7 +110,7 @@ public:
                              const bool                  a_zeroPhi = true,
                              const bool                  a_forceHomogeneous = false);
 
-    // Is this object in a useable state?
+    // Is this object in a usable state?
     virtual inline bool isDefined () const;
 
     // Even if this is a level solver, we may need to apply CF-BCs.
@@ -173,7 +173,7 @@ private:
 
 
 // -----------------------------------------------------------------------------
-// Is this object in a useable state?
+// Is this object in a usable state?
 // -----------------------------------------------------------------------------
 inline bool AMRPressureSolver::isDefined () const
 {

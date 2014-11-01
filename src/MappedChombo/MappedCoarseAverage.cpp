@@ -123,7 +123,7 @@ void MappedCoarseAverage::define (const DisjointBoxLayout& a_fineGrids,
 
 
 // -----------------------------------------------------------------------------
-// Is this object in a useable state?
+// Is this object in a usable state?
 // -----------------------------------------------------------------------------
 bool MappedCoarseAverage::isDefined () const
 {
@@ -358,7 +358,7 @@ void MappedCoarseAverageFace::define (const DisjointBoxLayout& a_fineGrids,
 
 
 // -----------------------------------------------------------------------------
-// Is this object in a useable state?
+// Is this object in a usable state?
 // -----------------------------------------------------------------------------
 bool MappedCoarseAverageFace::isDefined () const
 {
