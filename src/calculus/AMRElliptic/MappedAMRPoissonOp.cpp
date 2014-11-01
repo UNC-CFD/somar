@@ -1655,7 +1655,7 @@ void MappedAMRPoissonOp::getFlux (FArrayBox&       a_flux,
     CH_assert(!a_edgebox.isEmpty());
     CH_assert( a_flux.contains(a_edgebox) );
 
-    // Create references for convienience
+    // Create references for convenience
     const DisjointBoxLayout& grids = m_FCJgup->getBoxes();
     const FArrayBox& JgupFAB = (*m_FCJgup)[a_di][a_dir];
     const int ncomps = a_data.nComp();
@@ -1722,7 +1722,7 @@ void MappedAMRPoissonOp::getFluxDuringExchange (FArrayBox&       a_flux,
     CH_assert(m_FCJgup != NULL);
 #endif
 
-    // Create references for convienience
+    // Create references for convenience
     const DisjointBoxLayout& grids = m_FCJgup->getBoxes();
     const Box& validCCBox = grids[a_di];
     const FArrayBox& JgupFAB = (*m_FCJgup)[a_di][a_dir];
@@ -1827,7 +1827,7 @@ void MappedAMRPoissonOp::getFluxAfterExchange(FArrayBox&       a_flux,
     CH_assert( a_flux.contains(a_edgebox) );
 #endif
 
-    // Create references for convienience
+    // Create references for convenience
     const DisjointBoxLayout& grids = m_FCJgup->getBoxes();
     const Box& validCCBox = grids[a_di];
     const FArrayBox& JgupFAB = (*m_FCJgup)[a_di][a_dir];
@@ -1918,7 +1918,7 @@ void MappedAMRPoissonOp::getFluxComplete (FArrayBox&       a_flux,
     CH_assert(m_FCJgup != NULL);
 #endif
 
-    // Create references for convienience
+    // Create references for convenience
     const FArrayBox& JgupFAB = (*m_FCJgup)[a_di][a_dir];
 
     if (!a_edgebox.isEmpty()) {

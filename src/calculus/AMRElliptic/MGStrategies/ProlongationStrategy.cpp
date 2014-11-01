@@ -46,7 +46,7 @@ void ConstInterpPS::prolongIncrement (LevelData<FArrayBox>&       a_phiThisLevel
 
     DataIterator dit = fineGrids.dataIterator();
     for (dit.reset(); dit.ok(); ++dit) {
-        // Create references for convienience
+        // Create references for convenience
         FArrayBox& fineFAB = a_phiThisLevel[dit];
         const FArrayBox& crseFAB = a_correctCoarse[dit];
         const Box& fineValid = fineGrids[dit];
@@ -94,7 +94,7 @@ void ZeroAvgConstInterpPS::prolongIncrement (LevelData<FArrayBox>&       a_phiTh
 
     DataIterator dit = fineGrids.dataIterator();
     for (dit.reset(); dit.ok(); ++dit) {
-        // Create references for convienience
+        // Create references for convenience
         FArrayBox& fineFAB = a_phiThisLevel[dit];
         const FArrayBox& crseFAB = a_correctCoarse[dit];
         const Box& fineValid = fineGrids[dit];

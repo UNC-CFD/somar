@@ -281,7 +281,7 @@ c ::: local variables
       if (gradDir .eq. edgeDir) then
         ! This is a normal derivative (simpler stencil).
         ! We are careful not to compute derivatives in directions that
-        ! are unneccesary because MappedAMRPoissonOp may be trying to
+        ! are unnecessary because MappedAMRPoissonOp may be trying to
         ! take the gradient of an (N-1)-dimensional field.
 
         CHF_DTERM[

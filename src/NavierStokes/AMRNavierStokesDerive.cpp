@@ -390,7 +390,7 @@ Real AMRNavierStokes::totalEnergy () const
         // Loop over grids and compute the energy at each point
         DataIterator dit = amrEnergy[ilev]->dataIterator();
         for (dit.reset(); dit.ok(); ++dit) {
-            // Create references on this grid for convienience
+            // Create references on this grid for convenience
             FArrayBox& eFAB = (*amrEnergy[ilev])[dit];
             const FArrayBox& velFAB = (*amrVel[ilev])[dit];
             const FArrayBox& gdn = levGeoPtr->getCCgdn()[dit];

@@ -171,7 +171,7 @@ void MappedAdvectionUtil::predictScalar (LevelData<FluxBox>&             a_Whalf
 
     // Perform the calculation over one grid at a time.
     for (dit.reset(); dit.ok(); ++dit) {
-        // Create references for convienience.
+        // Create references for convenience.
         FluxBox& WhalfFB = a_Whalf[dit];
         const FArrayBox& WoldFAB = a_Wold[dit];
         const FArrayBox& oldVelFAB = a_oldVel[dit];
@@ -580,7 +580,7 @@ void MappedAdvectionUtil::predictScalar (LevelData<FluxBox>&             a_Whalf
 
     // Perform the calculation over one grid at a time.
     for (dit.reset(); dit.ok(); ++dit) {
-        // Create references for convienience.
+        // Create references for convenience.
         FluxBox& WhalfFB = a_Whalf[dit];
         const FArrayBox& WoldFAB = a_Wold[dit];
         const FArrayBox& oldVelFAB = a_oldVel[dit];
