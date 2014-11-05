@@ -611,42 +611,81 @@ C     petermc, 26 april 2001
       yyScale = one / (dx(1)*dx(1));
       zzScale = one / (dx(2)*dx(2))]
 
-      do n = 0, ncomp - 1
+      if ((alpha .eq. zero) .and. (beta .eq. one) .and. (ncomp .eq. 1)) then
 #if CH_SPACEDIM > 2
-        do k=CHF_LBOUND[region; 2], CHF_UBOUND[region; 2]
-          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+            do k=CHF_LBOUND[region; 2], CHF_UBOUND[region; 2]
+              do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
 #else
-          do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+              do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
 #endif
-            imin = CHF_LBOUND[region; 0]
-            CHF_DTERM[indtot = imin; + j ; + k ]
-            imin = imin + abs(mod(indtot + redBlack, 2))
-            imax = CHF_UBOUND[region; 0]
-            do i = imin, imax, 2
+                imin = CHF_LBOUND[region; 0]
+                CHF_DTERM[indtot = imin; + j ; + k ]
+                imin = imin + abs(mod(indtot + redBlack, 2))
+                imax = CHF_UBOUND[region; 0]
+                do i = imin, imax, 2
 
-              ! X-gradient term
-              JDxx = xxScale
-     &             * (  Jgxx(CHF_IX[i+1;j;k]) * phi(CHF_IX[i+1;j;k],n)
-     &                + Jgxx(CHF_IX[i  ;j;k]) * phi(CHF_IX[i-1;j;k],n)  )
+                  ! X-gradient term
+                  JDxx = xxScale
+     &                 * (  Jgxx(CHF_IX[i+1;j;k]) * phi(CHF_IX[i+1;j;k],0)
+     &                    + Jgxx(CHF_IX[i  ;j;k]) * phi(CHF_IX[i-1;j;k],0)  )
 
-              ! Y-gradient term
-              JDyy = yyScale
-     &             * (  Jgyy(CHF_IX[i;j+1;k]) * phi(CHF_IX[i;j+1;k],n)
-     &                + Jgyy(CHF_IX[i;j  ;k]) * phi(CHF_IX[i;j-1;k],n)  )
+                  ! Y-gradient term
+                  JDyy = yyScale
+     &                 * (  Jgyy(CHF_IX[i;j+1;k]) * phi(CHF_IX[i;j+1;k],0)
+     &                    + Jgyy(CHF_IX[i;j  ;k]) * phi(CHF_IX[i;j-1;k],0)  )
 
-              ! Z-gradient term
-              JDzz = zzScale
-     &             * (  Jgzz(CHF_IX[i;j;k+1]) * phi(CHF_IX[i;j;k+1],n)
-     &                + Jgzz(CHF_IX[i;j;k  ]) * phi(CHF_IX[i;j;k-1],n)  )
+                  ! Z-gradient term
+                  JDzz = zzScale
+     &                 * (  Jgzz(CHF_IX[i;j;k+1]) * phi(CHF_IX[i;j;k+1],0)
+     &                    + Jgzz(CHF_IX[i;j;k  ]) * phi(CHF_IX[i;j;k-1],0)  )
 
-              ! Divergence
-              lphi = beta * Jinv(CHF_IX[i;j;k]) * (JDxx + JDyy + JDzz)
+                  ! Divergence
+                  lphi = Jinv(CHF_IX[i;j;k]) * (JDxx + JDyy + JDzz)
 
-              ! Update phi. Use [D+S]phi = rhs-C[extrap]
-              phi(CHF_IX[i;j;k],n) = (rhs(CHF_IX[i;j;k],n) - lphi) / (alpha + beta*lapDiag(CHF_IX[i;j;k]))
+                  ! Update phi. Use [D+S]phi = rhs-C[extrap]
+                  phi(CHF_IX[i;j;k],0) = (rhs(CHF_IX[i;j;k],0) - lphi)
+     &                                 / lapDiag(CHF_IX[i;j;k])
+            CHF_ENDDO
 
-        CHF_ENDDO
-      enddo
+      else
+          do n = 0, ncomp - 1
+#if CH_SPACEDIM > 2
+            do k=CHF_LBOUND[region; 2], CHF_UBOUND[region; 2]
+              do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+#else
+              do j=CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+#endif
+                imin = CHF_LBOUND[region; 0]
+                CHF_DTERM[indtot = imin; + j ; + k ]
+                imin = imin + abs(mod(indtot + redBlack, 2))
+                imax = CHF_UBOUND[region; 0]
+                do i = imin, imax, 2
+
+                  ! X-gradient term
+                  JDxx = xxScale
+     &                 * (  Jgxx(CHF_IX[i+1;j;k]) * phi(CHF_IX[i+1;j;k],n)
+     &                    + Jgxx(CHF_IX[i  ;j;k]) * phi(CHF_IX[i-1;j;k],n)  )
+
+                  ! Y-gradient term
+                  JDyy = yyScale
+     &                 * (  Jgyy(CHF_IX[i;j+1;k]) * phi(CHF_IX[i;j+1;k],n)
+     &                    + Jgyy(CHF_IX[i;j  ;k]) * phi(CHF_IX[i;j-1;k],n)  )
+
+                  ! Z-gradient term
+                  JDzz = zzScale
+     &                 * (  Jgzz(CHF_IX[i;j;k+1]) * phi(CHF_IX[i;j;k+1],n)
+     &                    + Jgzz(CHF_IX[i;j;k  ]) * phi(CHF_IX[i;j;k-1],n)  )
+
+                  ! Divergence
+                  lphi = beta * Jinv(CHF_IX[i;j;k]) * (JDxx + JDyy + JDzz)
+
+                  ! Update phi. Use [D+S]phi = rhs-C[extrap]
+                  phi(CHF_IX[i;j;k],n) = (rhs(CHF_IX[i;j;k],n) - lphi)
+     &                                 / (alpha + beta*lapDiag(CHF_IX[i;j;k]))
+
+            CHF_ENDDO
+          enddo
+      endif
 
       return
       end
