@@ -21,3 +21,12 @@ doc/*.pdf
 doc/*.synctex.gz
 doc/*.toc
 doc/*.log
+
+# Other files
+*.bin
+*.mod
+*.*.iceman
+.cproject
+.project
+.settings/
+DNS/
