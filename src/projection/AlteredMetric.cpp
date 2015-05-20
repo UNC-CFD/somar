@@ -152,12 +152,10 @@ void AlteredMetric::fill_Jgup (FArrayBox&       a_dest,
     destAlias *= tmpFAB;
 
     // * dXi^nu/dz
-    if (a_mu == a_nu) {
-        destAlias *= destAlias;
-    } else {
+    if (a_mu != a_nu) {
         m_geoSourcePtr->fill_dXidx(tmpFAB, 0, a_nu, SpaceDim-1, a_dXi);
-        destAlias *= tmpFAB;
     }
+    destAlias *= tmpFAB;
 
     // + g^{mu,nu}
     m_geoSourcePtr->fill_gup(tmpFAB, 0, a_mu, a_nu, a_dXi);
