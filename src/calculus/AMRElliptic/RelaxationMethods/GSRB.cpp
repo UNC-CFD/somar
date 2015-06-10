@@ -250,10 +250,11 @@ void LineGSRB::relax (LevelData<FArrayBox>&       a_phi,
             IntVect validShift = IntVect::Zero;
             validShift[SpaceDim-1] = valid.smallEnd(SpaceDim-1);
 
-            if (SpaceDim != 2) MayDay::Error("Need to write 3D line solver");
+            // if (SpaceDim != 2) MayDay::Error("Need to write 3D line solver");
 
             // Solve over valid region.
             for (int comp = 0; comp < a_phi.nComp(); ++comp) {
+#if CH_SPACEDIM == 2
                 FORT_LINEGSRBITER2D(
                     CHF_FRA1_SHIFT(phiFAB, comp, validShift),
                     CHF_CONST_FRA1_SHIFT(extrapFAB, comp, validShift),
@@ -275,6 +276,32 @@ void LineGSRB::relax (LevelData<FArrayBox>&       a_phi,
                     CHF_CONST_INT(stencil[0][Side::Hi]),
                     CHF_CONST_INT(stencil[1][Side::Lo]),
                     CHF_CONST_INT(stencil[1][Side::Hi]));
+#else
+                FORT_LINEGSRBITER3D(
+                    CHF_FRA1_SHIFT(phiFAB, comp, validShift),
+                    CHF_CONST_FRA1_SHIFT(extrapFAB, comp, validShift),
+                    CHF_CONST_FRA1_SHIFT(rhsFAB, comp, validShift),
+                    CHF_CONST_FRA_SHIFT(JgupFB[0], validShift),
+                    CHF_CONST_FRA_SHIFT(JgupFB[1], validShift),
+                    CHF_CONST_FRA_SHIFT(JgupFB[2], validShift),
+                    CHF_CONST_FRA1_SHIFT(JinvFAB, 0, validShift),
+                    CHF_BOX_SHIFT(valid, validShift),
+                    CHF_CONST_REALVECT(m_dx),
+                    CHF_CONST_REAL(m_crseDx[SpaceDim-1]),
+                    CHF_CONST_REAL(m_alpha),
+                    CHF_CONST_REAL(m_beta),
+                    CHF_CONST_INT(whichPass),
+                    CHF_FRA1(DU,0),
+                    CHF_FRA1(D,0),
+                    CHF_FRA1(DL,0),
+                    CHF_FRA1(B,0),
+                    CHF_CONST_INT(stencil[0][Side::Lo]),
+                    CHF_CONST_INT(stencil[0][Side::Hi]),
+                    CHF_CONST_INT(stencil[1][Side::Lo]),
+                    CHF_CONST_INT(stencil[1][Side::Hi]),
+                    CHF_CONST_INT(stencil[2][Side::Lo]),
+                    CHF_CONST_INT(stencil[2][Side::Hi]));
+#endif
             } // end loop over components (comp)
         } // end loop over grids (dit)
     } // end loop over red and black passes (whichPass)

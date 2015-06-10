@@ -1752,6 +1752,8 @@ c ------------------------------------------------------------------------------
      &     CHF_CONST_INT[loZBCType],
      &     CHF_CONST_INT[hiZBCType])
 
+#if CH_SPACEDIM == 3
+
       REAL_T xxScale, yyScale, zzScale
       REAL_T xyScale, yzScale, zxScale
       REAL_T lphi, lapDiag, BCval
@@ -1763,188 +1765,278 @@ c ------------------------------------------------------------------------------
       integer NRHS, LDB, INFO
       integer kmax, kdx
 
-      ! TODO
-      print*, 'LineGSRBIter3D not yet complete'
+      ! ! TODO
+      ! print*, 'LineGSRBIter3D not yet complete'
+      ! call MAYDAYERROR()
+
+#ifndef NDEBUG
+      if (CHF_LBOUND[region;2] .ne. 0) then
+        print*, 'LineGSRBIter3D: region must have a vertical lower bound of zero'
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ! Setup
+      kmax = CHF_UBOUND[region; 2]
+      NRHS = 1
+      LDB = kmax+1
+
+      xxScale = beta * one / (dx(0)*dx(0))
+      yyScale = beta * one / (dx(1)*dx(1))
+      zzScale = beta * one / (dx(2)*dx(2))
+      xyScale = beta * fourth / (dx(0)*dx(1))
+      yzScale = beta * fourth / (dx(1)*dx(2))
+      zxScale = beta * fourth / (dx(2)*dx(0))
+
+      ! Main loop
+      do j = CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
+        imin = CHF_LBOUND[region; 0]
+        indtot = imin + j
+        imin = imin + abs(mod(indtot + redBlack, 2))
+        imax = CHF_UBOUND[region; 0]
+        do i = imin, imax, 2
+          ! Set up matrix equation. (Array indices are the column number.)
+
+          ! Lower vertical boundary elements
+          k = 0
+          kdx = k+1
+
+          if (loZBCType .eq. BCType_Neum) then
+            coeff1 = zero
+          else if (loZBCType .eq. BCType_Diri) then
+            coeff1 = two
+          else if (loZBCType .eq. BCType_CF) then
+            coeff1 = two*dx(2)/(dzCrse+dx(2))
+          ! else
+          !   print*,'LineGSRBIter3D: Unforseen vertical BC!!!'
+          !   call MAYDAYERROR()
+          else
+            ! Use low-order extrapolation
+            coeff1 = zero
+          endif
+          lapDiag = -zzScale * (Jg2(CHF_IX[i  ;j  ;k+1],2) + coeff1*Jg2(CHF_IX[i  ;j  ;k  ],2))
+
+          ! Compute elements of xx and yy derivatives.
+          JDxx = zero
+          if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
+            JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;k  ],0) * phi(CHF_IX[i-1;j  ;k  ])
+            lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;k  ],0)
+          endif
+          if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
+            JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;k  ],0) * phi(CHF_IX[i+1;j  ;k  ])
+            lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;k  ],0)
+          endif
+
+          JDyy = zero
+          if ((loYBCType.ne.BCType_Neum) .or. (j.ne.jmin)) then
+            JDyy = JDyy + Jg1(CHF_IX[i  ;j  ;k  ],1) * phi(CHF_IX[i  ;j-1;k  ])
+            lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j  ;k  ],1)
+          endif
+          if ((hiYBCType.ne.BCType_Neum) .or. (j.ne.jmax)) then
+            JDyy = JDyy + Jg1(CHF_IX[i  ;j+1;k  ],1) * phi(CHF_IX[i  ;j+1;k  ])
+            lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j+1;k  ],1)
+          endif
+
+          ! Compute cross-derivatives
+          JDxy = Jg0(CHF_IX[i+1;j;k],1) * (  extrap(CHF_IX[i+1;j+1;k  ]) - extrap(CHF_IX[i+1;j-1;k  ])
+     &                                     + extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])  )
+     &         - Jg0(CHF_IX[i  ;j;k],1) * (  extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])
+     &                                     + extrap(CHF_IX[i-1;j+1;k  ]) - extrap(CHF_IX[i-1;j-1;k  ])  )
+          JDxz = Jg0(CHF_IX[i+1;j;k],2) * (  extrap(CHF_IX[i+1;j  ;k+1]) - extrap(CHF_IX[i+1;j  ;k-1])
+     &                                     + extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])  )
+     &         - Jg0(CHF_IX[i  ;j;k],2) * (  extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])
+     &                                     + extrap(CHF_IX[i-1;j  ;k+1]) - extrap(CHF_IX[i-1;j  ;k-1])  )
+
+          JDyx = Jg1(CHF_IX[i;j+1;k],0) * (  extrap(CHF_IX[i+1;j+1;k  ]) - extrap(CHF_IX[i-1;j+1;k])
+     &                                     + extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k])  )
+     &         - Jg1(CHF_IX[i;j  ;k],0) * (  extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k])
+     &                                     + extrap(CHF_IX[i+1;j-1;k  ]) - extrap(CHF_IX[i-1;j-1;k])  )
+          JDyz = Jg1(CHF_IX[i;j+1;k],2) * (  extrap(CHF_IX[i  ;j+1;k+1]) - extrap(CHF_IX[i  ;j+1;k-1])
+     &                                     + extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])  )
+     &         - Jg1(CHF_IX[i;j  ;k],2) * (  extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])
+     &                                     + extrap(CHF_IX[i  ;j-1;k+1]) - extrap(CHF_IX[i  ;j-1;k-1])  )
+
+          JDzx = Jg2(CHF_IX[i;j;k+1],0) * (  extrap(CHF_IX[i+1;j  ;k+1]) - extrap(CHF_IX[i-1;j  ;k+1])
+     &                                     + extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k  ])  )
+     &         - Jg2(CHF_IX[i;j;k  ],0) * (  extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k  ])
+     &                                     + extrap(CHF_IX[i+1;j  ;k-1]) - extrap(CHF_IX[i-1;j  ;k-1])  )
+          JDzy = Jg2(CHF_IX[i;j;k+1],1) * (  extrap(CHF_IX[i  ;j+1;k+1]) - extrap(CHF_IX[i  ;j-1;k+1])
+     &                                     + extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])  )
+     &         - Jg2(CHF_IX[i;j;k  ],1) * (  extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])
+     &                                     + extrap(CHF_IX[i  ;j+1;k-1]) - extrap(CHF_IX[i  ;j-1;k-1])  )
+
+          lphi = JDxx * xxScale + JDyy * yyScale
+     &         + (JDyz + JDzy) * yzScale
+     &         + (JDzx + JDxz) * zxScale
+     &         + (JDxy + JDyx) * xyScale
+
+          B (ARRAYIDX(kdx)) = -lphi + rhs(IDX(k)) / Jinv(CHF_IX[i;j;k])
+          D (ARRAYIDX(kdx)) = alpha / Jinv(IDX(k)) + lapDiag
+          DL(ARRAYIDX(kdx)) = Jg2(IDX(k+1),2) * zzScale
+
+          ! Vertical interior elements
+          do k = 1, kmax-1
+            kdx = k+1
+
+            lapDiag = -zzScale * (Jg2(CHF_IX[i  ;j  ;k  ],2) + Jg2(CHF_IX[i  ;j  ;k+1],2))
+
+            JDxx = zero
+            if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
+              JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;k  ],0) * phi(CHF_IX[i-1;j  ;k  ])
+              lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;k  ],0)
+            endif
+            if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
+              JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;k  ],0) * phi(CHF_IX[i+1;j  ;k  ])
+              lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;k  ],0)
+            endif
+
+            JDyy = zero
+            if ((loYBCType.ne.BCType_Neum) .or. (j.ne.jmin)) then
+              JDyy = JDyy + Jg1(CHF_IX[i  ;j  ;k  ],1) * phi(CHF_IX[i  ;j-1;k  ])
+              lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j  ;k  ],1)
+            endif
+            if ((hiYBCType.ne.BCType_Neum) .or. (j.ne.jmax)) then
+              JDyy = JDyy + Jg1(CHF_IX[i  ;j+1;k  ],1) * phi(CHF_IX[i  ;j+1;k  ])
+              lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j+1;k  ],1)
+            endif
+
+            ! Compute cross-derivatives
+            JDxy = Jg0(CHF_IX[i+1;j;k],1) * (  extrap(CHF_IX[i+1;j+1;k  ]) - extrap(CHF_IX[i+1;j-1;k  ])
+     &                                       + extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])  )
+     &           - Jg0(CHF_IX[i  ;j;k],1) * (  extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])
+     &                                       + extrap(CHF_IX[i-1;j+1;k  ]) - extrap(CHF_IX[i-1;j-1;k  ])  )
+            JDxz = Jg0(CHF_IX[i+1;j;k],2) * (  extrap(CHF_IX[i+1;j  ;k+1]) - extrap(CHF_IX[i+1;j  ;k-1])
+     &                                       + extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])  )
+     &           - Jg0(CHF_IX[i  ;j;k],2) * (  extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])
+     &                                       + extrap(CHF_IX[i-1;j  ;k+1]) - extrap(CHF_IX[i-1;j  ;k-1])  )
+
+            JDyx = Jg1(CHF_IX[i;j+1;k],0) * (  extrap(CHF_IX[i+1;j+1;k  ]) - extrap(CHF_IX[i-1;j+1;k])
+     &                                       + extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k])  )
+     &           - Jg1(CHF_IX[i;j  ;k],0) * (  extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k])
+     &                                       + extrap(CHF_IX[i+1;j-1;k  ]) - extrap(CHF_IX[i-1;j-1;k])  )
+            JDyz = Jg1(CHF_IX[i;j+1;k],2) * (  extrap(CHF_IX[i  ;j+1;k+1]) - extrap(CHF_IX[i  ;j+1;k-1])
+     &                                       + extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])  )
+     &           - Jg1(CHF_IX[i;j  ;k],2) * (  extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])
+     &                                       + extrap(CHF_IX[i  ;j-1;k+1]) - extrap(CHF_IX[i  ;j-1;k-1])  )
+
+            JDzx = Jg2(CHF_IX[i;j;k+1],0) * (  extrap(CHF_IX[i+1;j  ;k+1]) - extrap(CHF_IX[i-1;j  ;k+1])
+     &                                       + extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k  ])  )
+     &           - Jg2(CHF_IX[i;j;k  ],0) * (  extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k  ])
+     &                                       + extrap(CHF_IX[i+1;j  ;k-1]) - extrap(CHF_IX[i-1;j  ;k-1])  )
+            JDzy = Jg2(CHF_IX[i;j;k+1],1) * (  extrap(CHF_IX[i  ;j+1;k+1]) - extrap(CHF_IX[i  ;j-1;k+1])
+     &                                       + extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])  )
+     &           - Jg2(CHF_IX[i;j;k  ],1) * (  extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])
+     &                                       + extrap(CHF_IX[i  ;j+1;k-1]) - extrap(CHF_IX[i  ;j-1;k-1])  )
+
+            lphi = JDxx * xxScale + JDyy * yyScale
+     &           + (JDyz + JDzy) * yzScale
+     &           + (JDzx + JDxz) * zxScale
+     &           + (JDxy + JDyx) * xyScale
+
+            B (ARRAYIDX(kdx)) = -lphi + rhs(IDX(k)) / Jinv(IDX(k))
+            D (ARRAYIDX(kdx)) = alpha / Jinv(IDX(k)) + lapDiag
+            DL(ARRAYIDX(kdx)) = Jg2(IDX(k+1),2) * zzScale
+          enddo
+
+          ! Upper vertical boundary elements
+          k = kmax
+          kdx = k+1
+
+          if (hiZBCType.eq.BCType_Neum) then
+            coeff1 = zero
+          else if (hiZBCType .eq. BCType_Diri) then
+            coeff1 = two
+          else if (hiZBCType .eq. BCType_CF) then
+            coeff1 = two*dx(2)/(dzCrse+dx(2))
+          ! else
+          !   print*,'LineGSRBIter2D: Unforseen vertical BC!!!'
+          !   call MAYDAYERROR()
+          else
+            ! Use low-order extrapolation
+            coeff1 = zero
+          endif
+          lapDiag = -zzScale * (coeff1*Jg2(CHF_IX[i  ;j  ;k+1],2) + Jg2(CHF_IX[i  ;j  ;k  ],2))
+
+          JDxx = zero
+          if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
+            JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;k  ],0) * phi(CHF_IX[i-1;j  ;k  ])
+            lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;k  ],0)
+          endif
+          if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
+            JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;k  ],0) * phi(CHF_IX[i+1;j  ;k  ])
+            lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;k  ],0)
+          endif
+
+          JDyy = zero
+          if ((loYBCType.ne.BCType_Neum) .or. (j.ne.jmin)) then
+            JDyy = JDyy + Jg1(CHF_IX[i  ;j  ;k  ],1) * phi(CHF_IX[i  ;j-1;k  ])
+            lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j  ;k  ],1)
+          endif
+          if ((hiYBCType.ne.BCType_Neum) .or. (j.ne.jmax)) then
+            JDyy = JDyy + Jg1(CHF_IX[i  ;j+1;k  ],1) * phi(CHF_IX[i  ;j+1;k  ])
+            lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j+1;k  ],1)
+          endif
+
+          ! Compute cross-derivatives
+          JDxy = Jg0(CHF_IX[i+1;j;k],1) * (  extrap(CHF_IX[i+1;j+1;k  ]) - extrap(CHF_IX[i+1;j-1;k  ])
+     &                                     + extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])  )
+     &         - Jg0(CHF_IX[i  ;j;k],1) * (  extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])
+     &                                     + extrap(CHF_IX[i-1;j+1;k  ]) - extrap(CHF_IX[i-1;j-1;k  ])  )
+          JDxz = Jg0(CHF_IX[i+1;j;k],2) * (  extrap(CHF_IX[i+1;j  ;k+1]) - extrap(CHF_IX[i+1;j  ;k-1])
+     &                                     + extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])  )
+     &         - Jg0(CHF_IX[i  ;j;k],2) * (  extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])
+     &                                     + extrap(CHF_IX[i-1;j  ;k+1]) - extrap(CHF_IX[i-1;j  ;k-1])  )
+
+          JDyx = Jg1(CHF_IX[i;j+1;k],0) * (  extrap(CHF_IX[i+1;j+1;k  ]) - extrap(CHF_IX[i-1;j+1;k])
+     &                                     + extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k])  )
+     &         - Jg1(CHF_IX[i;j  ;k],0) * (  extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k])
+     &                                     + extrap(CHF_IX[i+1;j-1;k  ]) - extrap(CHF_IX[i-1;j-1;k])  )
+          JDyz = Jg1(CHF_IX[i;j+1;k],2) * (  extrap(CHF_IX[i  ;j+1;k+1]) - extrap(CHF_IX[i  ;j+1;k-1])
+     &                                     + extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])  )
+     &         - Jg1(CHF_IX[i;j  ;k],2) * (  extrap(CHF_IX[i  ;j  ;k+1]) - extrap(CHF_IX[i  ;j  ;k-1])
+     &                                     + extrap(CHF_IX[i  ;j-1;k+1]) - extrap(CHF_IX[i  ;j-1;k-1])  )
+
+          JDzx = Jg2(CHF_IX[i;j;k+1],0) * (  extrap(CHF_IX[i+1;j  ;k+1]) - extrap(CHF_IX[i-1;j  ;k+1])
+     &                                     + extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k  ])  )
+     &         - Jg2(CHF_IX[i;j;k  ],0) * (  extrap(CHF_IX[i+1;j  ;k  ]) - extrap(CHF_IX[i-1;j  ;k  ])
+     &                                     + extrap(CHF_IX[i+1;j  ;k-1]) - extrap(CHF_IX[i-1;j  ;k-1])  )
+          JDzy = Jg2(CHF_IX[i;j;k+1],1) * (  extrap(CHF_IX[i  ;j+1;k+1]) - extrap(CHF_IX[i  ;j-1;k+1])
+     &                                     + extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])  )
+     &         - Jg2(CHF_IX[i;j;k  ],1) * (  extrap(CHF_IX[i  ;j+1;k  ]) - extrap(CHF_IX[i  ;j-1;k  ])
+     &                                     + extrap(CHF_IX[i  ;j+1;k-1]) - extrap(CHF_IX[i  ;j-1;k-1])  )
+
+          lphi = JDxx * xxScale + JDyy * yyScale
+     &         + (JDyz + JDzy) * yzScale
+     &         + (JDzx + JDxz) * zxScale
+     &         + (JDxy + JDyx) * xyScale
+
+          B (ARRAYIDX(kdx)) = -lphi + rhs(IDX(k)) / Jinv(IDX(k))
+          D (ARRAYIDX(kdx)) = alpha / Jinv(IDX(k)) + lapDiag
+
+          ! Set the upper diagonals equal to the lower diagonals
+          do kdx = 1, kmax
+            DU(ARRAYIDX(kdx+1)) = DL(ARRAYIDX(kdx))
+          enddo
+
+          ! Solve the tridiagonal problem
+          call dgtsv(kmax+1, NRHS, DL, D, DU, B, LDB, INFO)
+
+          ! Check INFO
+          if ((INFO .ne. 0) .and. (INFO .ne. kmax+1)) then
+            print*, 'LineGSRBIter3D: INFO = ', INFO
+            call MAYDAYERROR()
+          endif
+
+          ! Put solution in user's holder
+          do k = 0, kmax
+            phi(IDX(k)) = B(ARRAYIDX(k+1))
+          enddo
+        enddo ! i
+      enddo ! j
+
+#else
+      print*, 'LineGSRBIter3D does not work in 2D'
       call MAYDAYERROR()
-
-! #ifndef NDEBUG
-! #if CH_SPACEDIM == 3
-!       if (CHF_LBOUND[region;2] .ne. 0) then
-!         print*, 'LineGSRBIter3D: region must have a vertical lower bound of zero'
-!         call MAYDAYERROR()
-!       endif
-! #else
-!       print*, 'LineGSRBIter3D does not work in 2D'
-! #endif
-! #endif
-
-!       ! Setup
-!       kmax = CHF_UBOUND[region; 2]
-!       NRHS = 1
-!       LDB = kmax+1
-
-!       xxScale = beta * one / (dx(0)*dx(0))
-!       yyScale = beta * one / (dx(1)*dx(1))
-!       zzScale = beta * one / (dx(2)*dx(2))
-!       xyScale = beta * fourth / (dx(0)*dx(1))
-!       yzScale = beta * fourth / (dx(1)*dx(2))
-!       zxScale = beta * fourth / (dx(2)*dx(0))
-
-      ! ! Main loop
-      ! do j = CHF_LBOUND[region; 1], CHF_UBOUND[region; 1]
-      !   imin = CHF_LBOUND[region; 0]
-      !   indtot = imin + j
-      !   imin = imin + abs(mod(indtot + redBlack, 2))
-      !   imax = CHF_UBOUND[region; 0]
-      !   do i = imin, imax, 2
-      !     ! Set up matrix equation. (Array indices are the column number.)
-
-      !     ! Lower vertical boundary elements
-      !     k = 0
-      !     kdx = k+1
-
-      !     if (loZBCType .eq. BCType_Neum) then
-      !       coeff1 = zero
-      !     else if (loZBCType .eq. BCType_Diri) then
-      !       coeff1 = two
-      !     else if (loZBCType .eq. BCType_CF) then
-      !       coeff1 = two*dx(1)/(dzCrse+dx(1))
-      !     ! else
-      !     !   print*,'LineGSRBIter3D: Unforseen vertical BC!!!'
-      !     !   call MAYDAYERROR()
-      !     else
-      !       ! Use low-order extrapolation
-      !       coeff1 = zero
-      !     endif
-      !     lapDiag = -zzScale * (Jg1(CHF_IX[i  ;j  ;k+1],1) + coeff1*Jg1(CHF_IX[i  ;j  ;k  ],1))
-
-          ! JDxx = zero
-          ! if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
-          !   JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;k  ],0) * phi(CHF_IX[i-1;j  ;k  ])
-          !   lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;k  ],0)
-          ! endif
-          ! if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
-          !   JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;k  ],0) * phi(CHF_IX[i+1;j  ;k  ])
-          !   lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;k  ],0)
-          ! endif
-
-          ! JDyy = zero
-          ! if ((loYBCType.ne.BCType_Neum) .or. (j.ne.jmin)) then
-          !   JDyy = JDyy + Jg1(CHF_IX[i  ;j  ;k  ],1) * phi(CHF_IX[i  ;j-1;k  ])
-          !   lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j  ;k  ],1)
-          ! endif
-          ! if ((hiYBCType.ne.BCType_Neum) .or. (j.ne.jmax)) then
-          !   JDyy = JDyy + Jg1(CHF_IX[i  ;j+1;k  ],1) * phi(CHF_IX[i  ;j+1;k  ])
-          !   lapDiag = lapDiag - yyScale * Jg1(CHF_IX[i  ;j+1;k  ],1)
-          ! endif
-
-     !      JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
-     ! &                                     + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
-     ! &         - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
-     ! &                                     + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
-     !      JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
-     ! &                                     + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
-     ! &         - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
-     ! &                                     + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
-     !      lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
-
-     !      B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(CHF_IX[i;j;0])
-     !      D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
-     !      DL(ARRAYIDX(jdx)) = Jg1(IDX(j+1),1) * yyScale
-
-     !      ! Vertical interior elements
-     !      do j = 1, jmax-1
-     !        jdx = j+1
-
-     !        lapDiag = -yyScale * (Jg1(CHF_IX[i  ;j  ;0  ],1) + Jg1(CHF_IX[i  ;j+1;0  ],1))
-
-     !        JDxx = zero
-     !        if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
-     !          JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ])
-     !          lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0)
-     !        endif
-     !        if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
-     !          JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ])
-     !          lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0)
-     !        endif
-
-     !        JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
-     ! &                                       + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
-     ! &           - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
-     ! &                                       + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
-     !        JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
-     ! &                                       + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
-     ! &           - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
-     ! &                                       + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
-     !        lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
-
-     !        B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(IDX(j))
-     !        D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
-     !        DL(ARRAYIDX(jdx)) = Jg1(IDX(j+1),1) * yyScale
-     !      enddo
-
-     !      ! Upper vertical boundary elements
-     !      j = jmax
-     !      jdx = j+1
-
-     !      if (hiYBCType.eq.BCType_Neum) then
-     !        coeff1 = zero
-     !      else if (hiYBCType .eq. BCType_Diri) then
-     !        coeff1 = two
-     !      else if (hiYBCType .eq. BCType_CF) then
-     !        coeff1 = two*dx(1)/(dzCrse+dx(1))
-     !      ! else
-     !      !   print*,'LineGSRBIter2D: Unforseen vertical BC!!!'
-     !      !   call MAYDAYERROR()
-     !      else
-     !        ! Use low-order extrapolation
-     !        coeff1 = zero
-     !      endif
-     !      lapDiag = -yyScale * (coeff1*Jg1(CHF_IX[i  ;j+1;0],1) + Jg1(CHF_IX[i  ;j  ;0],1))
-
-     !      JDxx = zero
-     !      if ((loXBCType.ne.BCType_Neum) .or. (i.ne.imin)) then
-     !        JDxx = JDxx + Jg0(CHF_IX[i  ;j  ;0  ],0) * phi(CHF_IX[i-1;j  ;0  ])
-     !        lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i  ;j  ;0  ],0)
-     !      endif
-     !      if ((hiXBCType.ne.BCType_Neum) .or. (i.ne.imax)) then
-     !        JDxx = JDxx + Jg0(CHF_IX[i+1;j  ;0  ],0) * phi(CHF_IX[i+1;j  ;0  ])
-     !        lapDiag = lapDiag - xxScale * Jg0(CHF_IX[i+1;j  ;0  ],0)
-     !      endif
-
-     !      JDxy = Jg0(CHF_IX[i+1;j;0],1) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i+1;j-1;0])
-     ! &                                     + extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])  )
-     ! &         - Jg0(CHF_IX[i  ;j;0],1) * (  extrap(CHF_IX[i  ;j+1;0]) - extrap(CHF_IX[i  ;j-1;0])
-     ! &                                     + extrap(CHF_IX[i-1;j+1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
-     !      JDyx = Jg1(CHF_IX[i;j+1;0],0) * (  extrap(CHF_IX[i+1;j+1;0]) - extrap(CHF_IX[i-1;j+1;0])
-     ! &                                     + extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])  )
-     ! &         - Jg1(CHF_IX[i;j  ;0],0) * (  extrap(CHF_IX[i+1;j  ;0]) - extrap(CHF_IX[i-1;j  ;0])
-     ! &                                     + extrap(CHF_IX[i+1;j-1;0]) - extrap(CHF_IX[i-1;j-1;0])  )
-     !      lphi = JDxx * xxScale + (JDxy + JDyx) * xyScale
-
-     !      B (ARRAYIDX(jdx)) = -lphi + rhs(IDX(j)) / Jinv(IDX(j))
-     !      D (ARRAYIDX(jdx)) = alpha / Jinv(IDX(j)) + lapDiag
-
-     !      ! Set the upper diagonals equal to the lower diagonals
-     !      do jdx = 1, jmax
-     !        DU(ARRAYIDX(jdx+1)) = DL(ARRAYIDX(jdx))
-     !      enddo
-
-     !      ! Solve the tridiagonal problem
-     !      call dgtsv(jmax+1, NRHS, DL, D, DU, B, LDB, INFO)
-
-     !      ! Check INFO
-     !      if ((INFO .ne. 0) .and. (INFO .ne. jmax+1)) then
-     !        print*, 'LineGSRBIter2D: INFO = ', INFO
-     !        call MAYDAYERROR()
-     !      endif
-
-     !      ! Put solution in user's holder
-     !      do j = 0, jmax
-     !        phi(IDX(j)) = B(ARRAYIDX(j+1))
-     !      enddo
-      !   enddo ! i
-      ! enddo ! j
-
+#endif
       return
       end
