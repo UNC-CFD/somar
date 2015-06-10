@@ -971,7 +971,15 @@ void MappedAMRPoissonOpFactory::validateMetricPtrs(const int                a_AM
 
     // Check if some of the fields are already defined in levGeo.
     // If so, use them and only define what is necessary.
-    if (m_vlevGeoPtr[a_AMRlevel]->getBoxes() == a_layout && m_customFillJgupPtr == NULL) {
+    bool useCachedData = false;
+    if (m_vlevGeoPtr.size() > a_AMRlevel) {
+        if (m_vlevGeoPtr[a_AMRlevel] != NULL) {
+            if (m_vlevGeoPtr[a_AMRlevel]->getBoxes() == a_layout && m_customFillJgupPtr == NULL) {
+                useCachedData = true;
+            }
+        }
+    }
+    if (useCachedData) {
         CH_assert(a_MGdepth == 0);
 
         // Grab Jgup
@@ -1079,9 +1087,7 @@ void MappedAMRPoissonOpFactory::fill_MGfields(const int      a_AMRlevel,
     CH_TIME("MappedAMRPoissonOpFactory::fill_MGfields");
 
     // Sanity checks
-    CH_assert(a_AMRlevel < m_vlevGeoPtr.size());
-    CH_assert(m_vlevGeoPtr[a_AMRlevel] != NULL);
-    CH_assert(m_vlevGeoPtr[a_AMRlevel]->isDefined());
+    CH_assert(a_AMRlevel < m_dx.size());
     CH_assert((m_maxDepth < 0) || (a_MGdepth <= m_maxDepth));
 
     // Grab the fields
@@ -1089,13 +1095,19 @@ void MappedAMRPoissonOpFactory::fill_MGfields(const int      a_AMRlevel,
     RefCountedPtr<LevelData<FArrayBox> >& Jinv = m_vvJinv[a_AMRlevel][a_MGdepth];
     RefCountedPtr<LevelData<FArrayBox> >& lapDiag = m_vvlapDiag[a_AMRlevel][a_MGdepth];
 
-    // Grab the geometry data
-    const LevelGeometry& levGeo = *m_vlevGeoPtr[a_AMRlevel];
-    const GeoSourceInterface& geoSource = *levGeo.getGeoSourcePtr();
-    Real scale;
+//    // Grab the geometry data (Old way)
+//    const LevelGeometry& levGeo = *m_vlevGeoPtr[a_AMRlevel];
+//    const GeoSourceInterface& geoSource = *levGeo.getGeoSourcePtr();
+//    Real scale;
+//
+//    // Compute dx
+//    const RealVect mgDx = levGeo.getDx() * a_coarsening;
 
-    // Compute dx
-    const RealVect mgDx = levGeo.getDx() * a_coarsening;
+    // Grab the geometry data (From ES repo)
+    const RealVect mgDx = m_dx[a_AMRlevel] * a_coarsening;
+    LevelGeometry localLevGeo(m_dx[a_AMRlevel]);
+    const GeoSourceInterface& geoSource = *localLevGeo.getGeoSourcePtr();
+
 
     if (a_MGdepth == 0) {
         // There is no finer data. Get levGeo to calculate fields.
