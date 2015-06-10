@@ -158,27 +158,9 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
 void DEMMap::createBaseMap ()
 {
   
-    // This needs to be changed. The DEM file needs to be read from the input files
-    // I presume this can be obtained from ProblemContext...
-    //const string infile("../geometry/maps/MassBayTopo.hd5");
     std::string infile;
-    // we read this information from the hdf5 file. NO need to hard code it.
-    //    const int Nx = 200;           // How many x nodes are there in the topo file?
-    // const int Ny = 200;           // How many y nodes are there in the topo file?
     int Nx;
     int Ny;
-    const int cropXMin = 40;      // This is the region that we will use for
-    const int cropXMax = 180;     // interpolation. It is the data with NaNs
-    const int cropYMin = 70;      // cropped out.
-    const int cropYMax = 150;
-
-    const Real xmin = -15929.6;   // We will interpolate the topo using the data
-    const Real xmax =  50000.0;   // in this region.
-    const Real ymin = -28040.2;
-    const Real ymax =  30000.0;
-    const Real clipDepth = -70.0; // We will clip the ocean at this depth.
-
-    const IntVect hmask = IntVect::Unit - BASISV(SpaceDim-1);
     const ProblemContext* ctx = ProblemContext::getInstance();
 
     infile = ctx->DemFile;
@@ -327,19 +309,24 @@ void DEMMap::createBaseMap ()
 
 	}	    
 	cs.interp(depthInterp,xInterp);
+
 	// now we choboize it
 	s_depthPtr = RefCountedPtr<BoxLayoutData<NodeFArrayBox> >(new BoxLayoutData<NodeFArrayBox>);
 	Vector<Box> vB(numProc(),domain.domainBox());
 	Vector<int> vP(numProc());
 	for (int p=0; p<numProc(); ++p) {
 	  vP[p]=p;}
-	BoxLayout bL(vB,vP);
-	FlatNodeDataFactory DF=FlatNodeDataFactory(BASISV(SpaceDim-1));
-	s_depthPtr->define(bL,1,(DataFactory<NodeFArrayBox>)DF); // Every processor is good to go
+	BoxLayout bL(vB,vP); // each process has the same copy
+	//	FlatNodeDataFactory DF=FlatNodeDataFactory(BASISV(SpaceDim-1));
+	//	s_depthPtr->define(bL,1,(DataFactory<NodeFArrayBox>)DF); // Every processor is good to go
+	s_depthPtr->define(bL,1); // Still unallocated the space
 	for (DataIterator dit=bL.dataIterator(); dit.ok(); ++dit) {
-	  for (BoxIterator bit(domainBox); bit.ok(); ++bit){
-	    (*s_depthPtr)[dit()](bit())=depthInterp[(bit()[0]-nx_offset)];
+	  (*s_depthPtr)[dit()].setVal(0.0); 
+	  // If I get this right, now we have allocated the space (hopefully, of the right type)
+	  for (BoxIterator bit(domain.domainBox()); bit.ok(); ++bit){
+	    (*s_depthPtr)[dit()](bit())=depthInterp[(bit()[0]-nx_offset)]; // and now we fill it with the (hopefully) right data
 	  }
+
 	}
 	
 	
@@ -458,6 +445,18 @@ void DEMMap::createBaseMap ()
     interpBox = flattenBox(interpBox, SpaceDim-1);
     // Box interpBox(IntVect::Zero, IntVect(D_DECL(256,256,0)), IntVect::Unit);
     pout() << "interpBox = " << interpBox << endl;
+    int nx = ctx->nx[0];
+    int nx_offset = ctx->nx_offset[0];
+    
+    int ny = ctx->nx[1];
+    int ny_offset = ctx->nx_offset[1];
+    
+    Real dX = ctx->domainLength[0]/Real(nx);
+    Real dY = ctx->domainLength[1]/Real(ny);
+    Real xmin = (Real(nx_offset))*dX;
+    Real xmax = xmin+ctx->domainLength[0];
+    Real ymin = (Real(ny_offset))*dY;
+    Real ymax = ymin+ctx->domainLength[1];
     
     FArrayBox xInterp(interpBox, 1);
     FArrayBox yInterp(interpBox, 1);
