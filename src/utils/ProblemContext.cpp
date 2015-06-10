@@ -34,7 +34,7 @@
 #include "CylindricalMap.H"
 #include "LedgeMap.H"
 #include "MassBayMap.H"
-
+#include "DEMMap.H"
 #include "AdvectionTestBCUtil.H"
 #include "LockExchangeBCUtil.H"
 #include "BeamGenerationBCUtil.H"
@@ -616,6 +616,13 @@ void ProblemContext::readGeometry ()
             }
         }
         break;
+    case CoordMap::DEMMAP:
+      {
+	MayDay::Error("Digital Elevation Models not implemented yet");
+	ppGeo.get("DemFile",DemFile);
+	pout() << "\tDEM file =" << DemFile << endl;
+ 
+      }
     }
 
     pout() << endl;

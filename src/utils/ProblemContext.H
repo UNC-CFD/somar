@@ -172,6 +172,7 @@ public:
             LEDGE            = 5,
             MASSBAY          = 6,
             NEWBEAMGENERATOR = 7,
+	    DEMMAP           = 8,
             _NUM_COORD_MAPS
         };
     };
@@ -188,6 +189,9 @@ public:
 
     // Specific to BeamGeneratorMap
     Real beamGenMapAlpha;
+
+    // Specific to DEMMap
+    std::string DemFile;   
 
 private:
     // The plot.* parameters
