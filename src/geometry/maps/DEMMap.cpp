@@ -50,7 +50,7 @@
 
 
 bool DEMMap::s_fileIsRead = false;
-RefCountedPtr<BoxLayoutData<NodeFArrayBox> > DEMMap::s_depthPtr;
+RefCountedPtr<BoxLayoutData<FArrayBox> > DEMMap::s_depthPtr;
 
 // -----------------------------------------------------------------------------
 // Construtor
@@ -61,35 +61,6 @@ DEMMap::DEMMap ()
     if (!s_fileIsRead) {
         this->createBaseMap();
 
-        // CH_assert(s_depthPtr.isNull());
-        // s_depthPtr = RefCountedPtr<LevelData<NodeFArrayBox> >(new LevelData<NodeFArrayBox>);
-
-        // std::string filename("../geometry/maps/MassBayDepths.hdf5");
-        // Vector<DisjointBoxLayout> vectGrids;
-        // Vector<LevelData<NodeFArrayBox>*> vectData(1, &*s_depthPtr);
-        // Vector<std::string> vectNames;
-        // Box domBox;
-        // Real dx, dt, time;
-        // Vector<int> refRatio;
-        // int numLevels;
-        // bool setGhost = true;
-
-        // int err = ReadAMRHierarchyHDF5(filename,
-        //                                vectGrids,
-        //                                vectData,
-        //                                vectNames,
-        //                                domBox,
-        //                                dx,
-        //                                dt,
-        //                                time,
-        //                                refRatio,
-        //                                numLevels,
-        //                                setGhost);
-        // if (err) {
-        //     ostringstream msg;
-        //     msg << "Could not read " << filename << ". Error code = " << err;
-        //     MayDay::Error(msg.str().c_str());
-        // }
 
         s_fileIsRead = true;
     }
@@ -136,15 +107,24 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
 {
     const Box& destBox = a_dest.box();
     const IntVect destBoxType = destBox.type();
-
+    
+    DataIterator dit=(*s_depthPtr).dataIterator();  // this does not work. I need to access the 
+                                     // boxLayout which was used to construct this 
     // The holder needs to be flat and nodal in the vertical.
     CH_assert(destBox == horizontalDataBox(destBox));
     CH_assert(destBoxType[SpaceDim-1] == 1);
 
     // TODO
-
+    // The problem is how to copy the depths. destBox is a box 
+    // which is generally contained in the domain. 
     if (m_lev0DXi == a_dXi) {
-        a_dest.setVal(1.0, a_destComp);
+      for (dit.begin();dit.ok();++dit) {
+	// square peg in round hole. Why is a_dest defined as a FArrayBox, when
+        // we store the depths in a NodeFArrayBox ?
+	FArrayBox& depths=(*s_depthPtr)[dit]; // WHy the ampersand
+	
+        a_dest.copy(depths);
+      }
     } else {
         MayDay::Error("Bad a_dXi");
     }
@@ -310,13 +290,14 @@ void DEMMap::createBaseMap ()
 	}	    
 	cs.interp(depthInterp,xInterp);
 
-	// now we choboize it
-	s_depthPtr = RefCountedPtr<BoxLayoutData<NodeFArrayBox> >(new BoxLayoutData<NodeFArrayBox>);
+	// now we chomboize it
+	s_depthPtr = RefCountedPtr<BoxLayoutData<FArrayBox> >(new BoxLayoutData<FArrayBox>);
 	Vector<Box> vB(numProc(),domain.domainBox());
 	Vector<int> vP(numProc());
 	for (int p=0; p<numProc(); ++p) {
 	  vP[p]=p;}
-	BoxLayout bL(vB,vP); // each process has the same copy
+	BoxLayout bL(vB,vP);
+	bL.close();// each process has the same copy
 	//	FlatNodeDataFactory DF=FlatNodeDataFactory(BASISV(SpaceDim-1));
 	//	s_depthPtr->define(bL,1,(DataFactory<NodeFArrayBox>)DF); // Every processor is good to go
 	s_depthPtr->define(bL,1); // Still unallocated the space
@@ -329,7 +310,7 @@ void DEMMap::createBaseMap ()
 
 	}
 	
-	
+     
 	    return;}
     
 

@@ -618,9 +618,9 @@ void ProblemContext::readGeometry ()
         break;
     case CoordMap::DEMMAP:
       {
-	MayDay::Error("Digital Elevation Models not implemented yet");
+
 	ppGeo.get("DemFile",DemFile);
-	pout() << "\tDEM file =" << DemFile << endl;
+	pout() << "\tDEM file = " << DemFile << endl;
  
       }
     }
@@ -668,6 +668,9 @@ GeoSourceInterface* ProblemContext::newGeoSourceInterface () const
         break;
     case ProblemContext::CoordMap::NEWBEAMGENERATOR:
         geoSourcePtr = new NewBeamGeneratorMap;
+        break;
+    case ProblemContext::CoordMap::DEMMAP:
+        geoSourcePtr = new DEMMap;
         break;
     default:
         MayDay::Error("ProblemContext::newGeoSourceInterface received "

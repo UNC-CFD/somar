@@ -66,7 +66,7 @@ protected:
     virtual void createBaseMap ();
 
     static bool                                 s_fileIsRead;
-    static RefCountedPtr<BoxLayoutData<NodeFArrayBox> > s_depthPtr;
+    static RefCountedPtr<BoxLayoutData<FArrayBox> > s_depthPtr;
 };
 
 
