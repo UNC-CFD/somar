@@ -50,7 +50,9 @@
 
 
 bool DEMMap::s_fileIsRead = false;
-RefCountedPtr<BoxLayoutData<FArrayBox> > DEMMap::s_depthPtr;
+RefCountedPtr<FArrayBox>  DEMMap::s_depthPtr_level0;
+RefCountedPtr<FArrayBox>  DEMMap::s_depthPtr_level1;
+Vector<FArrayBox>  DEMMap::s_depthPtr; 
 
 // -----------------------------------------------------------------------------
 // Construtor
@@ -59,6 +61,12 @@ DEMMap::DEMMap ()
 : BathymetricBaseMap()
 {
     if (!s_fileIsRead) {
+      const ProblemContext* ctx = ProblemContext::getInstance();
+      // create vector to contain the DEMs at each level of refinement
+      //      Vector<FArrayBox>  s_depthPtr(ctx->max_level+1);
+      //      s_depthPtr = RefCountedPtr<Vector<FArrayBox> > (new Vector<FArrayBox>);
+      //      (*s_depthPtr)(ctx->max_level+1);
+      
         this->createBaseMap();
 
 
@@ -107,9 +115,7 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
 {
     const Box& destBox = a_dest.box();
     const IntVect destBoxType = destBox.type();
-    
-    DataIterator dit=(*s_depthPtr).dataIterator();  // this does not work. I need to access the 
-                                     // boxLayout which was used to construct this 
+    static int counter=1;
     // The holder needs to be flat and nodal in the vertical.
     CH_assert(destBox == horizontalDataBox(destBox));
     CH_assert(destBoxType[SpaceDim-1] == 1);
@@ -117,16 +123,18 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
     // TODO
     // The problem is how to copy the depths. destBox is a box 
     // which is generally contained in the domain. 
+    //    pout() << "fill_bathymetry invoked" << counter << endl;
+    //counter += 1;
+
     if (m_lev0DXi == a_dXi) {
-      for (dit.begin();dit.ok();++dit) {
-	// square peg in round hole. Why is a_dest defined as a FArrayBox, when
-        // we store the depths in a NodeFArrayBox ?
-	FArrayBox& depths=(*s_depthPtr)[dit]; // WHy the ampersand
+     
+      
 	
-        a_dest.copy(depths);
-      }
+      a_dest.copy(*s_depthPtr_level0, 0,a_destComp);
+      
     } else {
-        MayDay::Error("Bad a_dXi");
+      //        MayDay::Error("Bad a_dXi");
+      a_dest.copy(*s_depthPtr_level1,0,a_destComp);
     }
 }
 
@@ -162,8 +170,9 @@ void DEMMap::createBaseMap ()
 	msg << "H5Dopen failed to open X dataset. Return value = " << xID;
 	MayDay::Error(msg.str().c_str());
       }
-    
-      Nx=int( H5Sget_simple_extent_npoints(  xID ));				 
+      hid_t xDSPC=H5Dget_space(xID);
+      Nx=int( H5Sget_simple_extent_npoints( xDSPC ));				 
+      H5Sclose(xDSPC);
       H5Dclose(xID);
     }
     // Read X data
@@ -185,27 +194,33 @@ void DEMMap::createBaseMap ()
         H5Dclose(xID);
     }
     // Determine size of Y data
-    {hid_t xID = H5Dopen(fileID, "/Y");
+    Vector<double> yVect;
+    hid_t xID = H5Dopen(fileID, "/Y");
       if (xID < 0) {
-	//	ostringstream msg;
-	//	msg << "H5Dopen failed to open Y dataset. Return value = " << xID;
-	//	MayDay::Error(msg.str().c_str());
+	pout() << "/Y not present in DEM file " << endl;
+		ostringstream msg;
+		
+		msg << "H5Dopen failed to open Y dataset. Return value = " << xID;
+		//	MayDay::Error(msg.str().c_str());
         // The DEM is one dimensional
 	if (SpaceDim == 3) {
 	  MayDay::Error("DEMMap is two-dimensional but problem is solved in 3D");
 	}
   
 	Ny=1;
+	yVect.resize(Ny);
       }
       else
 	{
+	  hid_t xDSPC=H5Dget_space(xID);
 	  Ny=int( H5Sget_simple_extent_npoints( xID ));				 
+	  H5Sclose(xDSPC);
 	  H5Dclose(xID);
-	}
-    }
+	
+    
     // Read Y data
     
-      Vector<double> yVect(Ny, quietNAN);
+       yVect.resize(Ny);
       if (Ny>1) {    
             
         hid_t yID = H5Dopen(fileID, "/Y");
@@ -218,7 +233,9 @@ void DEMMap::createBaseMap ()
                                 &yVect[0]);         // void * buf  OUT: Buffer to receive data read from file.
         H5Dclose(yID);
     
-    }
+      }
+	}
+    
     // Read Depth data
     Vector<double> depthVect(Nx*Ny, quietNAN);
     {
@@ -265,49 +282,83 @@ void DEMMap::createBaseMap ()
     }
 
     if(Ny==1)
-      { CubicSpline cs;
+      { // prepare depthVect for interpolation
+	CubicSpline cs;
 	cs.solve(depthVect,xVect);
-	Box interpBox = ctx->domain.domainBox();
-	interpBox.surroundingNodes();
-	interpBox = flattenBox(interpBox, SpaceDim-1);
-	// Box interpBox(IntVect::Zero, IntVect(D_DECL(256,256,0)), IntVect::Unit);
-	pout() << "interpBox = " << interpBox << endl;
-	int nx = ctx->nx[0];
 	int nx_offset = ctx->nx_offset[0];
-	Real dX = ctx->domainLength[0]/Real(nx);
-	Real xmin = (Real(nx_offset))*dX;
-	Real xmax = xmin+ctx->domainLength[0];
+	Real xmin = (Real(nx_offset))*m_lev0DXi[0];
+	int nx = ctx->nx[0];
+	Real dX=m_lev0DXi[0];
+	{// level0 
+
+
+	//Real dX = ctx->domainLength[0]/Real(nx);
+
+
 	Vector<Real> xInterp(nx+1);
 
 	Vector<Real> depthInterp(nx+1);
 
 	  
 	for (int i=0; i<nx+1; ++i) {
-            
-	    
 	  xInterp[i] = xmin + dX* Real(i) ;
-
 	}	    
+	
 	cs.interp(depthInterp,xInterp);
-
+	
 	// now we chomboize it
-	s_depthPtr = RefCountedPtr<BoxLayoutData<FArrayBox> >(new BoxLayoutData<FArrayBox>);
-	Vector<Box> vB(numProc(),domain.domainBox());
-	Vector<int> vP(numProc());
-	for (int p=0; p<numProc(); ++p) {
-	  vP[p]=p;}
-	BoxLayout bL(vB,vP);
-	bL.close();// each process has the same copy
-	//	FlatNodeDataFactory DF=FlatNodeDataFactory(BASISV(SpaceDim-1));
-	//	s_depthPtr->define(bL,1,(DataFactory<NodeFArrayBox>)DF); // Every processor is good to go
-	s_depthPtr->define(bL,1); // Still unallocated the space
-	for (DataIterator dit=bL.dataIterator(); dit.ok(); ++dit) {
-	  (*s_depthPtr)[dit()].setVal(0.0); 
-	  // If I get this right, now we have allocated the space (hopefully, of the right type)
-	  for (BoxIterator bit(domain.domainBox()); bit.ok(); ++bit){
-	    (*s_depthPtr)[dit()](bit())=depthInterp[(bit()[0]-nx_offset)]; // and now we fill it with the (hopefully) right data
-	  }
+	s_depthPtr_level0 = RefCountedPtr<FArrayBox> (new FArrayBox);
+	Box interpBox = ctx->domain.domainBox();
+	interpBox.surroundingNodes();
+	interpBox = flattenBox(interpBox, SpaceDim-1);
+	// Box interpBox(IntVect::Zero, IntVect(D_DECL(256,256,0)), IntVect::Unit);
+	pout() << "interpBox level 0 = " << interpBox << endl;
 
+	s_depthPtr_level0->define(interpBox,1); // Still unallocated the space
+	  // If I get this right, now we have allocated the space (hopefully, of the right type)
+	BoxIterator bit(interpBox);
+	for (bit.begin(); bit.ok(); ++bit){
+
+	    (*s_depthPtr_level0)(bit())=depthInterp[(bit()[0]-nx_offset)]; // and now we fill it with the (hopefully) right data
+	  }
+	}
+	nx *= ctx->refRatios[0][0]; 
+	nx_offset *= ctx->refRatios[0][0]; 
+	dX /= Real(ctx->refRatios[0][0]);
+	{// level1
+
+	pout()<< "refined size is "<<nx <<endl;
+	//Real dX = ctx->domainLength[0]/Real(nx);
+	
+
+	Vector<Real> xInterp(nx+1);
+
+	Vector<Real> depthInterp(nx+1);
+
+	  
+	for (int i=0; i<nx+1; ++i) {
+	  xInterp[i] = xmin + dX* Real(i) ;
+	}	    
+	
+	cs.interp(depthInterp,xInterp);
+	
+	// now we chomboize it
+	s_depthPtr_level1 = RefCountedPtr<FArrayBox> (new FArrayBox);
+	Box interpBox = ctx->domain.domainBox();
+	interpBox.refine(ctx->refRatios[0]);
+	interpBox.surroundingNodes();
+	interpBox = flattenBox(interpBox, SpaceDim-1);
+	
+	// Box interpBox(IntVect::Zero, IntVect(D_DECL(256,256,0)), IntVect::Unit);
+	pout() << "interpBox level 1= " << interpBox << endl;
+
+	s_depthPtr_level1->define(interpBox,1); // Still unallocated the space
+	pout()<< "If I get this right, now we have allocated the space (hopefully, of the right type)" << endl;
+	BoxIterator bit(interpBox);
+	for (bit.begin(); bit.ok(); ++bit){
+
+	  (*s_depthPtr_level1)(bit())=depthInterp[(bit()[0]-nx_offset)]; // and now we fill it with the (hopefully) right data
+	  }
 	}
 	
      

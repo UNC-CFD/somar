@@ -21,8 +21,8 @@
  *  For up-to-date contact information, please visit the repository homepage,
  *  https://github.com/somarhub.
  ******************************************************************************/
-#ifndef MassBayMap_H__INCLUDED__
-#define MassBayMap_H__INCLUDED__
+#ifndef DEMMap_H__INCLUDED__
+#define DEMMap_H__INCLUDED__
 
 #include "BathymetricBaseMap.H"
 #include "NodeFArrayBox.H"
@@ -66,7 +66,9 @@ protected:
     virtual void createBaseMap ();
 
     static bool                                 s_fileIsRead;
-    static RefCountedPtr<BoxLayoutData<FArrayBox> > s_depthPtr;
+    static RefCountedPtr<FArrayBox>  s_depthPtr_level0;
+    static RefCountedPtr<FArrayBox>  s_depthPtr_level1;
+    static Vector<FArrayBox>  s_depthPtr; 
 };
 
 
