@@ -90,7 +90,7 @@ void MappedLevelBackwardEuler::updateSoln (LevelDataType&           a_phiNew,
 
     //set phit to a_phiOld, rhst to a_src * a_dt
     this->m_ops[a_level]->incr(phit, a_phiOld, 1.0);
-    this->m_ops[a_level]->incr(rhst, a_src   , a_dt);
+    //this->m_ops[a_level]->incr(rhst, a_src   , a_dt);
 
     //multiply phi old by kappa*acoef
     this->m_ops[a_level]->diagonalScale(phit, true);

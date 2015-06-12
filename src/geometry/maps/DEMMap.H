@@ -68,7 +68,7 @@ protected:
     static bool                                 s_fileIsRead;
     static RefCountedPtr<FArrayBox>  s_depthPtr_level0;
     static RefCountedPtr<FArrayBox>  s_depthPtr_level1;
-    static Vector<FArrayBox>  s_depthPtr; 
+  static Vector<RefCountedPtr<FArrayBox> >  s_depthPtr; 
 };
 
 

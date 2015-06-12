@@ -52,7 +52,7 @@
 bool DEMMap::s_fileIsRead = false;
 RefCountedPtr<FArrayBox>  DEMMap::s_depthPtr_level0;
 RefCountedPtr<FArrayBox>  DEMMap::s_depthPtr_level1;
-Vector<FArrayBox>  DEMMap::s_depthPtr; 
+Vector<RefCountedPtr<FArrayBox> >  DEMMap::s_depthPtr; 
 
 // -----------------------------------------------------------------------------
 // Construtor
@@ -63,9 +63,7 @@ DEMMap::DEMMap ()
     if (!s_fileIsRead) {
       const ProblemContext* ctx = ProblemContext::getInstance();
       // create vector to contain the DEMs at each level of refinement
-      //      Vector<FArrayBox>  s_depthPtr(ctx->max_level+1);
-      //      s_depthPtr = RefCountedPtr<Vector<FArrayBox> > (new Vector<FArrayBox>);
-      //      (*s_depthPtr)(ctx->max_level+1);
+             s_depthPtr.resize(ctx->max_level+1);
       
         this->createBaseMap();
 
@@ -130,11 +128,11 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
      
       
 	
-      a_dest.copy(*s_depthPtr_level0, 0,a_destComp);
+      a_dest.copy(*(s_depthPtr[0]), 0,a_destComp);
       
     } else {
       //        MayDay::Error("Bad a_dXi");
-      a_dest.copy(*s_depthPtr_level1,0,a_destComp);
+      a_dest.copy(*(s_depthPtr[1]),0,a_destComp);
     }
 }
 
@@ -285,81 +283,42 @@ void DEMMap::createBaseMap ()
       { // prepare depthVect for interpolation
 	CubicSpline cs;
 	cs.solve(depthVect,xVect);
+	// Stuff we need on the level=0 gridl
 	int nx_offset = ctx->nx_offset[0];
 	Real xmin = (Real(nx_offset))*m_lev0DXi[0];
 	int nx = ctx->nx[0];
 	Real dX=m_lev0DXi[0];
-	{// level0 
-
-
-	//Real dX = ctx->domainLength[0]/Real(nx);
-
-
-	Vector<Real> xInterp(nx+1);
-
-	Vector<Real> depthInterp(nx+1);
-
-	  
-	for (int i=0; i<nx+1; ++i) {
-	  xInterp[i] = xmin + dX* Real(i) ;
-	}	    
-	
-	cs.interp(depthInterp,xInterp);
-	
-	// now we chomboize it
-	s_depthPtr_level0 = RefCountedPtr<FArrayBox> (new FArrayBox);
 	Box interpBox = ctx->domain.domainBox();
 	interpBox.surroundingNodes();
 	interpBox = flattenBox(interpBox, SpaceDim-1);
-	// Box interpBox(IntVect::Zero, IntVect(D_DECL(256,256,0)), IntVect::Unit);
-	pout() << "interpBox level 0 = " << interpBox << endl;
-
-	s_depthPtr_level0->define(interpBox,1); // Still unallocated the space
-	  // If I get this right, now we have allocated the space (hopefully, of the right type)
-	BoxIterator bit(interpBox);
-	for (bit.begin(); bit.ok(); ++bit){
-
-	    (*s_depthPtr_level0)(bit())=depthInterp[(bit()[0]-nx_offset)]; // and now we fill it with the (hopefully) right data
-	  }
-	}
-	nx *= ctx->refRatios[0][0]; 
-	nx_offset *= ctx->refRatios[0][0]; 
-	dX /= Real(ctx->refRatios[0][0]);
-	{// level1
-
-	pout()<< "refined size is "<<nx <<endl;
-	//Real dX = ctx->domainLength[0]/Real(nx);
-	
-
 	Vector<Real> xInterp(nx+1);
-
 	Vector<Real> depthInterp(nx+1);
 
-	  
-	for (int i=0; i<nx+1; ++i) {
-	  xInterp[i] = xmin + dX* Real(i) ;
-	}	    
+	for (int level=0; level<ctx->max_level+1; ++level) 
+	  {// we create the coordinates where we will interpolate
+	    for (int i=0; i<nx+1; ++i) {
+	      xInterp[i] = xmin + dX* Real(i) ;
+	    }	    
 	
-	cs.interp(depthInterp,xInterp);
+	    cs.interp(depthInterp,xInterp);
 	
-	// now we chomboize it
-	s_depthPtr_level1 = RefCountedPtr<FArrayBox> (new FArrayBox);
-	Box interpBox = ctx->domain.domainBox();
-	interpBox.refine(ctx->refRatios[0]);
-	interpBox.surroundingNodes();
-	interpBox = flattenBox(interpBox, SpaceDim-1);
-	
-	// Box interpBox(IntVect::Zero, IntVect(D_DECL(256,256,0)), IntVect::Unit);
-	pout() << "interpBox level 1= " << interpBox << endl;
-
-	s_depthPtr_level1->define(interpBox,1); // Still unallocated the space
-	pout()<< "If I get this right, now we have allocated the space (hopefully, of the right type)" << endl;
-	BoxIterator bit(interpBox);
-	for (bit.begin(); bit.ok(); ++bit){
-
-	  (*s_depthPtr_level1)(bit())=depthInterp[(bit()[0]-nx_offset)]; // and now we fill it with the (hopefully) right data
-	  }
-	}
+	    // now we chomboize the result
+	    s_depthPtr[level] = RefCountedPtr<FArrayBox> (new FArrayBox);
+	    s_depthPtr[level]->define(interpBox,1); // Still unallocated the space
+	    pout() << "interpBox level "<< level << " = " << interpBox << endl;
+	    BoxIterator bit(interpBox);
+	    for (bit.begin(); bit.ok(); ++bit){
+	    
+	      (*(s_depthPtr[level]))(bit())=depthInterp[(bit()[0]-nx_offset)]; // and now we fill it with the (hopefully) right data
+	    }
+	    // now we update the stuff we need for the next level
+	    nx *= ctx->refRatios[level][0]; 
+	    nx_offset *= ctx->refRatios[level][0]; 
+	    dX /= Real(ctx->refRatios[level][0]);
+	    interpBox.refine(ctx->refRatios[level]);
+	    xInterp.resize(nx+1);
+	    depthInterp.reize(nx+1);
+      }
 	
      
 	    return;}
