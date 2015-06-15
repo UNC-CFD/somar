@@ -602,6 +602,7 @@ Real AMRNavierStokes::computeDt ()
                 Real advDt = m_cfl * dx[dir] / maxVel[dir];
                 if (s_verbosity > verbThresh) {
                     pout() << "dt limit by advection in dir " << dir << " = " << advDt << endl;
+		    pout() << "maxVel is "<< maxVel << endl;
                 }
                 CH_assert(advDt >= 0.0);
 

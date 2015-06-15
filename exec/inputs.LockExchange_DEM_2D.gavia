@@ -1,0 +1,117 @@
+ibc.problem = 1                # 1 = Lock exchange
+ibc.useBackgroundScalar = 0
+amr.gravityMethod = 1          # [1]   0=none, 1=explicit, 2=implicit (only with bg scalar)
+amr.verbosity = 1              # [0]
+# amr.restart_file = chkpt_000000.2d.hdf5
+
+
+### Coordinate map
+geometry.coordMap = 8                   # 5=Digital Elevation MOdel
+geometry.DemFile = DEM_test_2d.hdf5
+
+### Base grid
+amr.length = 30.0 2.0
+amr.nx = 128 64
+amr.nx_offset = -120 0
+
+
+### Regridding
+amr.maxlevel = 2
+amr.refratio = 4 4
+amr.refratio_lev0 = 4 1
+ amr.refratio_lev1 =4 2
+# amr.refratio_lev2 =
+amr.regrid_intervals = 4 4 4 4
+amr.tags_grow = 0                       # [0]
+amr.buoyancy_tag_tol = 0.2              # [0.0] 0 to turn off
+# amr.magvort_tag_quota = 0.125           # [0.0] Fraction of max|vort| on each level. 0 to turn off.
+
+
+### Timestepping
+amr.final = 60.0
+amr.maxsteps = 2000
+amr.cfl = 0.95
+amr.max_dt = 0.1
+amr.init_dt_multiplier = 0.1
+amr.max_dt_grow = 1.5                   # [1.5]
+
+amr.limitDtViaViscosity = 1             # [1]
+amr.limitDtViaDiffusion = 1             # [1]
+amr.limitDtViaPressureGradient = 1      # [0]
+amr.limitDtViaInternalWaveSpeed = 0     # [ibc.useBackgroundScalar]
+
+
+### Viscosity / diffusion
+amr.scal_diffusion_coeffs = 0.001
+amr.viscosity = 0.001
+amr.viscous_solver_type = 1             # [1] 0=backwardEuler, 1=CrankNicolson, 2=TGA
+amr.diffusive_solver_type = 1           # [1] 0=backwardEuler, 1=CrankNicolson, 2=TGA
+
+
+### Plot files
+plot.plot_interval = 5
+plot.checkpoint_interval = 100
+
+plot.writeScalars = 1                   # [1]
+plot.writeScalarsMinusBackground = 0    # [ibc.useBackgroundScalar]
+plot.writePressure = 1                  # [1]
+plot.writeDivergence = 1                # [0]
+plot.writeVorticity = 0                 # [0]
+plot.writeLambda = 1                    # [0]
+plot.writeDisplacement = 1              # [1]
+plot.writeGeometry = 0                  # [0]
+
+
+### Refluxing
+amr.advective_momentum_reflux = 0       # [0]
+amr.diffusive_momentum_reflux = 0       # [0]
+amr.implicit_momentum_reflux = 0        # [0]
+amr.advective_scalar_reflux = 0         # [0]
+amr.diffusive_scalar_reflux = 0         # [0]
+amr.implicit_scalar_reflux = 0          # [0]
+amr.advective_lambda_reflux = 0         # [0]
+
+
+### Advection scheme parameters
+# Velocity
+advection.normalPredOrderVel = 2        # [2] 0=CTU, 1=PLM, 2=PPM
+advection.useFourthOrderSlopesVel = 1   # [1]
+advection.useLimitingVel = 0            # [0]
+advection.useHighOrderLimiterVel = 0    # [0]
+advection.nonlinearDifferencingForm = 0 # [0] -1=None, 0=Conservative, 1=Advective
+
+# Buoyancy
+advection.normalPredOrderScal = 2       # [2] 0=CTU, 1=PLM, 2=PPM
+advection.useFourthOrderSlopesScal = 1  # [1]
+advection.useLimitingScal = 1           # [1]
+advection.useHighOrderLimiterScal = 0   # [1]
+
+
+### Projection & pressure initialization settings
+projection.isIncompressible = 1         # [1]
+
+
+### Solver settings
+AMRMG.eps = 1e-6                # [1e-6]    Solver tolerance
+AMRMG.relax_mode = 1            # [1]       -1=None, 0=Jacobi, 1=LevelGSRB, 2=LooseGSRB, 3=LineGSRB
+AMRMG.num_smooth_down    = 4    # [2]
+AMRMG.num_smooth_up      = 4    # [2]
+AMRMG.num_smooth_bottom  = 2    # [2]       MG bottom smoothing iters
+AMRMG.num_smooth_precond = 2    # [2]
+AMRMG.numMG = 1                 # [1]       1=V-cycle, 2=W-cycle, etc...
+AMRMG.imin = 5                  # [5]       Min number of V-cycles
+AMRMG.imax = 20                 # [20]      Max number of V-cycles
+AMRMG.hang = 1e-15              # [1e-15]
+AMRMG.normThresh = 1e-30        # [1e-30]
+AMRMG.maxDepth = -1             # [-1]      Max MG depth (-1=as deep as possible)
+AMRMG.verbosity = 2             # [3]
+
+bottom.eps = 1e-6               # [1e-6]    Solver tolerance
+bottom.reps = 1e-12             # [1e-12]   Solver relative tolerance
+bottom.imax = 80                # [80]      Max BiCGStab iterations
+bottom.numRestarts = 5          # [5]       Max BiCGStab restarts
+bottom.hang = 1e-15             # [1e-8]
+bottom.small = 1e-30            # [1e-30]
+bottom.normType = 2             # [2]
+bottom.verbosity = 0            # [3]
+
