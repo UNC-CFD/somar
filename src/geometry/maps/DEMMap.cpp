@@ -111,7 +111,7 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
 {
     const Box& destBox = a_dest.box();
     const IntVect destBoxType = destBox.type();
-    static int counter=1;
+    //    static int counter=1;
     // The holder needs to be flat and nodal in the vertical.
     CH_assert(destBox == horizontalDataBox(destBox));
     CH_assert(destBoxType[SpaceDim-1] == 1);
@@ -121,49 +121,56 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
     // appropriate level.
     const ProblemContext* ctx = ProblemContext::getInstance();
     bool depthIsSet = false;
-    int level=0;
+    
     int levelMax=ctx->max_level;
     RealVect DX=a_dXi;
-    for(level; level<levelMax+1; ++level)
-      {
-	  
-	if (m_lev0DXi == DX) {// AS: I am a bit uncomfortable here, as we are 
-	  // comparing Real values. Rounding errors can be a PITA.
-	  // If there is a problem, will be caught by the MayDay call        
-      a_dest.copy(*(s_depthPtr[level]), 0,a_destComp);
-      depthIsSet=true;
-      break;
-
-	} 
-	DX*=(ctx->refRatios[level]); 
+    for(int level=0; level<levelMax+1; ++level){
+      //pout() << "leve "<< level << " m_lev " << m_lev0DXi <<" and DX " << DX << endl; 
+      
+      if (m_lev0DXi == DX) {// AS: I am a bit uncomfortable here, as we are 
+	// comparing Real values. Rounding errors can be a PITA.
+	// If there is a problem, will be caught by the MayDay call
+	
+	if(s_depthPtr[level]->box().contains(destBox)){
+	  a_dest.copy(*(s_depthPtr[level]), 0,a_destComp);
+	  depthIsSet=true;
+	  break;
+	}
+	else{MayDay::Error("DEMMap:: fill_bathymetry - Need bigger box for cached depth"); 
+	}
+      } 
+	DX*=(ctx->refRatios[level]); // calculates coarsened dx at next level.  
+	
       }
-	if(depthIsSet==false) {MayDay::Error("DEMMap::fill_bathymetry can't determine level");}
-
+    if(depthIsSet==false) {MayDay::Error("DEMMap::fill_bathymetry can't determine level");}
+    //const Box& dummyBox= s_depthPtr[0]->box();
+    
 }
-
 // -----------------------------------------------------------------------------
 // Reads the bathymetry from the Digital Elevation Model and interpolates onto level grids depending on the dimensionality of the problem
 // -----------------------------------------------------------------------------
 void DEMMap::createBaseMap ()
-{    const ProblemContext* ctx = ProblemContext::getInstance();
+{    
 
-  Vector<Real> depthVect,xVect,yVect;
+  //  Vector<Real> depthVect,xVect,yVect;
 
-  Read_DEM_File(depthVect,xVect,yVect);
-  if((yVect.size()==1)&(SpaceDim == 3))
-    {MayDay::Error("DEMMap:: createBaseMap was given a 2D DEM file but problem is 3D");} 
-  
-    if(yVect.size()==1)
-      {Create_Level_DEM_2D(depthVect,xVect);}
-    else
-      {Create_Level_DEM_3D(depthVect,xVect,yVect);}
-    return;
-}    
+  //Read_DEM_File(depthVect,xVect,yVect);
+
+  const Vector<Real>&     xVect=this->readHDF5Vector("/X");
+  const Vector<Real>& depthVect=this->readHDF5Vector("/Depth");
+  if(SpaceDim==2)
+    {this->Create_Level_DEM_2D(depthVect,xVect);}
+  else
+    {{const Vector<Real>& yVect=readHDF5Vector("/Y");
+	this->Create_Level_DEM_3D(depthVect,xVect,yVect);}
+      return;
+    }    
+}
 //---------------------------------------------------------------------------
 // fills the 
-void DEMMap::Create_Level_DEM_3D(Vector<Real>& depthVect,
-                                 Vector<Real>& xVect,
-				 Vector<Real>& yVect)
+void DEMMap::Create_Level_DEM_3D(const Vector<Real>& depthVect,
+                                 const Vector<Real>& xVect,
+				 const Vector<Real>& yVect)
 {   
   // get problem context
   const ProblemContext* ctx = ProblemContext::getInstance();
@@ -189,8 +196,8 @@ void DEMMap::Create_Level_DEM_3D(Vector<Real>& depthVect,
 
   
   for (BoxIterator bit(domBox); bit.ok(); ++bit) {
-    const IntVect& nc = bit(); //AS: Why the ampersand? Why const? 
-    int idx = nc[1] + nc[0]*Ny;
+    const IntVect& nc = bit(); //AS: Why the ampersand? 
+    int idx = nc[0] + nc[1]*Nx; // arrays follow Fortran ordering 
     depthFAB(nc) = depthVect[idx];
   }
   {// X derivative
@@ -226,7 +233,7 @@ void DEMMap::Create_Level_DEM_3D(Vector<Real>& depthVect,
       }
     }
   }
-  pout() << "calculated dfdx " << endl;
+  //  pout() << "calculated dfdx " << endl;
   {  // now the y derivative
     Vector<Real> depthSlice(Ny);
     Vector<Real> dfdy(Ny);
@@ -261,25 +268,28 @@ void DEMMap::Create_Level_DEM_3D(Vector<Real>& depthVect,
     }
     
   }    
-  pout() << "calculated dfdy " << endl;
+  //  pout() << "calculated dfdy " << endl;
 
 
 
   // Stuff we need on the level=0 grid. We iterate from here on
 int nx_offset = ctx->nx_offset[0];
-Real xmin = (Real(nx_offset))*m_lev0DXi[0];
+//Real xmin = (Real(nx_offset))*m_lev0DXi[0];
 int ny_offset = ctx->nx_offset[1];
-Real ymin = (Real(ny_offset))*m_lev0DXi[1];
+//Real ymin = (Real(ny_offset))*m_lev0DXi[1];
 int nx = ctx->nx[0];
 int ny = ctx->nx[1];
 Real dX=m_lev0DXi[0];
 Real dY=m_lev0DXi[1];
 Box interpBox = ctx->domain.domainBox();
+
+ interpBox.grow(IntVect(D_DECL(5,5,0)));// we enlarge the box by 5, which should accomodate all the necessary 
+ // ghost points...
 interpBox.surroundingNodes();
 interpBox = flattenBox(interpBox, SpaceDim-1);
  FArrayBox xInterp(interpBox,1);
  FArrayBox yInterp(interpBox,1);
- pout()<< "xmin and ymin " << xmin << " " << ymin<<endl;
+ // pout()<< "xmin and ymin " << xmin << " " << ymin<<endl;
 for (int level=0; level<ctx->max_level+1; ++level){
    s_depthPtr[level] = RefCountedPtr<FArrayBox> (new FArrayBox);
    s_depthPtr[level]->define(interpBox,1); 
@@ -290,7 +300,6 @@ for (int level=0; level<ctx->max_level+1; ++level){
     yInterp(nc) =  nc[1]*dY;
   
   }
-
   // Interpolate onto our interpBox and store the results in the appropriate container
   HermiteInterp2D(*(s_depthPtr[level]),
      		  xInterp,
@@ -303,6 +312,10 @@ for (int level=0; level<ctx->max_level+1; ++level){
      		  depthFAB,
      		  dfdxFAB,
      		  dfdyFAB);
+  //    if(level==0) {writeFABname(s_depthPtr[level],"depthPtr.hdf5");
+  //  writeFABname(&xInterp,"xInterp.hdf5");
+  //  writeFABname(&yInterp,"yInterp.hdf5");
+
  // move on to the next grid
   nx *= ctx->refRatios[level][0];
   ny *= ctx->refRatios[level][1];
@@ -314,8 +327,9 @@ for (int level=0; level<ctx->max_level+1; ++level){
   xInterp.resize(interpBox,1);
   yInterp.resize(interpBox,1);
 
+  //  MayDay::Error("Ciao bello");}
  }
-
+ 
 
 return;
 }
@@ -324,11 +338,10 @@ return;
 
  
 
-
    
 
-void DEMMap::Create_Level_DEM_2D(Vector<Real>& depthVect, 
-				 Vector<Real>&xVect)
+void DEMMap::Create_Level_DEM_2D(const Vector<Real>& depthVect, 
+				 const Vector<Real>&xVect)
 
 {  const ProblemContext* ctx = ProblemContext::getInstance();
   // prepare depthVect for interpolation
@@ -340,15 +353,19 @@ void DEMMap::Create_Level_DEM_2D(Vector<Real>& depthVect,
   int nx = ctx->nx[0];
   Real dX=m_lev0DXi[0];
   Box interpBox = ctx->domain.domainBox();
+  interpBox.grow(IntVect(D_DECL(5,0,0)));// we enlarge the box by 5, which should accomodate all the necessary 
   interpBox.surroundingNodes();
   interpBox = flattenBox(interpBox, SpaceDim-1);
-  Vector<Real> xInterp(nx+1);
-  Vector<Real> depthInterp(nx+1);
+  Vector<Real> xInterp(interpBox.size(0));
+  Vector<Real> depthInterp(interpBox.size(0));
 
   for (int level=0; level<ctx->max_level+1; ++level) 
     {// we create the coordinates where we will interpolate
-      for (int i=0; i<nx+1; ++i) {
-	xInterp[i] = xmin + dX* Real(i) ;
+
+
+      for (int i=interpBox.smallEnd(0); i<interpBox.bigEnd(0); ++i) {
+
+	xInterp[i-interpBox.smallEnd(0)] =  dX* Real(i) ;
       }       
       
       cs.interp(depthInterp,xInterp);
@@ -356,143 +373,69 @@ void DEMMap::Create_Level_DEM_2D(Vector<Real>& depthVect,
       // now we chomboize the result
       s_depthPtr[level] = RefCountedPtr<FArrayBox> (new FArrayBox);
       s_depthPtr[level]->define(interpBox,1); 
-      pout() << "interpBox level "<< level << " = " << interpBox << endl;
+      //pout() << "interpBox level "<< level << " = " << interpBox << endl;
       BoxIterator bit(interpBox);
       for (bit.begin(); bit.ok(); ++bit){
 	
-	(*(s_depthPtr[level]))(bit())=depthInterp[(bit()[0]-nx_offset)]; // and now we fill it with the (hopefully) right data
+	(*(s_depthPtr[level]))(bit())=depthInterp[(bit()[0]-interpBox.smallEnd(0))]; // and now we fill it with the (hopefully) right data
       }
       // now we update the stuff we need for the next level
       nx *= ctx->refRatios[level][0]; 
       nx_offset *= ctx->refRatios[level][0]; 
       dX /= Real(ctx->refRatios[level][0]);
       interpBox.refine(ctx->refRatios[level]);
-      xInterp.resize(nx+1);
-      depthInterp.resize(nx+1);
+      xInterp.resize(interpBox.size(0));
+      depthInterp.resize(interpBox.size(0));
     }
   return; }
 
- void DEMMap::Read_DEM_File(Vector<Real>& depthVect,
-			     Vector<Real>& xVect,
-			     Vector<Real>& yVect)
- {
-   std::string infile;
-   int Nx;
-   int Ny;
-   const ProblemContext* ctx = ProblemContext::getInstance();
+Vector<Real> DEMMap::readHDF5Vector(const char* invector)
 
-    infile = ctx->DemFile;
-    // Open the input HDF5 file.
-    pout() << "Opening " << infile << "..." << std::flush;
-    // HDF5Handle ifHandle(infile, HDF5Handle::OPEN_RDONLY, "/");
-    hid_t fileID = H5Fopen(infile.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+{  const ProblemContext* ctx = ProblemContext::getInstance();
+  int N; 
+  std::string infile;
+  Vector<Real> V;
+  infile=ctx->DemFile;
+  // Open the input HDF5 file.
+  pout() << "Opening " << infile << "..." << std::flush;
+  // HDF5Handle ifHandle(infile, HDF5Handle::OPEN_RDONLY, "/");
+  hid_t fileID = H5Fopen(infile.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     if (fileID < 0) {
         ostringstream msg;
         msg << "H5Fopen failed to open " << infile << ". Return value = " << fileID;
         MayDay::Error(msg.str().c_str());
     }
     pout() << "done." << endl;
-    // Determine size of X data
+    // Determine size of data
     {
-      hid_t xID = H5Dopen(fileID, "/X");
+      hid_t xID = H5Dopen(fileID, invector);
       if (xID < 0) {
 	ostringstream msg;
-	msg << "H5Dopen failed to open X dataset. Return value = " << xID;
+	msg << "H5Dopen failed to open "<< invector << " dataset. Return value = " << xID;
 	MayDay::Error(msg.str().c_str());
       }
       hid_t xDSPC=H5Dget_space(xID);
-      Nx=int( H5Sget_simple_extent_npoints( xDSPC ));				 
+      N=int( H5Sget_simple_extent_npoints( xDSPC ));				 
       H5Sclose(xDSPC);
       H5Dclose(xID);
     }
-    // Read X data
-    xVect.resize(Nx);
-    xVect.assign(quietNAN);
+    // Read  data
+    V.resize(N);
+    V.assign(quietNAN);
     {
-        hid_t xID = H5Dopen(fileID, "/X");
-        if (xID < 0) {
-            ostringstream msg;
-            msg << "H5Dopen failed to open X dataset. Return value = " << xID;
-            MayDay::Error(msg.str().c_str());
-        }
+        hid_t xID = H5Dopen(fileID, invector);
 
         herr_t status = H5Dread(xID,                // hid_t dataset_id    IN: Identifier of the dataset read from.
                                 H5T_NATIVE_DOUBLE,  // hid_t mem_type_id   IN: Identifier of the memory datatype.
                                 H5S_ALL,            // hid_t mem_space_id  IN: Identifier of the memory dataspace.
                                 H5S_ALL,            // hid_t file_space_id IN: Identifier of the dataset's dataspace in the file.
                                 H5P_DEFAULT,        // hid_t xfer_plist_id     IN: Identifier of a transfer property list for this I/O operation.
-                                &xVect[0]);         // void * buf  OUT: Buffer to receive data read from file.
+                                &V[0]);         // void * buf  OUT: Buffer to receive data read from file.
         H5Dclose(xID);
-    }
-    // Determine size of Y data
-
-    hid_t xID = H5Dopen(fileID, "/Y");
-      if (xID < 0) {
-	pout() << "/Y not present in DEM file " << endl;
-		ostringstream msg;
-		
-		msg << "H5Dopen failed to open Y dataset. Return value = " << xID;
-		//	MayDay::Error(msg.str().c_str());
-        // The DEM is one dimensional
-	if (SpaceDim == 3) {
-	  MayDay::Error("DEMMap is two-dimensional but problem is solved in 3D");
-	}
-  
-	Ny=1;
-	yVect.resize(Ny);
-	  yVect.assign(quietNAN);
-      }
-      else
-	{
-	  hid_t xDSPC=H5Dget_space(xID);
-	  Ny=int( H5Sget_simple_extent_npoints( xDSPC ));				 
-	  H5Sclose(xDSPC);
-	  H5Dclose(xID);
-	
-    
-    // Read Y data
-    
-       yVect.resize(Ny);
-       yVect.assign(quietNAN);
-      if (Ny>1) {    
-            
-        hid_t yID = H5Dopen(fileID, "/Y");
-        
-        herr_t status = H5Dread(yID,                // hid_t dataset_id    IN: Identifier of the dataset read from.
-                                H5T_NATIVE_DOUBLE,  // hid_t mem_type_id   IN: Identifier of the memory datatype.
-                                H5S_ALL,            // hid_t mem_space_id  IN: Identifier of the memory dataspace.
-                                H5S_ALL,            // hid_t file_space_id IN: Identifier of the dataset's dataspace in the file.
-                                H5P_DEFAULT,        // hid_t xfer_plist_id     IN: Identifier of a transfer property list for this I/O operation.
-                                &yVect[0]);         // void * buf  OUT: Buffer to receive data read from file.
-        H5Dclose(yID);
-    
-      }
-	}
-    
-    // Read Depth data
-      depthVect.resize(Nx*Ny);
-      depthVect.assign(quietNAN);
-    {
-        hid_t depthID = H5Dopen(fileID, "/Depth");
-        if (depthID < 0) {
-            ostringstream msg;
-            msg << "H5Dopen failed to open Depth dataset. Return value = " << depthID;
-            MayDay::Error(msg.str().c_str());
-        }
-
-        herr_t status = H5Dread(depthID,            // hid_t dataset_id    IN: Identifier of the dataset read from.
-                                H5T_NATIVE_DOUBLE,  // hid_t mem_type_id   IN: Identifier of the memory datatype.
-                                H5S_ALL,            // hid_t mem_space_id  IN: Identifier of the memory dataspace.
-                                H5S_ALL,            // hid_t file_space_id IN: Identifier of the dataset's dataspace in the file.
-                                H5P_DEFAULT,        // hid_t xfer_plist_id     IN: Identifier of a transfer property list for this I/O operation.
-                                &depthVect[0]);     // void * buf  OUT: Buffer to receive data read from file.
-        H5Dclose(depthID);
+	if(status<0) {MayDay::Error("Cannot read data from depth file");} 
     }
 
-    // We are done reading from file.
-    if (!(fileID < 0)) {
-        H5Fclose(fileID);
-    }
+    return V;
+}
 
-    pout() << "read DEM file of size " << Nx << "X" << Ny <<endl; 
-    return;}
+
