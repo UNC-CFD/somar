@@ -70,7 +70,8 @@ protected:
                                  const Vector<Real>& xVect,
 				     const Vector<Real>& yVect);
   virtual Vector<Real> readHDF5Vector(const char* invector);
-
+  
+   const int whatIsMyLevel(RealVect& DX) const;
 
   static bool  s_fileIsRead;
   

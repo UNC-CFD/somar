@@ -22,8 +22,6 @@
  *  https://github.com/somarhub.
  ******************************************************************************/
 
-// NOTE: This is a work in progress.
-// DEMMap is not for public use yet.
 
 #include "DEMMap.H"
 #include "LevelData.H"
@@ -75,9 +73,12 @@ DEMMap::DEMMap ()
 // Destructor
 // -----------------------------------------------------------------------------
 DEMMap::~DEMMap ()
-{;}
-
-
+{
+// should we delete here s_depthPtr?
+//  int level=s_depthPtr.size();
+//  for(level>-1; --level;){delete s_depthPtr[level];}
+//  s_fileIsRead=false;
+}
 // -----------------------------------------------------------------------------
 // Must return the name of the coordinate mapping
 // -----------------------------------------------------------------------------
@@ -111,7 +112,7 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
 {
     const Box& destBox = a_dest.box();
     const IntVect destBoxType = destBox.type();
-    //    static int counter=1;
+        static int counter=1;
     // The holder needs to be flat and nodal in the vertical.
     CH_assert(destBox == horizontalDataBox(destBox));
     CH_assert(destBoxType[SpaceDim-1] == 1);
@@ -124,28 +125,38 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
     
     int levelMax=ctx->max_level;
     RealVect DX=a_dXi;
-    for(int level=0; level<levelMax+1; ++level){
+    int level=this->whatIsMyLevel(DX);
+    if(level<0) {MayDay::Error("DEMMap::fill_bathymetry can't determine level");}
+    if(s_depthPtr[level]->box().contains(destBox)){
+      a_dest.copy(*(s_depthPtr[level]), 0,a_destComp);
+      depthIsSet=true;
+    }
+    else{MayDay::Error("DEMMap:: fill_bathymetry - Need bigger box for cached depth");}
+}
+
+// -----------------------------------------------------------------------------
+// crude way to determine level based on DX
+// -----------------------------------------------------------------------------
+const int DEMMap::whatIsMyLevel(RealVect& DX) const
+{const ProblemContext* ctx = ProblemContext::getInstance();
+  
+  for(int level=0; level<ctx->max_level+1; ++level){
       //pout() << "leve "<< level << " m_lev " << m_lev0DXi <<" and DX " << DX << endl; 
-      
-      if (m_lev0DXi == DX) {// AS: I am a bit uncomfortable here, as we are 
+      if (m_lev0DXi == DX) { return level;}
+      // AS: I am a bit uncomfortable here, as we are 
 	// comparing Real values. Rounding errors can be a PITA.
 	// If there is a problem, will be caught by the MayDay call
-	
-	if(s_depthPtr[level]->box().contains(destBox)){
-	  a_dest.copy(*(s_depthPtr[level]), 0,a_destComp);
-	  depthIsSet=true;
-	  break;
-	}
-	else{MayDay::Error("DEMMap:: fill_bathymetry - Need bigger box for cached depth"); 
-	}
-      } 
 	DX*=(ctx->refRatios[level]); // calculates coarsened dx at next level.  
-	
       }
-    if(depthIsSet==false) {MayDay::Error("DEMMap::fill_bathymetry can't determine level");}
+
     //const Box& dummyBox= s_depthPtr[0]->box();
-    
+    // pout() << "fill_bathymetry called " << counter << " times." <<endl;
+    // ++counter;
+    // pout() <<" box filled " << destBox << endl;
+  return -1; 
 }
+
+    
 // -----------------------------------------------------------------------------
 // Reads the bathymetry from the Digital Elevation Model and interpolates onto level grids depending on the dimensionality of the problem
 // -----------------------------------------------------------------------------
@@ -312,7 +323,7 @@ for (int level=0; level<ctx->max_level+1; ++level){
      		  depthFAB,
      		  dfdxFAB,
      		  dfdyFAB);
-  //    if(level==0) {writeFABname(s_depthPtr[level],"depthPtr.hdf5");
+  //if(level==0) {writeFABname(s_depthPtr[level],"depthPtr.hdf5");}
   //  writeFABname(&xInterp,"xInterp.hdf5");
   //  writeFABname(&yInterp,"yInterp.hdf5");
 
