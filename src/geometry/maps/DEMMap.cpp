@@ -37,6 +37,7 @@
 // #include "ConvertFABF_F.H"
 #include "CubicSpline.H"
 #include "HermiteInterp.H"
+#include "BilinearInterp.H"
 #include "EllipticBCUtils.H"
 #include "BiCGStabSolver.H"
 #include "MappedAMRPoissonOp.H"
@@ -211,7 +212,8 @@ void DEMMap::Create_Level_DEM_3D(const Vector<Real>& depthVect,
     int idx = nc[0] + nc[1]*Nx; // arrays follow Fortran ordering 
     depthFAB(nc) = depthVect[idx];
   }
-  {// X derivative
+  
+  if(ctx->InterpOrder>0){// X derivative
     Vector<Real> depthSlice(Nx);
     Vector<Real> dfdx(Nx);
     IntVect nc = IntVect::Zero;
@@ -243,9 +245,10 @@ void DEMMap::Create_Level_DEM_3D(const Vector<Real>& depthVect,
 	dfdxFAB(nc) = dfdx[i];
       }
     }
-  }
   //  pout() << "calculated dfdx " << endl;
-  {  // now the y derivative
+  }
+
+  if(ctx->InterpOrder>0){  // now the y derivative
     Vector<Real> depthSlice(Ny);
     Vector<Real> dfdy(Ny);
     IntVect nc = IntVect::Zero;
@@ -277,9 +280,9 @@ void DEMMap::Create_Level_DEM_3D(const Vector<Real>& depthVect,
 	dfdyFAB(nc) = dfdy[j];
       }
     }
-    
+  //  pout() << "calculated dfdy " << endl;    
   }    
-  //  pout() << "calculated dfdy " << endl;
+
 
 
 
@@ -312,7 +315,8 @@ for (int level=0; level<ctx->max_level+1; ++level){
   
   }
   // Interpolate onto our interpBox and store the results in the appropriate container
-  HermiteInterp2D(*(s_depthPtr[level]),
+  if(ctx->InterpOrder >0){
+   HermiteInterp2D(*(s_depthPtr[level]),
      		  xInterp,
      		  yInterp,
      		  interpBox,
@@ -322,8 +326,20 @@ for (int level=0; level<ctx->max_level+1; ++level){
      		  yVect,
      		  depthFAB,
      		  dfdxFAB,
-     		  dfdyFAB);
-  //if(level==0) {writeFABname(s_depthPtr[level],"depthPtr.hdf5");}
+		   dfdyFAB);
+  }else{
+  BilinearInterp2D(*(s_depthPtr[level]),
+     		  xInterp,
+     		  yInterp,
+     		  interpBox,
+     		  0, // xdir
+     		  1, // ydir
+     		  xVect,
+     		  yVect,
+		   depthFAB);}
+
+  //  if(level==0) {writeFABname(s_depthPtr[level],"depthPtr.hdf5");}
+  //MayDay::Error("Ciao bello");
   //  writeFABname(&xInterp,"xInterp.hdf5");
   //  writeFABname(&yInterp,"yInterp.hdf5");
 
@@ -338,7 +354,7 @@ for (int level=0; level<ctx->max_level+1; ++level){
   xInterp.resize(interpBox,1);
   yInterp.resize(interpBox,1);
 
-  //  MayDay::Error("Ciao bello");}
+  
  }
  
 

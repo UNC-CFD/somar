@@ -621,6 +621,7 @@ void ProblemContext::readGeometry ()
 
 	ppGeo.get("DemFile",DemFile);
 	pout() << "\tDEM file = " << DemFile << endl;
+	ppGeo.get("Interpolation_Order",InterpOrder);
  
       }
     }

@@ -192,7 +192,7 @@ public:
 
     // Specific to DEMMap
     std::string DemFile;   
-
+    int InterpOrder; 
 private:
     // The plot.* parameters
     void readPlot ();

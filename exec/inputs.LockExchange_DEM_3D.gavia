@@ -8,16 +8,17 @@ amr.verbosity = 1              # [0]
 ### Coordinate map
 geometry.coordMap = 8                   # 0=Cartesian, 8=Digital Elevation Model
 geometry.DemFile = DEM_test_3d.hdf5
-
+geometry.Interpolation_Order = 0        # 0=Bilinear, >0 Hermite 
 ### Base grid
 amr.length = 15.0 3.0 2.0
-amr.nx = 32 16 64
+amr.nx = 64 96 64
 amr.nx_offset = -16 0 0
 amr.isPeriodic = 0 1 0
-amr.max_base_grid_size = 32 16 32
+#amr.max_base_grid_size = 16 16 16
+amr.max_base_grid_size = 32 16 64
 
 ### Regridding
-amr.maxlevel = 1
+amr.maxlevel = 0
 amr.refratio = 4 4 4 4
 amr.refratio_lev0 = 4 1 1
 # amr.refratio_lev1 =
@@ -30,7 +31,7 @@ amr.buoyancy_tag_tol = 0.2              # [0.0] 0 to turn off
 
 ### Timestepping
 amr.final = 10.0
-amr.maxsteps = 200
+amr.maxsteps = 1
 amr.cfl = 0.95
 amr.max_dt = 0.1
 amr.init_dt_multiplier = 0.1
@@ -50,7 +51,7 @@ amr.diffusive_solver_type = 1           # [1] 0=backwardEuler, 1=CrankNicolson, 
 
 
 ### Plot files
-plot.plot_interval = 5
+plot.plot_interval = 1
 plot.checkpoint_interval = 100
 
 plot.writeScalars = 1                   # [1]
@@ -64,13 +65,13 @@ plot.writeGeometry = 0                  # [0]
 
 
 ### Refluxing
-amr.advective_momentum_reflux = 0       # [0]
-amr.diffusive_momentum_reflux = 0       # [0]
-amr.implicit_momentum_reflux = 0        # [0]
-amr.advective_scalar_reflux = 0         # [0]
-amr.diffusive_scalar_reflux = 0         # [0]
-amr.implicit_scalar_reflux = 0          # [0]
-amr.advective_lambda_reflux = 0         # [0]
+amr.advective_momentum_reflux = 1       # [0]
+amr.diffusive_momentum_reflux = 1       # [0]
+amr.implicit_momentum_reflux = 1        # [0]
+amr.advective_scalar_reflux = 1         # [0]
+amr.diffusive_scalar_reflux = 1         # [0]
+amr.implicit_scalar_reflux = 1          # [0]
+amr.advective_lambda_reflux = 1         # [0]
 
 
 ### Advection scheme parameters
