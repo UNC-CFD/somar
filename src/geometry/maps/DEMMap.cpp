@@ -47,7 +47,7 @@
 #include "NodeAMRIO.H"
 #include "FCDataFactory.H"
 
-
+unsigned int DEMMap::s_instances=0;
 bool DEMMap::s_fileIsRead = false;
 Vector<RefCountedPtr<FArrayBox> >  DEMMap::s_depthPtr; 
 
@@ -56,7 +56,7 @@ Vector<RefCountedPtr<FArrayBox> >  DEMMap::s_depthPtr;
 // -----------------------------------------------------------------------------
 DEMMap::DEMMap ()
 : BathymetricBaseMap()
-{
+{ ++s_instances;
     if (!s_fileIsRead) {
       const ProblemContext* ctx = ProblemContext::getInstance();
       // create vector to contain the DEMs at each level of refinement
@@ -74,11 +74,12 @@ DEMMap::DEMMap ()
 // Destructor
 // -----------------------------------------------------------------------------
 DEMMap::~DEMMap ()
-{
-// should we delete here s_depthPtr?
-//  int level=s_depthPtr.size();
-//  for(level>-1; --level;){delete s_depthPtr[level];}
-//  s_fileIsRead=false;
+{ --s_instances;
+  if(s_instances==0) {
+    //last man out turns the lights off
+    this->clearCachedData();
+    s_fileIsRead = false;
+  }
 }
 // -----------------------------------------------------------------------------
 // Must return the name of the coordinate mapping
@@ -96,8 +97,15 @@ bool DEMMap::isDiagonal () const
 {
     return false;
 }
-
-
+// ----------------------------------------------------------------------------
+// Routine to free up the interpolated DEM cache
+// ----------------------------------------------------------------------------
+void DEMMap::clearCachedData()
+{
+  s_depthPtr.clear();
+  //hopefully, this takes care of the space allocated
+}
+ 
 // -----------------------------------------------------------------------------
 // Fills a NodeFAB with the bathymetric data. a_dest must be flat in the
 // vertical. Upon return, each point in the horizontal (Xi,Eta) of a_dest
@@ -113,26 +121,36 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
 {
     const Box& destBox = a_dest.box();
     const IntVect destBoxType = destBox.type();
-        static int counter=1;
+        static int counter_BIG=0;
+	static int counter_Small=0;
     // The holder needs to be flat and nodal in the vertical.
     CH_assert(destBox == horizontalDataBox(destBox));
     CH_assert(destBoxType[SpaceDim-1] == 1);
-
+    //    int boxSize=destBox.numPts();
+    
     // we determine what level has called fill_bathymetry
     // and copy the bathymetry from the FArrayBox at the
     // appropriate level.
     const ProblemContext* ctx = ProblemContext::getInstance();
-    bool depthIsSet = false;
     
+    // bool depthIsSet = false;
+    // Box dummy=ctx->domain.domainBox();
+    // dummy.surroundingNodes();
+    // dummy = flattenBox(dummy, SpaceDim-1);
+    // int domSize=dummy.size(0)*dummy.size(1);
+    // (boxSize>domSize) ?  ++counter_BIG : ++counter_Small; 
+
     int levelMax=ctx->max_level;
     RealVect DX=a_dXi;
     int level=this->whatIsMyLevel(DX);
     if(level<0) {MayDay::Error("DEMMap::fill_bathymetry can't determine level");}
     if(s_depthPtr[level]->box().contains(destBox)){
       a_dest.copy(*(s_depthPtr[level]), 0,a_destComp);
-      depthIsSet=true;
+      //      depthIsSet=true;
     }
     else{MayDay::Error("DEMMap:: fill_bathymetry - Need bigger box for cached depth");}
+    //    pout() << "fill Bathymetry called " << counter_BIG << " times on large boxes and " << counter_Small << "on smaller boxes "<<endl; 
+    // pout() << destBox << endl;
 }
 
 // -----------------------------------------------------------------------------

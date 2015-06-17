@@ -64,15 +64,18 @@ protected:
   // Reads the bathymetry from file and interpolates onto level 0 grids.
   // This also trims the region and smooths the edges.
   virtual void createBaseMap ();
-  virtual void Create_Level_DEM_2D(const Vector<Real>& depthVect,
+   void Create_Level_DEM_2D(const Vector<Real>& depthVect,
 				   const Vector<Real>& xVect);
-  virtual void Create_Level_DEM_3D(const Vector<Real>& depthVect,
+   void Create_Level_DEM_3D(const Vector<Real>& depthVect,
                                  const Vector<Real>& xVect,
 				     const Vector<Real>& yVect);
-  virtual Vector<Real> readHDF5Vector(const char* invector);
+   Vector<Real> readHDF5Vector(const char* invector);
   
+  virtual void clearCachedData(); 
+
    const int whatIsMyLevel(RealVect& DX) const;
 
+  static unsigned int s_instances;
   static bool  s_fileIsRead;
   
   static Vector<RefCountedPtr<FArrayBox> >  s_depthPtr; 
