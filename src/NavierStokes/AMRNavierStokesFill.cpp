@@ -204,7 +204,7 @@ void AMRNavierStokes::setGhostsLambda (LevelData<FArrayBox>& a_lambda,
 
         Box region = grow(grids[dit], ADVECT_GROW) & a_lambda[dit].box();
         FluxBox JgupFB(region, nJgupComp);
-        m_levGeoPtr->fill_Jgup(JgupFB);
+        JgupFB.copy(m_levGeoPtr->getFCJgup()[dit],region);
 
         a_lambdaBC.setGhosts(a_lambda[dit], // stateFAB
                              NULL,          // extrapFABPtr
@@ -304,7 +304,7 @@ void AMRNavierStokes::setGhostsScalar (LevelData<FArrayBox>& a_scal,
 
         Box region = grow(grids[dit], a_scal.ghostVect()) & a_scal[dit].box();
         FluxBox JgupFB(region, nJgupComp);
-        m_levGeoPtr->fill_Jgup(JgupFB);
+	JgupFB.copy(m_levGeoPtr->getFCJgup()[dit],region);
 
         a_scalBC.setGhosts(a_scal[dit],   // stateFAB
                            NULL,          // extrapFABPtr

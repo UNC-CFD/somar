@@ -72,8 +72,8 @@ int LevelGeometry::s_coordMap = ProblemContext::CoordMap::UNDEFINED;
 RealVect LevelGeometry::s_domainLength = RealVect::Zero;
 
 // Used to define the cached LevelDatas
-const IntVect LevelGeometry::s_ghostVectFC = IntVect::Unit;
-const IntVect LevelGeometry::s_ghostVectCC = IntVect::Unit;
+const IntVect LevelGeometry::s_ghostVectFC = 4*IntVect::Unit;
+const IntVect LevelGeometry::s_ghostVectCC = 4*IntVect::Unit;
 
 RealVect              LevelGeometry::s_lev0dXi = RealVect::Zero; // dXi at the base level.
 LevelData<NodeFArrayBox>* LevelGeometry::s_lev0xPtr = NULL;      // physCoor on the base level.

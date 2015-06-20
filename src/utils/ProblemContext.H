@@ -170,7 +170,7 @@ public:
             VERTBDRYSTRETCH  = 3, // Removed - no longer available.
             CYLINDRICAL      = 4,
             LEDGE            = 5,
-            MASSBAY          = 6,
+            MASSBAY          = 6, // scheduled to be removed
             NEWBEAMGENERATOR = 7,
 	    DEMMAP           = 8,
             _NUM_COORD_MAPS
@@ -240,6 +240,7 @@ public:
             HORIZ_CONV      = 6,
             SOLITARYWAVE    = 7,
             DJL             = 8,
+	    THREED_BUMP         = 9,
             _NUM_PROBLEM_TYPES
         };
     };
@@ -251,6 +252,7 @@ public:
     Real spongeDtMult[CH_SPACEDIM][2];
     Real tidalOmega;
     Real tidalU0;
+    Real BV;
     RealVect inflowVel;
     bool specifyInitialGrids;
     std::string initialGridFile;

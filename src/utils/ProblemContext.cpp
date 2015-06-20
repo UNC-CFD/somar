@@ -30,6 +30,7 @@
 #include "CartesianMap.H"
 #include "TwistedMap.H"
 #include "BeamGeneratorMap.H"
+#include "ThreeDBumpBCUtil.H"
 #include "NewBeamGeneratorMap.H"
 #include "CylindricalMap.H"
 #include "LedgeMap.H"
@@ -898,7 +899,9 @@ void ProblemContext::readIBC ()
     tidalU0 = 0.0;
     ppIBC.query("tidalU0", tidalU0);
     pout() << "\ttidalU0 = " << tidalU0 << endl;
-
+    BV=0.0;
+    ppIBC.query("BV", BV);
+    pout() << "\tBV = " << BV << endl;
 
     // Add problem-specific stuff here ----------------------
     switch (problem) {
@@ -979,6 +982,9 @@ PhysBCUtil* ProblemContext::newPhysBCUtil () const
         break;
     case ProblemType::DJL:
         physBCPtr = new DJLBCUtil;
+        break;
+    case ProblemType::THREED_BUMP:
+        physBCPtr = new ThreeDBumpBCUtil;
         break;
     default:
         // Undefined problem

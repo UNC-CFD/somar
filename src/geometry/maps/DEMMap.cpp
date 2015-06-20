@@ -121,6 +121,7 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
 {
     const Box& destBox = a_dest.box();
     const IntVect destBoxType = destBox.type();
+    static int counter=0;
         static int counter_BIG=0;
 	static int counter_Small=0;
     // The holder needs to be flat and nodal in the vertical.
@@ -151,6 +152,7 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
     else{MayDay::Error("DEMMap:: fill_bathymetry - Need bigger box for cached depth");}
     //    pout() << "fill Bathymetry called " << counter_BIG << " times on large boxes and " << counter_Small << "on smaller boxes "<<endl; 
     // pout() << destBox << endl;
+    //    pout() << "fill_bathy " << ++counter << endl;
 }
 
 // -----------------------------------------------------------------------------
@@ -315,7 +317,7 @@ Real dX=m_lev0DXi[0];
 Real dY=m_lev0DXi[1];
 Box interpBox = ctx->domain.domainBox();
 
- interpBox.grow(IntVect(D_DECL(5,5,0)));// we enlarge the box by 5, which should accomodate all the necessary 
+ interpBox.grow(IntVect(D_DECL(6,6,0)));// we enlarge the box by 6, which should accomodate all the necessary 
  // ghost points...
 interpBox.surroundingNodes();
 interpBox = flattenBox(interpBox, SpaceDim-1);

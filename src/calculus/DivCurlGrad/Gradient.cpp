@@ -1018,8 +1018,25 @@ void Gradient::singleBoxMacGrad (FArrayBox&            a_gradFab,
 
     // We need a SpaceDim-component FAB to be filled with Jgup^{a_gradDir,*}
     // at every point a_gradFab is to be calculated.
-    FArrayBox JgupFAB(a_gradFab.box(), SpaceDim);
-    a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
+    //FArrayBox JgupFAB(a_gradFab.box(), SpaceDim);
+    //a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
+    FArrayBox JgupFAB;
+    {
+        const FArrayBox& JgupCachedFAB = a_levGeo.getFCJgup()[a_di][a_gradDir];
+        const Box& JgupCacheBox = JgupCachedFAB.box();
+
+        if (JgupCacheBox.type() == a_edgeBox.type()) {
+            if (JgupCacheBox.contains(a_edgeBox)) {
+                JgupFAB.define(JgupCachedFAB.interval(), (FArrayBox&)JgupCachedFAB);
+            } else {
+                JgupFAB.define(a_gradFab.box(), SpaceDim);
+                a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
+            }
+        } else {
+            JgupFAB.define(a_gradFab.box(), SpaceDim);
+            a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
+        }
+    }
 
     // Loop over gradFab components
     int phiComp = a_phiComp;
