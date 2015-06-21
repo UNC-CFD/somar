@@ -1,0 +1,152 @@
+c*******************************************************************************
+c  SOMAR - Stratified Ocean Model with Adaptive Refinement
+c  Developed by Ed Santilli & Alberto Scotti
+c  Copyright (C) 2014 University of North Carolina at Chapel Hill
+c
+c  This library is free software; you can redistribute it and/or
+c  modify it under the terms of the GNU Lesser General Public
+c  License as published by the Free Software Foundation; either
+c  version 2.1 of the License, or (at your option) any later version.
+c
+c  This library is distributed in the hope that it will be useful,
+c  but WITHOUT ANY WARRANTY; without even the implied warranty of
+c  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+c  Lesser General Public License for more details.
+c
+c  You should have received a copy of the GNU Lesser General Public
+c  License along with this library; if not, write to the Free Software
+c  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+c  USA
+c
+c  For up-to-date contact information, please visit the repository homepage,
+c  https://github.com/somarhub.
+c*******************************************************************************
+
+
+
+c ----------------------------------------------------------------
+c The nodes will be labeled as A, B, C, and D in this order:   C---D
+c                                                              |   |
+c                                                              A---B
+c u = (x - x_{i}) / {x{i+1} - x_{i}}
+c v = (y - y_{j}) / {y{j+1} - y_{j}}
+c
+c
+c f_{ABCD}(u,v) = f_{A}*(1-u)*(1-v)+f_{B}*u*(1-v)+F_{C}*(1-u)*v+F_{D}*v*u
+c ----------------------------------------------------------------
+      subroutine BilinearInterp2DF (
+     &      CHF_FRA[fInterp],
+     &      CHF_CONST_FRA1[xInterp],
+     &      CHF_CONST_FRA1[yInterp],
+     &      CHF_BOX[interpBox],
+     &      CHF_CONST_INT[xdir],
+     &      CHF_CONST_INT[ydir],
+     &      CHF_CONST_VR[x],
+     &      CHF_CONST_VR[y],
+     &      CHF_CONST_FRA[f])
+      
+      integer fn, fncomp
+      integer CHF_AUTODECL[i]
+      integer ilo, ihi, jlo, jhi, i, j
+      REAL_T xi, xlo, xhi        ! x at the interp point, A/C, and B/D
+      REAL_T yj, ylo, yhi        ! y at the interp point, A/B, and C/D
+      REAL_T u, v                ! x and y, each normalized to [0,1] within the interp cell
+      REAL_T fA, fB, fC, fD      ! Function values at nodes
+
+      fncomp = CHF_NCOMP[fInterp]
+
+        do fn = 0, fncomp-1
+          CHF_AUTOMULTIDO[interpBox; i]
+
+            ! Search for xi -- This is a VERY naive implementation.
+            xi = xInterp(CHF_AUTOIX[i])
+            ilo = 0     ! Must equal CHF_LBOUND[f;xdir]
+            ihi = ixhi0 ! Must equal CHF_UBOUND[f;xdir]
+
+10          if (ihi-ilo .gt. 1) then
+              i = (ihi+ilo)/2
+              if (x(i) .gt. xi) then
+                ihi = i
+              else
+                ilo = i
+              endif
+              goto 10
+            endif
+
+            ! Search for yi -- This is a VERY naive implementation.
+            yj = yInterp(CHF_AUTOIX[i])
+            jlo = 0     ! Must equal CHF_LBOUND[f;ydir]
+            jhi = iyhi0 ! Must equal CHF_UBOUND[f;ydir]
+
+11          if (jhi-jlo .gt. 1) then
+              j = (jhi+jlo)/2
+              if (y(j) .gt. yj) then
+                jhi = j
+              else
+                jlo = j
+              endif
+              goto 11
+            endif
+
+            ! Gather needed values
+            xlo = x(ilo)
+            xhi = x(ihi)
+
+            ylo = y(jlo)
+            yhi = y(jhi)
+c This is not very efficient. Every combination should be have its own nest
+c Hopefully the x86 heuristic should catch this
+            if ((xdir .eq. 0) .and. (ydir .eq. 1)) then
+              fA = f(CHF_DDECL[ilo;jlo;i2],fn)
+              fB = f(CHF_DDECL[ihi;jlo;i2],fn)
+              fC = f(CHF_DDECL[ilo;jhi;i2],fn)
+              fD = f(CHF_DDECL[ihi;jhi;i2],fn)
+
+            else
+              if ((xdir .eq. 1) .and. (ydir .eq. 2)) then
+                fA = f(CHF_DDECL[i0;ilo;jlo],fn)
+                fB = f(CHF_DDECL[i0;ihi;jlo],fn)
+                fC = f(CHF_DDECL[i0;ilo;jhi],fn)
+                fD = f(CHF_DDECL[i0;ihi;jhi],fn)
+
+              else
+                if ((xdir .eq. 2) .and. (ydir .eq. 0)) then
+                  fA = f(CHF_DDECL[jlo;i1;ilo],fn)
+                  fB = f(CHF_DDECL[jlo;i1;ihi],fn)
+                  fC = f(CHF_DDECL[jhi;i1;ilo],fn)
+                  fD = f(CHF_DDECL[jhi;i1;ihi],fn)
+
+                else
+                  call MAYDAYERROR()
+                endif
+              endif
+            endif
+
+            ! Compute interpolating polynomials
+            if (xlo .eq. xhi) then
+                u = xi - xlo
+            else
+                u = (xi - xlo) / (xhi - xlo)
+            endif
+            CH_assert((xhi.ge.xlo))
+            CH_assert(((zero.le.u).or.(u.le.one)))
+
+
+            if (ylo .eq. yhi) then
+                v = yj - ylo
+            else
+                v = (yj - ylo) / (yhi - ylo)
+            endif
+            CH_assert((yhi.ge.ylo))
+            CH_assert(((zero.le.v).or.(v.le.one)))
+
+
+            ! Compute bilinear interpolation
+            fInterp(CHF_AUTOIX[i],fn)
+     &           = fA*(1-u)*(1-v) + fB*u*(1-v) + fC*(1-u)*v + fD*u*v;
+
+          CHF_ENDDO
+        enddo !fn
+
+      return
+      end
