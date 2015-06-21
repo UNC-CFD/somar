@@ -167,11 +167,12 @@ public:
             CARTESIAN        = 0,
             TWISTED          = 1,
             BEAMGENERATOR    = 2,
-            VERTBDRYSTRETCH  = 3, // Removed - no longer available.
+            //VERTBDRYSTRETCH  = 3, // Removed - no longer available.
             CYLINDRICAL      = 4,
             LEDGE            = 5,
-            MASSBAY          = 6,
+            // MASSBAY          = 6, // Removed - no longer available.
             NEWBEAMGENERATOR = 7,
+            DEMMAP           = 8,
             _NUM_COORD_MAPS
         };
     };
@@ -188,6 +189,10 @@ public:
 
     // Specific to BeamGeneratorMap
     Real beamGenMapAlpha;
+
+    // Specific to DEMMap
+    std::string demFile;
+    int interpOrder;
 
 private:
     // The plot.* parameters

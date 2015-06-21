@@ -33,8 +33,8 @@
 #include "NewBeamGeneratorMap.H"
 #include "CylindricalMap.H"
 #include "LedgeMap.H"
-#include "MassBayMap.H"
 
+#include "DEMMap.H"
 #include "AdvectionTestBCUtil.H"
 #include "LockExchangeBCUtil.H"
 #include "BeamGenerationBCUtil.H"
@@ -609,11 +609,13 @@ void ProblemContext::readGeometry ()
             beamGenMapAlpha *= PI / 180.0;
         }
         break;
-    case CoordMap::MASSBAY:
+    case CoordMap::DEMMAP:
         {
-            if (SpaceDim != 3) {
-                MayDay::Error("MassBay geometry is only available for SpaceDim = 3");
-            }
+            ppGeo.get("DemFile", demFile);
+            pout() << "\tDEM file = " << demFile << endl;
+
+            ppGeo.get("Interpolation_Order", interpOrder);
+            pout() << "\tInterpolation_Order = " << interpOrder << endl;
         }
         break;
     }
@@ -646,21 +648,17 @@ GeoSourceInterface* ProblemContext::newGeoSourceInterface () const
     case ProblemContext::CoordMap::BEAMGENERATOR:
         geoSourcePtr = new BeamGeneratorMap;
         break;
-    case ProblemContext::CoordMap::VERTBDRYSTRETCH:
-        MayDay::Error("ProblemContext::newGeoSourceInterface received "
-                      "coordMap = VERTBDRYSTRETCH, which is obsolete");
-        break;
     case ProblemContext::CoordMap::CYLINDRICAL:
         geoSourcePtr = new CylindricalMap;
         break;
     case ProblemContext::CoordMap::LEDGE:
         geoSourcePtr = new LedgeMap;
         break;
-    case ProblemContext::CoordMap::MASSBAY:
-        geoSourcePtr = new MassBayMap;
-        break;
     case ProblemContext::CoordMap::NEWBEAMGENERATOR:
         geoSourcePtr = new NewBeamGeneratorMap;
+        break;
+    case ProblemContext::CoordMap::DEMMAP:
+        geoSourcePtr = new DEMMap;
         break;
     default:
         MayDay::Error("ProblemContext::newGeoSourceInterface received "
