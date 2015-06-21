@@ -1018,8 +1018,30 @@ void Gradient::singleBoxMacGrad (FArrayBox&            a_gradFab,
 
     // We need a SpaceDim-component FAB to be filled with Jgup^{a_gradDir,*}
     // at every point a_gradFab is to be calculated.
-    FArrayBox JgupFAB(a_gradFab.box(), SpaceDim);
-    a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
+    //FArrayBox JgupFAB(a_gradFab.box(), SpaceDim);
+    //a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
+    FArrayBox JgupFAB;
+    {
+        const FArrayBox& JgupCachedFAB = a_levGeo.getFCJgup()[a_di][a_gradDir];
+        const Box& JgupCacheBox = JgupCachedFAB.box();
+
+        // Can we use the cached metric?
+        if (JgupCacheBox.type() == a_gradFab.box().type()) {
+            if (JgupCacheBox.contains(a_gradFab.box())) {
+                // Use the cache
+                JgupFAB.define(JgupCachedFAB.interval(), (FArrayBox&)JgupCachedFAB);
+            } else {
+                // The region of interest lies outside of the cached region.
+                // Use an expensive fill function. (This never hits.)
+                JgupFAB.define(a_gradFab.box(), SpaceDim);
+                a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
+            }
+        } else {
+            // This hits many times.
+            JgupFAB.define(a_gradFab.box(), SpaceDim);
+            a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
+        }
+    }
 
     // Loop over gradFab components
     int phiComp = a_phiComp;

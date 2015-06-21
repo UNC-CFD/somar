@@ -200,21 +200,36 @@ void AMRNavierStokes::setGhostsLambda (LevelData<FArrayBox>& a_lambda,
     // Apply physical BCs to our new data
     const int nJgupComp = m_levGeoPtr->getFCJgup().nComp();
     for (dit.reset(); dit.ok(); ++dit) {
-        // const FluxBox& JgupFB = m_levGeoPtr->getFCJgup()[dit];
+        const Box& stateBox = a_lambda[dit].box();
+        const Box valid = stateBox & domain.domainBox();
+        const FluxBox& JgupFB = m_levGeoPtr->getFCJgup()[dit];
 
-        Box region = grow(grids[dit], ADVECT_GROW) & a_lambda[dit].box();
-        FluxBox JgupFB(region, nJgupComp);
-        m_levGeoPtr->fill_Jgup(JgupFB);
+        if (JgupFB.box().contains(stateBox)) {
+            // Use the cached metric. This provides a major speedup.
+            a_lambdaBC.setGhosts(a_lambda[dit],         // stateFAB
+                                 NULL,                  // extrapFABPtr
+                                 valid,                 // valid
+                                 domain,                // domain
+                                 m_levGeoPtr->getDx(),  // dx
+                                 dit(),                 // DataIndex
+                                 &JgupFB,               // JgupFBPtr
+                                 false,                 // isHomogeneous
+                                 a_time);               // time
+        } else {
+            // Compute the metric.
+            FluxBox newJgupFB(stateBox, nJgupComp);
+            newJgupFB.copy(m_levGeoPtr->getFCJgup()[dit], stateBox);
 
-        a_lambdaBC.setGhosts(a_lambda[dit], // stateFAB
-                             NULL,          // extrapFABPtr
-                             a_lambda[dit].box() & domain.domainBox(),    // valid
-                             domain,        // domain
-                             m_levGeoPtr->getDx(),    // dx
-                             dit(),         // DataIndex
-                             &JgupFB,       // JgupFBPtr
-                             false,         // isHomogeneous
-                             a_time);       // time
+            a_lambdaBC.setGhosts(a_lambda[dit],         // stateFAB
+                                 NULL,                  // extrapFABPtr
+                                 valid,                 // valid
+                                 domain,                // domain
+                                 m_levGeoPtr->getDx(),  // dx
+                                 dit(),                 // DataIndex
+                                 &newJgupFB,            // JgupFBPtr
+                                 false,                 // isHomogeneous
+                                 a_time);               // time
+        }
     }
 }
 
@@ -300,21 +315,36 @@ void AMRNavierStokes::setGhostsScalar (LevelData<FArrayBox>& a_scal,
 
     const int nJgupComp = m_levGeoPtr->getFCJgup().nComp();
     for (dit.reset(); dit.ok(); ++dit) {
-        // const FluxBox& JgupFB = m_levGeoPtr->getFCJgup()[dit];
+        const Box& stateBox = a_scal[dit].box();
+        const Box valid = stateBox & domain.domainBox();
+        const FluxBox& JgupFB = m_levGeoPtr->getFCJgup()[dit];
 
-        Box region = grow(grids[dit], a_scal.ghostVect()) & a_scal[dit].box();
-        FluxBox JgupFB(region, nJgupComp);
-        m_levGeoPtr->fill_Jgup(JgupFB);
+        if (JgupFB.box().contains(stateBox)) {
+            // Use the cached metric. This provides a major speedup.
+            a_scalBC.setGhosts(a_scal[dit],         // stateFAB
+                               NULL,                // extrapFABPtr
+                               valid,               // valid
+                               domain,              // domain
+                               m_levGeoPtr->getDx(),// dx
+                               dit(),               // DataIndex
+                               &JgupFB,             // JgupFBPtr
+                               false,               // isHomogeneous
+                               a_time);             // time
+        } else {
+            // Compute the metric.
+            FluxBox newJgupFB(stateBox, nJgupComp);
+            newJgupFB.copy(m_levGeoPtr->getFCJgup()[dit], stateBox);
 
-        a_scalBC.setGhosts(a_scal[dit],   // stateFAB
-                           NULL,          // extrapFABPtr
-                           a_scal[dit].box() & domain.domainBox(),    // valid
-                           domain,        // domain
-                           m_levGeoPtr->getDx(),    // dx
-                           dit(),         // DataIndex
-                           &JgupFB,       // JgupFBPtr
-                           false,         // isHomogeneous
-                           a_time);       // time
+            a_scalBC.setGhosts(a_scal[dit],         // stateFAB
+                               NULL,                // extrapFABPtr
+                               valid,               // valid
+                               domain,              // domain
+                               m_levGeoPtr->getDx(),// dx
+                               dit(),               // DataIndex
+                               &newJgupFB,          // JgupFBPtr
+                               false,               // isHomogeneous
+                               a_time);             // time
+        }
     }
 }
 

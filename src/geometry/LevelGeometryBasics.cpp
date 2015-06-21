@@ -32,6 +32,11 @@
 #include "NodeAMRIO.H"
 #include "Debug.H"
 
+// The advection scheme needs more ghost cells than any other piece of code.
+// We must accomodate...
+#include "AdvectUtil.H"
+
+
 
 // Define the constants used to look up tensor indices.
 #if CH_SPACEDIM == 1
@@ -72,12 +77,12 @@ int LevelGeometry::s_coordMap = ProblemContext::CoordMap::UNDEFINED;
 RealVect LevelGeometry::s_domainLength = RealVect::Zero;
 
 // Used to define the cached LevelDatas
-const IntVect LevelGeometry::s_ghostVectFC = IntVect::Unit;
-const IntVect LevelGeometry::s_ghostVectCC = IntVect::Unit;
+const IntVect LevelGeometry::s_ghostVectFC = ADVECT_GROW * IntVect::Unit;
+const IntVect LevelGeometry::s_ghostVectCC = ADVECT_GROW * IntVect::Unit;
 
-RealVect              LevelGeometry::s_lev0dXi = RealVect::Zero; // dXi at the base level.
-LevelData<NodeFArrayBox>* LevelGeometry::s_lev0xPtr = NULL;      // physCoor on the base level.
-LevelData<NodeFArrayBox>* LevelGeometry::s_lev0d2xPtr = NULL;    // The spline's 2nd derivatives.
+RealVect                  LevelGeometry::s_lev0dXi = RealVect::Zero; // dXi at the base level.
+LevelData<NodeFArrayBox>* LevelGeometry::s_lev0xPtr = NULL;          // physCoor on the base level.
+LevelData<NodeFArrayBox>* LevelGeometry::s_lev0d2xPtr = NULL;        // The spline's 2nd derivatives.
 
 // The fields
 LevelGeometry::t_CCJMap       LevelGeometry::s_CCJMap;
