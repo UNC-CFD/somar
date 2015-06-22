@@ -335,7 +335,9 @@ for (int level=0; level<ctx->max_level+1; ++level){
   
   }
   // Interpolate onto our interpBox and store the results in the appropriate container
-  if(ctx->InterpOrder >0){
+
+  if(ctx->InterpOrder >0){MayDay::Error("Interpolation of DEM not functional for order >0, check GitHub for updates");} //To be removed when cubic interpolator works
+if(ctx->InterpOrder >0){
    HermiteInterp2D(*(s_depthPtr[level]),
      		  xInterp,
      		  yInterp,
