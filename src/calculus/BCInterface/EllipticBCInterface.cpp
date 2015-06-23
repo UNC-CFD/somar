@@ -24,7 +24,7 @@
 #include "EllipticBCInterface.H"
 #include "FluxBox.H"
 
-static const Real BOGUS_TIME = -1.0e300;
+const Real BOGUS_TIME = -1.0e300;
 
 
 // -----------------------------------------------------------------------------

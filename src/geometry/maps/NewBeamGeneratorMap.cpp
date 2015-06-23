@@ -104,7 +104,7 @@ NewBeamGeneratorMap::NewBeamGeneratorMap ()
 
 #           ifdef CH_MPI
             {
-                unsigned long long maxBytes = -1;
+                unsigned long long maxBytes = (unsigned long long)(-1);
                 MPI_Allreduce(&bytes, &maxBytes, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, Chombo_MPI::comm);
                 bytes = maxBytes;
                 pout() << bytes << "Kb is the max across all ranks." << endl;

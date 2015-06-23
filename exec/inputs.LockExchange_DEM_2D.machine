@@ -30,7 +30,7 @@ amr.buoyancy_tag_tol = 0.2              # [0.0] 0 to turn off
 
 ### Timestepping
 amr.final = 60.0
-amr.maxsteps = 1 #2000
+amr.maxsteps = 2000
 amr.cfl = 0.95
 amr.max_dt = 0.1
 amr.init_dt_multiplier = 0.1

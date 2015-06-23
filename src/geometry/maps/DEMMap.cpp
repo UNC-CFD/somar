@@ -456,5 +456,3 @@ Vector<Real> DEMMap::readHDF5Vector (const char* invector)
 
     return V;
 }
-
-
