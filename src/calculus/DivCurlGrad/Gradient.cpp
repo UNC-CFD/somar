@@ -1037,7 +1037,9 @@ void Gradient::singleBoxMacGrad (FArrayBox&            a_gradFab,
                 a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
             }
         } else {
-            // This hits many times.
+            // The region of interest has a different centering.
+            // Use an expensive fill function. (This hits many times.)
+            // In the future, we may want to just use averaging.
             JgupFAB.define(a_gradFab.box(), SpaceDim);
             a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
         }

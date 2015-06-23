@@ -36,8 +36,6 @@
 // We must accomodate...
 #include "AdvectUtil.H"
 
-
-
 // Define the constants used to look up tensor indices.
 #if CH_SPACEDIM == 1
     const int LevelGeometry::m_tensorCompCC2[SpaceDim][SpaceDim]

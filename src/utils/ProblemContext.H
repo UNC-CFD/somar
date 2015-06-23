@@ -189,7 +189,6 @@ public:
 
     // Specific to BeamGeneratorMap
     Real beamGenMapAlpha;
-
     // Specific to DEMMap
     std::string demFile;
     int interpOrder;

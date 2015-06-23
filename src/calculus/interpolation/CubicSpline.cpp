@@ -144,6 +144,24 @@ void CubicSpline::interp (Vector<Real>&       a_f,
 
 
 // -----------------------------------------------------------------------------
+// Returns the interpolated value at the position indicated by a_x.
+// -----------------------------------------------------------------------------
+Real CubicSpline::interp (const Real& a_x) const
+{
+    // Make sure the solve has been called.
+    CH_assert(m_d2f.size() > 0);
+
+    // Just call the vector version.
+    Vector<Real> xVec(1, a_x);
+    Vector<Real> fVec(1);
+    this->interp(fVec, xVec);
+
+    // Return the one and only result.
+    return fVec[0];
+}
+
+
+// -----------------------------------------------------------------------------
 // Fills a_df with the interpolated first derivatives at positions
 // indicated by a_x.
 // -----------------------------------------------------------------------------

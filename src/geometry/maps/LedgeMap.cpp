@@ -115,10 +115,10 @@ void LedgeMap::fill_bathymetry (FArrayBox&       a_dest,
     BoxIterator bit(destBox);
     for (bit.reset(); bit.ok(); ++bit){
         const IntVect& iv = bit();
-        x = a_cartPos(iv,0) - m_xl;
-        y = a_cartPos(iv,1) - m_xl;
+        x = (a_cartPos(iv,0) -m_xl)/m_hl;
+        y = (a_cartPos(iv,1) - m_xr)/m_hr;
         R2 = x*x + y*y;
-        a_dest(iv,a_destComp) = (m_hl-m_hr)*exp(-R2/(m_xr*m_xr)) + m_hr;
+        a_dest(iv,a_destComp) = exp(-R2);
     }
 
 #else
@@ -138,6 +138,7 @@ void LedgeMap::fill_bathymetry (FArrayBox&       a_dest,
             } else {
                 a_dest(iv,a_destComp) = m_coeff0 + x*m_coeff1;
             }
+
         }
         break;
 
