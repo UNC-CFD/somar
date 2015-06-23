@@ -1,0 +1,265 @@
+ibc.problem = 2                # 2 = Beam generation
+amr.verbosity = 1              # [0]
+amr.gravityMethod = 2          # [1]   0 = none, 1 = explicit, 2 = implicit
+amr.gravityTheta = 0.6         # [0.6] 0.0 = Forward Euler, 0.5 = Crank-Nicolson, 1.0 = Backwards Euler
+ibc.useBackgroundScalar = 1
+
+#amr.restart_file =
+
+### Coordinate map
+geometry.coordMap = 2           # 0 = Cartesian, 1 = Twisted, 2 = Beam generator, 7 = New beam generator
+geometry.alpha = 15.0
+
+
+# ibc.tidalOmega = 0.0001407   # Period = 44656.616915423
+ibc.tidalOmega = 0.001   # Period = 2pi*100
+ibc.tidalU0 = 0.125
+
+amr.length = 40000.0 3280.0
+amr.nx = 160 512
+amr.nx_offset = -80 0
+# amr.nx = 640 512
+# amr.nx_offset = -320 0
+amr.splitDirs = 1 0
+amr.isPeriodic = 0 0
+# amr.max_base_grid_size = 16 0
+# amr.max_grid_size = 64 0
+
+
+### Regridding
+amr.maxlevel = 0
+amr.refratio = 4 1
+# amr.refratio_lev1 = 4 1
+amr.regrid_intervals = 5 5 5 5
+amr.block_factor = 16           # [8]
+# amr.grid_buffer_size = 1
+
+amr.tags_grow = 1                       # [0]
+amr.fill_ratio = 0.80          # [0.80]
+# amr.vert_extrude_tags = 1
+amr.vel_tag_tol = 0.1                   # [0.0] 0 to turn off
+amr.buoyancy_tag_tol = 0.0002           # [0.0] 0 to turn off
+amr.magvort_tag_quota = 0.125           # [0.0] Fraction of max|vort| on each level. 0 to turn off.
+# amr.vort_tag_tol = 0.0 0.0 0.0001     # [0 0 0] Tags if |vort*dA| >= factor. In 2D, only z-comp is used.
+
+
+### Timestepping
+amr.final = 62800.0  # 10 cycles
+amr.maxsteps = 25 #30000
+amr.cfl = 0.9
+# amr.fixed_dt = -1.0           # [-1.0]
+# amr.max_dt = 0.01
+amr.init_dt_multiplier = 0.1
+# amr.max_dt_grow = 1.5         # [1.5]
+amr.useSubcycling = 1         # [1]
+
+amr.limitDtViaViscosity = 0             [1]
+amr.limitDtViaDiffusion = 0             [1]
+amr.limitDtViaPressureGradient = 1      [0]
+amr.limitDtViaInternalWaveSpeed = 1     [0]
+
+### Sponge layer
+ibc.useSpongeLayer = 1
+ibc.spongeWidthFracLo = 0.08 0.00
+ibc.spongeWidthFracHi = 0.08 0.00
+ibc.spongeDtMultLo = 15.0 15.0
+ibc.spongeDtMultHi = 15.0 15.0
+
+
+### Viscosity / diffusion
+amr.scal_diffusion_coeffs = 0.0001
+amr.viscosity = 0.0001
+amr.viscous_solver_type = 1                 # [1] 0=backwardEuler, 1=CrankNicolson, 2=TGA, 3=Explicit
+amr.diffusive_solver_type = 1               # [1] 0=backwardEuler, 1=CrankNicolson, 2=TGA, 3=Explicit
+# amr.smooth_after_regrid = 1                 # [0]
+# amr.postRegrid_smoothing_coeff = 4.0
+
+### Plot files
+# plot.plot_prefix = plot_            # [plot_]
+# plot.checkpoint_prefix = chkpt_     # [chkpt_]
+plot.plot_interval = 1
+# plot.plot_period = 100.0
+plot.checkpoint_interval = 100
+
+plot.writeDivergence = 1
+plot.writeLambda = 1
+plot.writeGradELambda = 0
+plot.writePressure = 1
+plot.writeVorticity = 0
+plot.writeStreamfunction = 0
+plot.writeScalars = 1
+plot.writeScalarsMinusBackground = 1
+plot.writeProcIDs = 1
+plot.writeLevelIDs = 0
+plot.writeGrids = 0
+plot.writeGeometry = 0
+
+
+### Refluxing
+amr.advective_momentum_reflux = 1   # [0]
+amr.diffusive_momentum_reflux = 1   # [0]
+amr.implicit_momentum_reflux = 1    # [0]
+amr.advective_scalar_reflux = 1     # [0]
+amr.diffusive_scalar_reflux = 1     # [0]
+amr.implicit_scalar_reflux = 1      # [0]
+amr.advective_lambda_reflux = 1    # [0]
+
+
+
+### Advection scheme parameters
+advection.nonlinearDifferencingForm = 0   # -1 = None, 0 = Conservative, 1 = Advective
+
+# 2 1 0 0
+advection.normalPredOrderVel = 2               # [1] 0=CTU, 1=PLM, 2=PPM
+advection.useFourthOrderSlopesVel = 1          # [1]
+advection.useLimitingVel = 0                   # [0]
+advection.useHighOrderLimiterVel = 0           # [0]
+# advection.useUpwindingVel = 0
+
+# 1 0 1 1
+advection.normalPredOrderScal = 2               # [1] 0=CTU, 1=PLM, 2=PPM
+advection.useFourthOrderSlopesScal = 1          # [1]
+advection.useLimitingScal = 1                   # [0]
+advection.useHighOrderLimiterScal = 1           # [0]
+# advection.useUpwindingScal = 0
+
+
+### Projection & pressure initialization settings
+projection.isIncompressible = 1            # [1]
+# projection.doSyncProjection = 0             # [1]
+# projection.applySyncCorrection = 0          # [1]
+# projection.etaLambda = 0.9                        # [0.9]
+# projection.applyVDCorrection = 1    # [1]
+# projection.doQuadInterp = 1                 # [1] Does not work with 0
+# projection.initial_projection_iters = 0
+# projection.level_projection_iters = 0
+# projection.sync_projection_iters = 0
+# projection.divTol = 1e-6
+# projection.divNormType = 0
+# projection.initial_pressure_iters = 0
+
+
+### Solver settings
+AMRMG.eps = 1e-6                # [1e-6]    Solver tolerance
+AMRMG.relax_mode = 1            # [2]       0 = Jacobi, 1 = levelGSRB, 2 = looseGSRB, 3 = lineGSRB
+AMRMG.precond_mode = 0          # [0]       -1 = None, 0 = DiagRelax, 1 = DiagLineRelax
+AMRMG.num_smooth_down    = 2    # [2]
+AMRMG.num_smooth_up      = 2    # [2]
+AMRMG.num_smooth_bottom  = 2    # [2]       MG bottom smoothing iters
+AMRMG.num_smooth_precond = 2    # [2]
+AMRMG.numMG = 1                 # [1]       1=V-cycle, 2=W-cycle, etc...
+AMRMG.imin = 5                  # [5]       Min number of V-cycles
+AMRMG.imax = 20                 # [20]      Max number of V-cycles
+AMRMG.hang = 1e-15              # [1e-15]
+AMRMG.normThresh = 1e-30        # [1e-30]
+AMRMG.maxDepth = -1             # [-1]      Max MG depth (-1=as deep as possible)
+AMRMG.verbosity = 2             # [3]
+
+bottom.eps = 1e-6               # [1e-6]    Solver tolerance
+bottom.reps = 1e-12             # [1e-12]   Solver relative tolerance
+bottom.imax = 80                # [80]      Max BiCGStab iterations
+bottom.numRestarts = 5          # [5]       Max BiCGStab restarts
+bottom.hang = 1e-15             # [1e-8]
+bottom.small = 1e-30            # [1e-30]
+bottom.normType = 0             # [2]
+bottom.verbosity = 0            # [3]
+
+# # #### Viscous solver overrides
+# # #viscous_AMRMG.eps = 1e-10               # [1e-6]    Solver tolerance
+# viscous_AMRMG.relax_mode = 1            # [2]       0 = Jacobi, 1 = levelGSRB, 2 = looseGSRB, 3 = lineGSRB
+# viscous_AMRMG.precond_mode = 0
+# viscous_AMRMG.num_smooth_down = 4       # [4]
+# viscous_AMRMG.num_smooth_up = 4         # [4]
+# viscous_AMRMG.num_smooth_bottom = 2     # [2]       MG bottom smoothing iters
+# viscous_AMRMG.num_smooth_precond = 2    # [2]
+# # #viscous_AMRMG.numMG = 1                 # [1]       1=V-cycle, 2=W-cycle, etc...
+# # #viscous_AMRMG.imin = 1                  # [5]       Min number of V-cycles
+# # #viscous_AMRMG.imax = 25                 # [20]      Max number of V-cycles
+# # #viscous_AMRMG.hang = 1e-15              # [1e-15]
+# # #viscous_AMRMG.normThresh = 1e-30        # [1e-30]
+# viscous_AMRMG.maxDepth = -1              # [-1]      Max MG depth (-1=as deep as possible)
+# # #viscous_AMRMG.verbosity = 3             # [3]
+
+# #viscous_bottom.eps = 1e-10              # [1e-6]    Solver tolerance
+# #viscous_bottom.reps = 1e-12             # [1e-12]   Solver relative tolerance
+# #viscous_bottom.imax = 80                # [80]      Max BiCGStab iterations
+# #viscous_bottom.numRestarts = 5          # [5]       Max BiCGStab restarts
+# #viscous_bottom.hang = 1e-8              # [1e-8]
+# #viscous_bottom.small = 1e-30            # [1e-30]
+# #viscous_bottom.normType = 0             # [2]
+# #viscous_bottom.verbosity = 3            # [3]
+
+#### Exact projection solver overrides (For FC advecting velocities)
+#MACprojection_AMRMG.eps = 1e-6                # [1e-6]    Solver tolerance
+#MACprojection_AMRMG.relax_mode = 1
+# MACprojection_AMRMG.precond_mode = 1
+#MACprojection_AMRMG.num_smooth_down = 4       # [4]
+#MACprojection_AMRMG.num_smooth_up = 4         # [4]
+#MACprojection_AMRMG.num_smooth_bottom = 0     # [2]       MG bottom smoothing iters
+# MACprojection_AMRMG.num_smooth_precond = 1    # [2]
+#MACprojection_AMRMG.numMG = 1                 # [1]       1=V-cycle, 2=W-cycle, etc...
+#MACprojection_AMRMG.imin = 1                  # [5]       Min number of V-cycles
+#MACprojection_AMRMG.imax = 10                 # [20]      Max number of V-cycles
+#MACprojection_AMRMG.hang = 1e-15              # [1e-15]
+#MACprojection_AMRMG.normThresh = 1e-30        # [1e-30]
+#MACprojection_AMRMG.maxDepth = 0              # [-1]      Max MG depth (-1=as deep as possible)
+#MACprojection_AMRMG.verbosity = 4             # [3]
+
+#MACprojection_bottom.eps = 1e-6               # [1e-6]    Solver tolerance
+#MACprojection_bottom.reps = 1e-12             # [1e-12]   Solver relative tolerance
+#MACprojection_bottom.imax = 80                # [80]      Max BiCGStab iterations
+#MACprojection_bottom.numRestarts = 5          # [5]       Max BiCGStab restarts
+#MACprojection_bottom.hang = 1e-15             # [1e-8]
+#MACprojection_bottom.small = 1e-30            # [1e-30]
+#MACprojection_bottom.normType = 0             # [2]
+#MACprojection_bottom.verbosity = 4            # [3]
+
+#### Approximate projection solver overrides (For CC velocities)
+#CCprojection_AMRMG.eps = 1e-2                # [1e-1]    Solver tolerance
+#CCprojection_AMRMG.relax_mode = 1
+# CCprojection_AMRMG.precond_mode = 1
+#CCprojection_AMRMG.num_smooth_down = 2       # [2]
+#CCprojection_AMRMG.num_smooth_up = 2         # [2]
+#CCprojection_AMRMG.num_smooth_bottom = 0     # [2]       MG bottom smoothing iters
+# CCprojection_AMRMG.num_smooth_precond = 1    # [2]
+#CCprojection_AMRMG.numMG = 1                 # [1]       1=V-cycle, 2=W-cycle, etc...
+#CCprojection_AMRMG.imin = 1                  # [5]       Min number of V-cycles
+#CCprojection_AMRMG.imax = 10                 # [20]      Max number of V-cycles
+#CCprojection_AMRMG.hang = 1e-15              # [1e-15]
+#CCprojection_AMRMG.normThresh = 1e-30        # [1e-30]
+#CCprojection_AMRMG.maxDepth = 0              # [-1]      Max MG depth (-1=as deep as possible)
+#CCprojection_AMRMG.verbosity = 0             # [3]
+
+#CCprojection_bottom.eps = 1e-6               # [1e-6]    Solver tolerance
+#CCprojection_bottom.reps = 1e-12             # [1e-12]   Solver relative tolerance
+#CCprojection_bottom.imax = 80                # [80]      Max BiCGStab iterations
+#CCprojection_bottom.numRestarts = 5          # [5]       Max BiCGStab restarts
+#CCprojection_bottom.hang = 1e-15             # [1e-8]
+#CCprojection_bottom.small = 1e-30            # [1e-30]
+#CCprojection_bottom.normType = 0             # [2]
+#CCprojection_bottom.verbosity = 0            # [3]
+
+#### Volume discrepancy (freestream preservation) solver overrides
+#VD_AMRMG.eps = 1e-10               # [1e-6]    Solver tolerance
+#VD_AMRMG.relax_mode = 1
+#VD_AMRMG.precond_mode = 0
+#VD_AMRMG.num_smooth_down = 4       # [4]
+#VD_AMRMG.num_smooth_up = 4         # [4]
+#VD_AMRMG.num_smooth_bottom = 2     # [2]       MG bottom smoothing iters
+#VD_AMRMG.num_smooth_precond = 2    # [2]
+#VD_AMRMG.numMG = 1                 # [1]       1=V-cycle, 2=W-cycle, etc...
+#VD_AMRMG.imin = 1                  # [5]       Min number of V-cycles
+#VD_AMRMG.imax = 25                 # [20]      Max number of V-cycles
+#VD_AMRMG.hang = 1e-15              # [1e-15]
+#VD_AMRMG.normThresh = 1e-30        # [1e-30]
+#VD_AMRMG.maxDepth = 0              # [-1]      Max MG depth (-1=as deep as possible)
+#VD_AMRMG.verbosity = 3             # [3]
+
+#VD_bottom.eps = 1e-10              # [1e-6]    Solver tolerance
+#VD_bottom.reps = 1e-12             # [1e-12]   Solver relative tolerance
+#VD_bottom.imax = 150               # [80]      Max BiCGStab iterations
+#VD_bottom.numRestarts = 30         # [5]       Max BiCGStab restarts
+#VD_bottom.hang = 1e-8              # [1e-8]
+#VD_bottom.small = 1e-30            # [1e-30]
+#VD_bottom.normType = 0             # [2]
+#VD_bottom.verbosity = 4            # [3]
