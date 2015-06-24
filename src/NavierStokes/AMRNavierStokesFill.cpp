@@ -679,8 +679,6 @@ void AMRNavierStokes::fillTidalSource (LevelData<FArrayBox>& a_tidalSource,
     }
 
     if (s_tidalOmega * s_tidalU0 != 0.0) {
-        // const Real tidalForce = s_tidalU0 * s_tidalOmega * cos(s_tidalOmega * a_time);
-
         const Real oldArg = s_tidalOmega * a_oldTime;
         const Real newArg = s_tidalOmega * (a_oldTime + a_dt);
         const Real tidalForce = s_tidalU0 * (sin(newArg) - sin(oldArg)) / a_dt;
