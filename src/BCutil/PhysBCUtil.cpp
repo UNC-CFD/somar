@@ -72,7 +72,7 @@ void PhysBCUtil::define ()
     s_useBackgroundScalar = ctx->useBackgroundScalar;
 
     s_tidalU0 = ctx->tidalU0;
-    s_tidalOmega = ctx->s_tidalOmega;
+    s_tidalOmega = ctx->tidalOmega;
     s_doTidalFlow = (s_tidalU0 * s_tidalOmega != 0.0);
 
     s_useSpongeLayer = ctx->useSpongeLayer;
