@@ -436,7 +436,7 @@ void AMRNavierStokes::tagCells (IntVectSet& a_tags)
     // This tags via the buoyancy projected onto the vertical structure.
     TODO(); // Put s_bphi0_tag_tol into ProblemContext, etc...
     if (0) {
-        static Real s_bphi0_tag_tol = 0.5;
+        static Real s_bphi0_tag_tol = 0.1;
         DataIterator dit = grids.dataIterator();
 
         // Get the buoyancy and vertical structure function.
@@ -454,6 +454,8 @@ void AMRNavierStokes::tagCells (IntVectSet& a_tags)
             const Box& valid = grids[dit];
             const int hiZ = valid.bigEnd(SpaceDim-1);
 
+            const Real intScale = 1.0 / Real(valid.size(SpaceDim-1));
+
             Box bottomBox = valid;
             bottomBox.setBig(SpaceDim-1, bottomBox.smallEnd(SpaceDim-1));
 
@@ -469,7 +471,7 @@ void AMRNavierStokes::tagCells (IntVectSet& a_tags)
                 Box intBox(startIV, startIV);
                 intBox.setBig(SpaceDim-1, hiZ);
 
-                Real projVal = projFAB.sum(intBox, 0, 1);
+                Real projVal = projFAB.sum(intBox, 0, 1) * intScale;
                 if (abs(projVal) > s_bphi0_tag_tol) {
                     a_tags |= intBox;
                 }
