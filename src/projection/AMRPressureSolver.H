@@ -124,8 +124,8 @@ public:
                                   const int                     a_lmax);
 
 protected:
-    static bool s_useLevelLepticSolver;
-    static bool s_useLevelMGSolver;
+    bool m_useLevelLepticSolver;
+    bool m_useLevelMGSolver;
 
     static bool s_useAMRLepticSolver;
     static bool s_useAMRMGSolver;

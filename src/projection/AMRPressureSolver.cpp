@@ -31,11 +31,7 @@
 #include "SetValLevel.H"
 
 
-// To use just one solver, set the bools accordingly.
-// To use both solvers in tandem, set both bools to true and fiddle with the
-// AMRPressureSolver::solve function. I'll make this more automated another day.
-bool AMRPressureSolver::s_useLevelLepticSolver = false;
-bool AMRPressureSolver::s_useLevelMGSolver = true;
+// NOTE: The level solver switches are no longer static.
 
 // To use just one solver, set the bools accordingly.
 // To use both solvers in tandem, set both bools to true and fiddle with the
@@ -52,7 +48,9 @@ AMRPressureSolver::AMRPressureSolver ()
   m_numLevels(-1),
   m_lepticSolverPtr(NULL),
   m_amrmgSolverPtr(NULL),
-  m_bottomSolverPtr(NULL)
+  m_bottomSolverPtr(NULL),
+  m_useLevelLepticSolver(false),
+  m_useLevelMGSolver(false)
 {
     // Set the default parameters
     const ProblemContext* ctx = ProblemContext::getInstance();
@@ -212,7 +210,22 @@ void AMRPressureSolver::levelDefine (BCMethodHolder           a_bc,
                                  false, //isHorizontalFactory,
                                  a_customFillJgupPtr);
 
-    if (s_useLevelLepticSolver) {
+    // // Compute the lepticity. This will determine how we solve.
+    // const RealVect& dx = amrLevGeos[a_numLevels-1]->getDx();
+    // const Real H = amrLevGeos[a_numLevels-1]->getDomainLength(SpaceDim-1);
+    // Real lepticity = Min(dx[0], dx[SpaceDim-2]) / H;
+    // if (lepticity > 2.0) {
+    //     m_useLevelLepticSolver = true;
+    //     m_useLevelMGSolver = false;
+    // } else {
+    //     m_useLevelLepticSolver = true;
+    //     m_useLevelMGSolver = true;
+    // }
+    m_useLevelLepticSolver = false;
+    m_useLevelMGSolver = true;
+
+
+    if (m_useLevelLepticSolver) {
         // Allocate a new AMRLepticSolver.
         AMRLepticSolver* lepticPtr = new AMRLepticSolver;
         CH_assert(lepticPtr != NULL);
@@ -234,7 +247,7 @@ void AMRPressureSolver::levelDefine (BCMethodHolder           a_bc,
         m_lepticSolverPtr = lepticPtr;
     }
 
-    if (s_useLevelMGSolver) {
+    if (m_useLevelMGSolver) {
         // Create the bottom solver
         {
             BiCGStabSolver<LevelData<FArrayBox> >* krylovPtr = new BiCGStabSolver<LevelData<FArrayBox> >;
@@ -353,6 +366,19 @@ void AMRPressureSolver::define (BCMethodHolder           a_bc,
                                  m_AMRMG_relaxMode,
                                  false, //isHorizontalFactory,
                                  a_customFillJgupPtr);
+    // // Compute the lepticity. This will determine how we solve.
+    // const RealVect& dx = amrLevGeos[a_numLevels-1]->getDx();
+    // const Real H = amrLevGeos[a_numLevels-1]->getDomainLength(SpaceDim-1);
+    // Real lepticity = Min(dx[0], dx[SpaceDim-2]) / H;
+    // if (lepticity > 2.0) {
+    //     m_useLevelLepticSolver = true;
+    //     m_useLevelMGSolver = false;
+    // } else {
+    //     m_useLevelLepticSolver = true;
+    //     m_useLevelMGSolver = true;
+    // }
+    m_useLevelLepticSolver = false;
+    m_useLevelMGSolver = true;
 
     if (s_useAMRLepticSolver) {
         // Allocate a new AMRLepticSolver.
@@ -489,7 +515,7 @@ void AMRPressureSolver::solve (Vector<LevelData<FArrayBox>*>&       a_phi,
         // I think that a nicer way to go about this would be to hand the
         // leptic solver a pointer to a krylov solver. This way, the leptic
         // method itself can decide how and when to switch methods.
-        if (s_useLevelLepticSolver) {
+        if (m_useLevelLepticSolver) {
             CH_assert(m_lepticSolverPtr != NULL);
             m_lepticSolverPtr->solve(a_phi,
                                      a_rhs,
@@ -498,7 +524,7 @@ void AMRPressureSolver::solve (Vector<LevelData<FArrayBox>*>&       a_phi,
                                      false, // zero phi?
                                      a_forceHomogeneous);
         }
-        if (s_useLevelMGSolver) {
+        if (m_useLevelMGSolver) {
             CH_assert(m_amrmgSolverPtr != NULL);
             m_amrmgSolverPtr->solve(a_phi,
                                     a_rhs,
