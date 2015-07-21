@@ -1095,19 +1095,10 @@ void MappedAMRPoissonOpFactory::fill_MGfields(const int      a_AMRlevel,
     RefCountedPtr<LevelData<FArrayBox> >& Jinv = m_vvJinv[a_AMRlevel][a_MGdepth];
     RefCountedPtr<LevelData<FArrayBox> >& lapDiag = m_vvlapDiag[a_AMRlevel][a_MGdepth];
 
-//    // Grab the geometry data (Old way)
-//    const LevelGeometry& levGeo = *m_vlevGeoPtr[a_AMRlevel];
-//    const GeoSourceInterface& geoSource = *levGeo.getGeoSourcePtr();
-//    Real scale;
-//
-//    // Compute dx
-//    const RealVect mgDx = levGeo.getDx() * a_coarsening;
-
-    // Grab the geometry data (From ES repo)
+    // Grab the geometry data
     const RealVect mgDx = m_dx[a_AMRlevel] * a_coarsening;
     LevelGeometry localLevGeo(m_dx[a_AMRlevel]);
     const GeoSourceInterface& geoSource = *localLevGeo.getGeoSourcePtr();
-
 
     if (a_MGdepth == 0) {
         // There is no finer data. Get levGeo to calculate fields.

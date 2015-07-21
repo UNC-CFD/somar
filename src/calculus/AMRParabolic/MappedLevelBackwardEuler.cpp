@@ -90,7 +90,7 @@ void MappedLevelBackwardEuler::updateSoln (LevelDataType&           a_phiNew,
 
     //set phit to a_phiOld, rhst to a_src * a_dt
     this->m_ops[a_level]->incr(phit, a_phiOld, 1.0);
-    
+
     // Set rhst to a_src*a_dt.
     // This makes the BE solver unstable since it represents a FE update of all
     // sources that are not the diffusive term. Since we want BE to be as stable
