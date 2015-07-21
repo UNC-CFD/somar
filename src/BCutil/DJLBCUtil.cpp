@@ -38,12 +38,12 @@
 // Static variable definitions...
 RealVect DJLBCUtil::s_L = RealVect::Zero;
 
+const Real DJLBCUtil::s_d = 0.1;        // Thickness of pycnocline
+const Real DJLBCUtil::s_z0 = 0.8;       // Location of pycnocline
+
 Real DJLBCUtil::s_rho_bottom = quietNAN;
 Real DJLBCUtil::s_rho_top = quietNAN;
 Real DJLBCUtil::s_rho_scale = quietNAN;
-
-const Real DJLBCUtil::s_d = 0.1;        // Thickness of pycnocline
-const Real DJLBCUtil::s_z0 = 0.8;       // Location of pycnocline
 
 // // For non-oblique 3D problem
 // const Real DJLBCUtil::s_envSlope = 1.0 / 6.4;   // Envelope slope
