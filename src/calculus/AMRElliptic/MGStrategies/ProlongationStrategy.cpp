@@ -25,6 +25,24 @@
 #include "ProlongationStrategyF_F.H"
 
 
+// This is temporary! CHF_CONST_FRA1_SHIFT has a bug.
+#undef CHF_CONST_FRA1_SHIFT
+#define CHF_CONST_FRA1_SHIFT( a, n, iv)      \
+  a.dataPtr( n ),                            \
+  D_DECL6( CHFPTR(a.loVect()[0] - iv[0]),    \
+           CHFPTR(a.loVect()[1] - iv[1]),    \
+           CHFPTR(a.loVect()[2] - iv[2]),    \
+           CHFPTR(a.loVect()[3] - iv[3]),    \
+           CHFPTR(a.loVect()[4] - iv[4]),    \
+           CHFPTR(a.loVect()[5] - iv[5]) ),  \
+  D_DECL6( CHFPTR(a.hiVect()[0] - iv[0]),    \
+           CHFPTR(a.hiVect()[1] - iv[1]),    \
+           CHFPTR(a.hiVect()[2] - iv[2]),    \
+           CHFPTR(a.hiVect()[3] - iv[3]),    \
+           CHFPTR(a.hiVect()[4] - iv[4]),    \
+           CHFPTR(a.hiVect()[5] - iv[5]) )
+
+
 // -----------------------------------------------------------------------------
 // Adds coarse cell values directly to all overlying fine cells.
 // -----------------------------------------------------------------------------
