@@ -53,6 +53,7 @@ public:
 
     // Returns the interpolated value at the position indicated by a_x.
     Real interp (const Real& a_x) const;
+
     // Fills a_df with the interpolated first derivatives at positions
     // indicated by a_x.
     // These inputs must have the same centering.
