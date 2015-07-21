@@ -1018,8 +1018,6 @@ void Gradient::singleBoxMacGrad (FArrayBox&            a_gradFab,
 
     // We need a SpaceDim-component FAB to be filled with Jgup^{a_gradDir,*}
     // at every point a_gradFab is to be calculated.
-    //FArrayBox JgupFAB(a_gradFab.box(), SpaceDim);
-    //a_levGeo.fill_Jgup(JgupFAB, a_gradDir);
     FArrayBox JgupFAB;
     {
         const FArrayBox& JgupCachedFAB = a_levGeo.getFCJgup()[a_di][a_gradDir];
