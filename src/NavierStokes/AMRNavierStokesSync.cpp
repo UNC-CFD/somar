@@ -31,6 +31,7 @@
 #include "AMRLESMeta.H"
 #include "Printing.H"
 #include "AMRCCProjector.H"
+#include "StressMetric.H"
 #include <iomanip>
 
 
@@ -704,6 +705,13 @@ void AMRNavierStokes::doImplicitMomentumReflux (const Vector<LevelData<FArrayBox
         const Real beta = -s_nu * m_dt;
         BCMethodHolder viscousBCs = m_physBCPtr->viscousRefluxBC(dir);
 
+        // Create a stress tensor, if necessary.
+        const FillJgupInterface* stressMetricPtr = NULL;
+#       ifdef USE_STRESSMETRIC
+            StressMetric stressMetric(m_levGeoPtr->getGeoSourcePtr());
+            stressMetricPtr = &stressMetric;
+#       endif
+
         // TODO: This is an expensive solver construction. We should instead
         // create one solver and repurpose it for each solve. The only parameter
         // that varies is the BC.
@@ -717,7 +725,9 @@ void AMRNavierStokes::doImplicitMomentumReflux (const Vector<LevelData<FArrayBox
                                 s_viscous_AMRMG_maxDepth,
                                 s_viscous_AMRMG_num_smooth_precond,
                                 s_viscous_AMRMG_precondMode,
-                                s_viscous_AMRMG_relaxMode);
+                                s_viscous_AMRMG_relaxMode,
+                                false, // not a horizontal factory
+                                stressMetricPtr);
 
         BiCGStabSolver<LevelData<FArrayBox> > bottomSolver;
         bottomSolver.m_eps = s_viscous_bottom_eps;
