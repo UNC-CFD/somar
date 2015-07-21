@@ -105,6 +105,7 @@ public:
                                        const int  a_numSmoothUp,
                                        const int  a_numSmoothPreCond,
                                        const int  a_relaxType,
+                                       const int  a_precondType,
                                        const int  a_maxDepth,
                                        const Real a_eps,
                                        const Real a_hang,
@@ -117,6 +118,28 @@ public:
                                            const int  a_numRestarts,
                                            const Real a_hang,
                                            const int  a_verbosity);
+
+    // Sets the horizontal MG solver's parameters.
+    virtual void setFullMGParameters (const int  a_imin,
+                                      const int  a_imax,
+                                      const int  a_numSmoothDown,
+                                      const int  a_numSmoothBottom,
+                                      const int  a_numSmoothUp,
+                                      const int  a_numSmoothPreCond,
+                                      const int  a_relaxType,
+                                      const int  a_precondType,
+                                      const int  a_maxDepth,
+                                      const Real a_eps,
+                                      const Real a_hang,
+                                      const Real a_normThresh,
+                                      const int  a_verbosity);
+
+    // Sets the horizontal bottom solver's parameters.
+    virtual void setFullBottomParameters (const int  a_imax,
+                                          const Real a_eps,
+                                          const int  a_numRestarts,
+                                          const Real a_hang,
+                                          const int  a_verbosity);
 
     // Solve L[phi] = rhs.
     // This is an override of the pure virtual LinearSolver function.
@@ -230,6 +253,7 @@ protected:
     int          m_horiz_numSmoothUp;
     int          m_horiz_numSmoothPreCond;
     int          m_horiz_relaxType;
+    int          m_horiz_precondType;
     int          m_horiz_numMG;
     int          m_horiz_maxDepth;
     Real         m_horiz_eps;
@@ -242,6 +266,28 @@ protected:
     int          m_horizBottom_numRestarts;
     Real         m_horizBottom_hang;
     int          m_horizBottom_verbosity;
+
+    // Full MG solver parameters
+    int          m_full_imin;
+    int          m_full_imax;
+    int          m_full_numSmoothDown;
+    int          m_full_numSmoothBottom;
+    int          m_full_numSmoothUp;
+    int          m_full_numSmoothPreCond;
+    int          m_full_relaxType;
+    int          m_full_precondType;
+    int          m_full_numMG;
+    int          m_full_maxDepth;
+    Real         m_full_eps;
+    Real         m_full_hang;
+    Real         m_full_normThresh;
+    int          m_full_verbosity;
+
+    int          m_fullBottom_imax;
+    Real         m_fullBottom_eps;
+    int          m_fullBottom_numRestarts;
+    Real         m_fullBottom_hang;
+    int          m_fullBottom_verbosity;
 
     // Get these from the LepticOperator
     LinearOp<LevelData<FArrayBox> >*     m_origOpPtr;   // DO NOT CALL DELETE ON THIS!
@@ -262,6 +308,8 @@ protected:
     RefCountedPtr<MappedAMRLevelOp<LevelData<FArrayBox> > > m_opPtr;
     RefCountedPtr<LevelData<FluxBox> >                      m_JgupPtr;
     RefCountedPtr<LevelData<FArrayBox> >                    m_JinvPtr;
+    AMREllipticSolver<LevelData<FArrayBox> >*               m_mgSolverPtr;
+    BiCGStabSolver<LevelData<FArrayBox> >*                  m_mgBottomSolverPtr;
 
     // Flat grid stuff
     BoxLayout                                               m_flatGrids;
