@@ -34,6 +34,10 @@ bool     PhysBCUtil::s_staticMembersSet = false;
 RealVect PhysBCUtil::s_domLength = RealVect::Zero;
 bool     PhysBCUtil::s_useBackgroundScalar = false;
 
+Real     PhysBCUtil::s_tidalU0 = 0.0;
+Real     PhysBCUtil::s_tidalOmega = 0.0;
+bool     PhysBCUtil::s_doTidalFlow = false;
+
 bool     PhysBCUtil::s_useSpongeLayer = false;
 Real     PhysBCUtil::s_spongeWidth[CH_SPACEDIM][2];
 Real     PhysBCUtil::s_spongeDtMult[CH_SPACEDIM][2];
@@ -66,6 +70,11 @@ void PhysBCUtil::define ()
 
     s_domLength = ctx->domainLength;
     s_useBackgroundScalar = ctx->useBackgroundScalar;
+
+    s_tidalU0 = ctx->tidalU0;
+    s_tidalOmega = ctx->s_tidalOmega;
+    s_doTidalFlow = (s_tidalU0 * s_tidalOmega != 0.0);
+
     s_useSpongeLayer = ctx->useSpongeLayer;
     for (int dir = 0; dir < SpaceDim; ++dir) {
         s_spongeWidth[dir][0] = ctx->spongeWidth[dir][0];
@@ -93,7 +102,11 @@ void PhysBCUtil::setVelIC (FArrayBox&           a_velFAB,
     CH_assert(0 <= a_velComp);
     CH_assert(a_velComp < SpaceDim);
 
-    a_velFAB.setVal(0.0, a_velComp);
+    if (s_doTidalFlow && SpaceDim == 3 && a_velComp == 1) {
+        a_velFAB.setVal(s_tidalU0, a_velComp);
+    } else {
+        a_velFAB.setVal(0.0, a_velComp);
+    }
 }
 
 
@@ -504,11 +517,19 @@ void PhysBCUtil::fillVelSpongeLayerTarget (FArrayBox&           a_target,
     CH_assert(0 <= a_spongeDir);
     CH_assert(a_spongeDir < SpaceDim);
 
-    // I don't know what values the velocity should approach.
-    const char* msg = "If you plan to use a sponge layer, "
-                      "then you need to override "
-                      "PhysBCUtil::fillVelSpongeLayerTarget";
-    MayDay::Error(msg);
+    if (s_doTidalFlow) {
+        // Default velocity is the tidal velocity.
+        if (a_velComp == 0) {
+            a_target.setVal(s_tidalU0 * sin(s_tidalOmega * a_time));
+        } else if (SpaceDim == 3 && a_velComp == 1) {
+            a_target.setVal(s_tidalU0 * cos(s_tidalOmega * a_time));
+        } else {
+            a_target.setVal(0.0);
+        }
+    } else {
+        // Not using tidal flow. Default value is zero.
+        a_target.setVal(0.0);
+    }
 }
 
 

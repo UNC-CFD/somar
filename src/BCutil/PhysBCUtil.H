@@ -322,7 +322,11 @@ protected:
     static bool s_staticMembersSet;
 
     static RealVect s_domLength;
-    static bool     s_useBackgroundScalar;
+    static bool s_useBackgroundScalar;
+
+    static Real s_tidalU0;
+    static Real s_tidalOmega;
+    static bool s_doTidalFlow;
 
     static bool s_useSpongeLayer;
     static Real s_spongeWidth[CH_SPACEDIM][2];
