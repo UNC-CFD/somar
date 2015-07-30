@@ -95,7 +95,7 @@ void BoundaryData<T>::define (const DisjointBoxLayout& a_grids,
 
     for (int dir = 0; dir < SpaceDim; ++dir) {
         // Only process non-periodic boundaries
-        if (a_domain.isPeriodic()) continue;
+        if (a_domain.isPeriodic(dir)) continue;
 
         SideIterator sit;
         for (sit.reset(); sit.ok(); ++sit) {
