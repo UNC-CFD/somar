@@ -393,7 +393,7 @@ RealVect BoundaryData<Real>::integrate (const RealVect& a_dx,
                                MPI_CH_REAL, MPI_SUM, Chombo_MPI::comm);
 
     if (result != MPI_SUCCESS) {
-        MayDay::Error("Sorry, but I had a communication error in computeMappedSum");
+        MayDay::Error("Sorry, but I had a communication error in BoundaryData<Real>::integrate");
     }
 
 #else
