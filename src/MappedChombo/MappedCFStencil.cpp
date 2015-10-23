@@ -5,6 +5,7 @@
 #include "BoxIterator.H"
 #include "Tuple.H"
 #include "RealVect.H"
+#include "DataIterator.H" // Prevents a GNU compiler error.
 
 
 bool
