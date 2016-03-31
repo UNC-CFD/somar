@@ -267,7 +267,6 @@ bool BCMethodHolder::hasNullSpaceNoComm (const DisjointBoxLayout& a_grids,
     const BCDescriptor& fluxDesc = this->getFluxDescriptor();
 
     const ProblemDomain& domain = a_grids.physDomain();
-    const Box& domBox = domain.domainBox();
     DataIterator dit = a_grids.dataIterator();
 
     for (int dir = 0; dir < SpaceDim; ++dir) {

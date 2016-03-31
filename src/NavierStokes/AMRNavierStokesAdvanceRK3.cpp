@@ -75,7 +75,6 @@ void AMRNavierStokes::RK3TimeStep (const Real a_oldTime,
     LevelData<FArrayBox>* newSbPtr = NULL;  // The buoyancy eq's advective source + external forces
     LevelData<FArrayBox>* oldSuPtr = NULL;  // Ditto, but from the previous RK stage.
     LevelData<FArrayBox>* oldSbPtr = NULL;  // Ditto, but from the previous RK stage.
-    LevelData<FArrayBox>* tmpPtr = NULL;    // Used during pointer swaps.
     Real stateTime = a_oldTime;             // The time the current state (u,b) is at.
     int RKStage;                            // The RK stage.
 
@@ -594,7 +593,7 @@ void AMRNavierStokes::computeMOLSources (LevelData<FArrayBox>& a_Su,
     }
 
     // Compute the tidal forcing term
-    if (s_tidalU0 * s_tidalOmega != 0.0) {
+    if (s_tidalU0.sum() * s_tidalOmega != 0.0) {
         // Compute the gravitational source term.
         LevelData<FArrayBox> tidalSource(grids, SpaceDim);
         this->fillTidalSource(tidalSource, a_stateTime, h);
@@ -798,7 +797,6 @@ void AMRNavierStokes::updateState (LevelData<FArrayBox>&       a_u,
     DataIterator dit = grids.dataIterator();
     const Box domainBox = m_problem_domain.domainBox();
 
-    const bool isDiffusive = (s_scal_coeffs[0] > 0.0);
     const bool isViscous = (s_nu > 0.0);
 
     // Set RK3 stage coefficients.

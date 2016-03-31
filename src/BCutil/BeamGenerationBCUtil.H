@@ -67,20 +67,7 @@ public:
     // Default is a linear increase as a_ratio approaches unity.
     inline virtual Real spongeLayerRamp (Real a_ratio) const;
 
-    // Sets the Cartesian-based target velocity for the sponge layer.
-    // By default, this function throws an error.
-    virtual void fillVelSpongeLayerTarget (FArrayBox&           a_target,
-                                           const int            a_velComp,
-                                           const int            a_spongeDir,
-                                           const Side::LoHiSide a_spongeSide,
-                                           const LevelGeometry& a_levGeo,
-                                           const DataIndex&     a_di,
-                                           const Real           a_time);
-
 protected:
-    // Sets physical BCs on velocities
-    virtual BCMethodHolder basicVelFuncBC (int a_veldir, bool a_isViscous) const;
-
     // Sets CC bdry slopes (undivided differences) in the tracing scheme.
     virtual Tuple<BCMethodHolder,SpaceDim> velSlopeBC (int a_velComp, bool a_isViscous) const;
 
@@ -91,9 +78,6 @@ protected:
     virtual BCMethodHolder diffusiveSolveFuncBC () const;
 
     // Static members
-    static bool s_tidalParamsRead;
-    static Real s_tidalOmega;
-    static Real s_tidalU0;
     static Real s_H;
 
     // This not only sets BC values, but also determines the background

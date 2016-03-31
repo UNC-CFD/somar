@@ -294,7 +294,7 @@ void BathymetricBaseMap::fill_J (FArrayBox&      a_dest,
     } else {
         // GeoSourceInterface::fill_J(a_dest, a_destComp, a_dXi, a_scale);
 
-        // Initialize with dxz/dZeta * scale
+        // Initialize with dz/dZeta * scale
         this->fill_dxdXi(a_dest, a_destComp, SpaceDim-1, SpaceDim-1, a_dXi, a_scale);
 
         // Compute dx/dXi and dy/dNu, and accumulate product

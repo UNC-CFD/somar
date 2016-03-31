@@ -38,7 +38,6 @@
 #include "MiscUtils.H"
 #include "Debug.H"
 #include "Constants.H"
-#include "AMRLESMeta.H"
 #include "ProblemContext.H"
 
 
@@ -952,6 +951,7 @@ void LevelLepticSolver::solve (LevelData<FArrayBox>&       a_phi,
         }
     }
 
+    (void)krylovSolverWasUsed; // Just to shut the compiler up.
     // if (krylovSolverWasUsed) pout() << "LK" << flush; else pout() << "L" << flush;
 }
 
@@ -960,7 +960,7 @@ void LevelLepticSolver::solve (LevelData<FArrayBox>&       a_phi,
 // Inform the user why we stopped solving.
 // This returns a human-readable status.
 // -----------------------------------------------------------------------------
-char* LevelLepticSolver::exitStatusStr () const
+const char* LevelLepticSolver::exitStatusStr () const
 {
     if (m_exitStatus == ExitStatus::NONE) return "NONE";
     else if (m_exitStatus == ExitStatus::CONVERGE) return "CONVERGE";
@@ -1127,7 +1127,6 @@ void LevelLepticSolver::levelVertHorizGradient (BoundaryData<Real>&   a_vertBdry
     SideIterator sit;
     for (sit.reset(); sit.ok(); ++sit) {
         const Side::LoHiSide& iside = sit();
-        const int sideComp = int(iside);
         const int isign = sign(iside);
 
         const Box& domBox = m_domain.domainBox();
@@ -1633,7 +1632,7 @@ void LevelLepticSolver::gatherVerticalBCTypes (LayoutData<Tuple<int,2> >& a_BCTy
     int globalDoSolve;
     int localDoSolve = (a_doHorizSolve? 1: 0);
 
-    int ierr = MPI_Allreduce(&localDoSolve, &globalDoSolve, 1, MPI_INT, MPI_SUM, AMRLESMeta::amrComm);
+    int ierr = MPI_Allreduce(&localDoSolve, &globalDoSolve, 1, MPI_INT, MPI_SUM, Chombo_MPI::comm);
     if (ierr != MPI_SUCCESS) {
         std::ostringstream errmsg;
         errmsg << "MPI_Allreduce failed. Error " << ierr << std::endl;
@@ -1666,7 +1665,6 @@ void LevelLepticSolver::setToZero (BoxLayoutData<FArrayBox>& a_data,
 void LevelLepticSolver::setZeroAvg (LevelData<FArrayBox>& a_phi)
 {
     const DisjointBoxLayout& grids = a_phi.getBoxes();
-    const Box& domBox = grids.physDomain().domainBox();
     DataIterator dit = a_phi.dataIterator();
 
     const int numproc = numProc();

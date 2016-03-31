@@ -112,8 +112,8 @@ c ----------------------------------------------------------------
 #       if CH_SPACEDIM == 2
 
             ! 2D version
-            src0 = vector(CHF_AUTOIX[i],0);
-            src1 = vector(CHF_AUTOIX[i],1);
+            src0 = vector(CHF_AUTOIX[i],0)
+            src1 = vector(CHF_AUTOIX[i],1)
 
             vector(CHF_AUTOIX[i],0) = matrix(CHF_AUTOIX[i],xxComp) * src0
      &                              + matrix(CHF_AUTOIX[i],xyComp) * src1
@@ -124,9 +124,9 @@ c ----------------------------------------------------------------
 #       elif CH_SPACEDIM == 3
 
             ! 3D version
-            src0 = vector(CHF_AUTOIX[i],0);
-            src1 = vector(CHF_AUTOIX[i],1);
-            src2 = vector(CHF_AUTOIX[i],2);
+            src0 = vector(CHF_AUTOIX[i],0)
+            src1 = vector(CHF_AUTOIX[i],1)
+            src2 = vector(CHF_AUTOIX[i],2)
 
             vector(CHF_AUTOIX[i],0) = matrix(CHF_AUTOIX[i],xxComp) * src0
      &                              + matrix(CHF_AUTOIX[i],xyComp) * src1
@@ -149,6 +149,73 @@ c ----------------------------------------------------------------
       end
 
 
+c ----------------------------------------------------------------
+c CONTRACTVECTORMATRIXCC
+c Contract a vector with a matrix in-place.
+c ----------------------------------------------------------------
+      subroutine CONTRACTVECTORMATRIXCC (
+     &      CHF_FRA[vector],
+     &      CHF_CONST_FRA[matrix],
+     &      CHF_BOX[region])
+
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[src]
+
+#ifndef NDEBUG
+      ! Sanity checks
+      if (CHF_NCOMP[vector] .ne. CH_SPACEDIM) then
+        write(*,*) 'CONTRACTVECTORMATRIXCC: vector has bad number of comps ', CHF_NCOMP[vector]
+        call MAYDAYERROR()
+      endif
+
+      if (CHF_NCOMP[matrix] .ne. CH_SPACEDIM**2) then
+        write(*,*) 'CONTRACTVECTORMATRIXCC: matrix has bad number of comps ', CHF_NCOMP[matrix]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ! Loop through this grid and do calculation
+      CHF_AUTOMULTIDO[region; i]
+#       if CH_SPACEDIM == 2
+
+            ! 2D version
+            src0 = vector(CHF_AUTOIX[i],0)
+            src1 = vector(CHF_AUTOIX[i],1)
+
+            vector(CHF_AUTOIX[i],0) = src0 * matrix(CHF_AUTOIX[i],xxComp)
+     &                              + src1 * matrix(CHF_AUTOIX[i],yxComp)
+
+            vector(CHF_AUTOIX[i],1) = src0 * matrix(CHF_AUTOIX[i],xyComp)
+     &                              + src1 * matrix(CHF_AUTOIX[i],yyComp)
+
+#       elif CH_SPACEDIM == 3
+
+            ! 3D version
+            src0 = vector(CHF_AUTOIX[i],0)
+            src1 = vector(CHF_AUTOIX[i],1)
+            src2 = vector(CHF_AUTOIX[i],2)
+
+            vector(CHF_AUTOIX[i],0) = src0 * matrix(CHF_AUTOIX[i],xxComp)
+     &                              + src1 * matrix(CHF_AUTOIX[i],yxComp)
+     &                              + src2 * matrix(CHF_AUTOIX[i],zxComp)
+
+            vector(CHF_AUTOIX[i],1) = src0 * matrix(CHF_AUTOIX[i],xyComp)
+     &                              + src1 * matrix(CHF_AUTOIX[i],yyComp)
+     &                              + src2 * matrix(CHF_AUTOIX[i],zyComp)
+
+            vector(CHF_AUTOIX[i],2) = src0 * matrix(CHF_AUTOIX[i],xzComp)
+     &                              + src1 * matrix(CHF_AUTOIX[i],yzComp)
+     &                              + src2 * matrix(CHF_AUTOIX[i],zzComp)
+
+#       else
+#           error Bad CH_SPACEDIM
+#       endif
+      CHF_ENDDO
+
+      return
+      end
+
 
 c ----------------------------------------------------------------
 c Contract a vector/one-form with the covariant/contravariant metric.
@@ -161,6 +228,7 @@ c ----------------------------------------------------------------
 
       ! Declare variables
       integer CHF_DDECL[i; j; k]
+      REAL_T CHF_AUTODECL[src]
 
       ! Sanity checks
       if (CHF_NCOMP[dest] .ne. CH_SPACEDIM) then
@@ -178,26 +246,33 @@ c ----------------------------------------------------------------
 #       if CH_SPACEDIM == 2
 
             ! 2D version
-            dest(CHF_IX[i;j;k],0) = metric(CHF_IX[i;j;k],xxSymComp) * src(CHF_IX[i;j;k],0)
-     &                            + metric(CHF_IX[i;j;k],xySymComp) * src(CHF_IX[i;j;k],1)
+            src0 = src(CHF_IX[i;j;k],0)
+            src1 = src(CHF_IX[i;j;k],1)
 
-            dest(CHF_IX[i;j;k],1) = metric(CHF_IX[i;j;k],yxSymComp) * src(CHF_IX[i;j;k],0)
-     &                            + metric(CHF_IX[i;j;k],yySymComp) * src(CHF_IX[i;j;k],1)
+            dest(CHF_IX[i;j;k],0) = metric(CHF_IX[i;j;k],xxSymComp) * src0
+     &                            + metric(CHF_IX[i;j;k],xySymComp) * src1
+
+            dest(CHF_IX[i;j;k],1) = metric(CHF_IX[i;j;k],yxSymComp) * src0
+     &                            + metric(CHF_IX[i;j;k],yySymComp) * src1
 
 #       elif CH_SPACEDIM == 3
 
             ! 3D version
-            dest(CHF_IX[i;j;k],0) = metric(CHF_IX[i;j;k],xxSymComp) * src(CHF_IX[i;j;k],0)
-     &                            + metric(CHF_IX[i;j;k],xySymComp) * src(CHF_IX[i;j;k],1)
-     &                            + metric(CHF_IX[i;j;k],xzSymComp) * src(CHF_IX[i;j;k],2)
+            src0 = src(CHF_IX[i;j;k],0)
+            src1 = src(CHF_IX[i;j;k],1)
+            src2 = src(CHF_IX[i;j;k],2)
 
-            dest(CHF_IX[i;j;k],1) = metric(CHF_IX[i;j;k],yxSymComp) * src(CHF_IX[i;j;k],0)
-     &                            + metric(CHF_IX[i;j;k],yySymComp) * src(CHF_IX[i;j;k],1)
-     &                            + metric(CHF_IX[i;j;k],yzSymComp) * src(CHF_IX[i;j;k],2)
+            dest(CHF_IX[i;j;k],0) = metric(CHF_IX[i;j;k],xxSymComp) * src0
+     &                            + metric(CHF_IX[i;j;k],xySymComp) * src1
+     &                            + metric(CHF_IX[i;j;k],xzSymComp) * src2
 
-            dest(CHF_IX[i;j;k],2) = metric(CHF_IX[i;j;k],zxSymComp) * src(CHF_IX[i;j;k],0)
-     &                            + metric(CHF_IX[i;j;k],zySymComp) * src(CHF_IX[i;j;k],1)
-     &                            + metric(CHF_IX[i;j;k],zzSymComp) * src(CHF_IX[i;j;k],2)
+            dest(CHF_IX[i;j;k],1) = metric(CHF_IX[i;j;k],yxSymComp) * src0
+     &                            + metric(CHF_IX[i;j;k],yySymComp) * src1
+     &                            + metric(CHF_IX[i;j;k],yzSymComp) * src2
+
+            dest(CHF_IX[i;j;k],2) = metric(CHF_IX[i;j;k],zxSymComp) * src0
+     &                            + metric(CHF_IX[i;j;k],zySymComp) * src1
+     &                            + metric(CHF_IX[i;j;k],zzSymComp) * src2
 
 #       else
 #           error Bad CH_SPACEDIM

@@ -58,7 +58,6 @@ using std::endl;
 #endif
 
 // Project headers
-#include "AMRLESMeta.H"
 #include "Printing.H"
 #include "LevelGeometry.H"
 #include "AMRNavierStokesFactory.H"
@@ -68,19 +67,7 @@ using std::endl;
 
 
 // Function prototypes
-void setupMPIComms (const Real a_lesProcFrac);
-void testMPIComms ();
 void nsrun ();
-
-// The LES code is not for public use.
-// #define USE_LES
-#ifdef USE_LES
-extern "C" {
-    void FORTRAN_NAME(DIABLO,diablo) (
-        int*, int*, int*, int*
-    );
-}
-#endif //USE_LES
 
 // #define TRAP_FPE  //(should be off by default)
 #ifdef TRAP_FPE
@@ -133,26 +120,6 @@ int main(int argc, char* argv[])
     ParmParse pp(argc-2, argv+2, NULL, in_file);
     pout() << "\nReading from file: " << in_file << std::endl;
 
-    ParmParse ppLES("les");
-
-    Real lesProcFrac = 0.0;
-#   ifdef USE_LES
-        ppLES.query("proc_frac", lesProcFrac);
-        pout() << "\tles.proc_frac = " << lesProcFrac << endl;
-#   endif
-
-#   ifndef CH_MPI
-        if (lesProcFrac != 0.0) {
-            MayDay::Warning("Cannot run LES without MPI. Continuing les.proc_frac = 0.0");
-            lesProcFrac = 0.0;
-        }
-#   endif
-
-    // This creates groups and comms for communication among amr and les.
-    // Call this even if we are not using MPI.
-    setupMPIComms(lesProcFrac);
-    testMPIComms();
-
 #   ifdef CH_MPI
 #       ifdef CH_AIX
             H5dont_atexit();
@@ -169,107 +136,70 @@ int main(int argc, char* argv[])
         Everything.start();
 #   endif
 
-    // BEGIN: Chombo-only code.
-    if (AMRLESMeta::amrSize > 0) {
-        if (AMRLESMeta::isGroupMember(AMRLESMeta::amrGroup)) {
-#           ifdef CH_MPI
-                pout() << "Using MPI." << endl;
+#   ifdef CH_MPI
+        pout() << "Using MPI." << endl;
 
-                int chomboRank = procID();
-                int chomboNumRanks = numProc();
-                pout() << "\nchomboRank = " << chomboRank
-                       << "\nchomboNumRanks = " << chomboNumRanks
-                       << endl;
-#           else
-                pout() << "Not using MPI." << endl;
-#           endif
+        int chomboRank = procID();
+        int chomboNumRanks = numProc();
+        pout() << "\nchomboRank = " << chomboRank
+               << "\nchomboNumRanks = " << chomboNumRanks
+               << endl;
+#   else
+        pout() << "Not using MPI." << endl;
+#   endif
 
-            // Make sure the user knows if we are in debug mode.
-#           ifndef NDEBUG
-                pout() << "Proc #" << AMRLESMeta::worldRank
-                       << "/" << AMRLESMeta::worldSize-1
-                       << ": *** DEBUG MODE ***"
-                       << endl;
-#           else
-                pout() << "Proc #" << AMRLESMeta::worldRank
-                       << "/" << AMRLESMeta::worldSize-1
-                       << ": *** RELEASE MODE ***"
-                       << endl;
-#           endif
+    // Make sure the user knows if we are in debug mode.
+#   ifndef NDEBUG
+        pout() << "Proc #" << procID()
+               << "/" << numProc()-1
+               << ": *** DEBUG MODE ***"
+               << endl;
+#   else
+        pout() << "Proc #" << procID()
+               << "/" << numProc()-1
+               << ": *** RELEASE MODE ***"
+               << endl;
+#   endif
 
-            pout() << "SpaceDim = " << SpaceDim << endl;
+    pout() << "SpaceDim = " << SpaceDim << endl;
 
-#           ifdef  CH_USE_MEMORY_TRACKING
-                pout() << "Using memory tracking." << endl;
-#           endif
+#   ifdef  CH_USE_MEMORY_TRACKING
+        pout() << "Using memory tracking." << endl;
+#   endif
 
-            // Get the host name
-            utsname hostInfo;
-            int errCode = uname(&hostInfo);
-            if (errCode != 0) {
-                pout() << "\nerrCode = " << errCode << " recieved from uname function." << endl;
-            } else {
-                pout() << "\nHost info:"
-                       << "\n  sysname    = " << hostInfo.sysname
-                       << "\n  nodename   = " << hostInfo.nodename
-                       << "\n  release    = " << hostInfo.release
-                       << "\n  version    = " << hostInfo.version
-                       << "\n  machine    = " << hostInfo.machine
-                       << endl;
-#               ifdef _GNU_SOURCE
-                    pout() << "  domainname = " << hostInfo.domainname << endl;
-#               endif
-            }
-
-#           ifndef NDEBUG
-                // Only register the debugger on certain systems.
-                bool useDebugger = false;
-                useDebugger |= std::string(hostInfo.nodename) == std::string("iceman");
-                useDebugger |= (std::string(hostInfo.nodename) == std::string("scorpion") && numProc() == 1);
-                if (useDebugger) {
-                    pout() << "Registering debugger..." << endl;
-                    registerDebugger();
-                }
-#           endif
-            pout() << endl;
-
-            // Setup AMR and run the simulation
-            nsrun();
-
-            // MPI_Barrier(AMRLESMeta::amrComm);
-            printf("worldRank %d: AMR code finished.\n", AMRLESMeta::worldRank);
-        }
+    // Get the host name
+    utsname hostInfo;
+    int errCode = uname(&hostInfo);
+    if (errCode != 0) {
+        pout() << "\nerrCode = " << errCode << " recieved from uname function." << endl;
+    } else {
+        pout() << "\nHost info:"
+               << "\n  sysname    = " << hostInfo.sysname
+               << "\n  nodename   = " << hostInfo.nodename
+               << "\n  release    = " << hostInfo.release
+               << "\n  version    = " << hostInfo.version
+               << "\n  machine    = " << hostInfo.machine
+               << endl;
+#       ifdef _GNU_SOURCE
+            pout() << "  domainname = " << hostInfo.domainname << endl;
+#       endif
     }
-    // END: Chombo-only code.
 
-#ifdef USE_LES
-    // BEGIN: LES-only code.
-    if (AMRLESMeta::lesSize > 0) {
-        if (AMRLESMeta::isGroupMember(AMRLESMeta::lesGroup)) {
-
-            // Register the debugger?
-#           ifndef NDEBUG
-                if (false) {
-                    registerDebugger();
-                }
-#           endif
-
-             FORTRAN_NAME(DIABLO,diablo)(
-                 &AMRLESMeta::lesComm,
-                 &AMRLESMeta::interComm,
-                 &AMRLESMeta::amr2lesLeader,
-                 &AMRLESMeta::les2amrLeader
-             );
-
-            // MPI_Barrier(AMRLESMeta::lesComm);
-            printf("worldRank %d: LES code finished.\n", AMRLESMeta::worldRank);
+#   ifndef NDEBUG
+        // Only register the debugger on certain systems.
+        bool useDebugger = false;
+        useDebugger |= std::string(hostInfo.nodename) == std::string("iceman");
+        useDebugger |= (std::string(hostInfo.nodename) == std::string("scorpion") && numProc() == 1);
+        if (useDebugger) {
+            pout() << "Registering debugger..." << endl;
+            registerDebugger();
         }
-    }
-    // End LES-only code
-#endif //USE_LES
+#   endif
+    pout() << endl;
 
+    // Setup AMR and run the simulation
+    nsrun();
     cout << flush;
-    MPI_Barrier(MPI_COMM_WORLD);
 
 #   ifndef CH_NTIMER
         // Stop timing.
@@ -297,194 +227,6 @@ int main(int argc, char* argv[])
 #   endif
 
     return 0;
-}
-
-
-// -----------------------------------------------------------------------------
-// This creates groups and comms for communication among amr and les.
-// -----------------------------------------------------------------------------
-void setupMPIComms (const Real a_lesProcFrac)
-{
-    using namespace AMRLESMeta;
-
-    // Gather world info
-    worldComm = MPI_COMM_WORLD;
-    worldGroup = getCommGroup(MPI_COMM_WORLD);
-    worldSize = getGroupSize(worldGroup);
-    worldRank = getGroupRank(worldGroup);
-
-
-    // Compute the sizes of the groups.
-    amrSize = int(round( Real(worldSize)*(1.0-a_lesProcFrac) ));
-    if (amrSize < 0 || worldSize < amrSize) {
-        MayDay::Error("setupMPIComms produced an amrSize that is out of range");
-    }
-
-    lesSize = worldSize - amrSize;
-    if (lesSize < 0 || worldSize < lesSize) {
-        MayDay::Error("setupMPIComms produced an lesSize that is out of range");
-    }
-
-    // Now, we have to split worldComm.
-    int membershipKey = ((worldRank < amrSize)? 0: 1);
-    MPI_Comm splitComm;
-    if (MPI_Comm_split(worldComm, membershipKey, worldRank, &splitComm) != MPI_SUCCESS) {
-        MayDay::Error("setupMPIComms could not split MPI_COMM_WORLD");
-    }
-    if (worldRank < amrSize) {
-        amrComm = splitComm;
-        amrGroup = getCommGroup(amrComm);
-        amrRank = getGroupRank(amrGroup);
-
-        lesComm = MPI_COMM_NULL;
-        lesGroup = MPI_GROUP_NULL;
-        lesRank = MPI_UNDEFINED_RANK;
-
-    } else {
-        lesComm = splitComm;
-        lesGroup = getCommGroup(lesComm);
-        lesRank = getGroupRank(lesGroup);
-
-        amrComm = MPI_COMM_NULL;
-        amrGroup = MPI_GROUP_NULL;
-        amrRank = MPI_UNDEFINED_RANK;
-    }
-
-    // Set Chombo's communicator
-    if (isGroupMember(amrGroup)) {
-        Chombo_MPI::comm = amrComm;
-    }
-
-    // Create the intercommunicator for the AMR and LES groups.
-    if (amrSize > 0 && lesSize > 0) {
-        amr2lesLeader = 0; // This is the rank in amrComm.
-        les2amrLeader = 0; // This is the rank in lesComm.
-        int tag = 435;
-
-        // Use a dedicated peer communicator
-        if (MPI_Comm_dup(MPI_COMM_WORLD, &amrlesPeerComm) != MPI_SUCCESS) {
-            MayDay::Error("setupMPIComms had an error creating amrlesPeerComm");
-        }
-
-        if (isGroupMember(amrGroup)) {
-            int remoteLeader = amrSize; // The local group specifies the worldRank.
-            if (MPI_Intercomm_create(splitComm, amr2lesLeader, amrlesPeerComm, remoteLeader, tag, &interComm) != MPI_SUCCESS) {
-                MayDay::Error("setupMPIComms had an error creating the AMR to LES intercommunicator");
-            }
-
-            // Collective communications never want a local rank, they want a special macro.
-            amr2lesLeader = ((amrRank == amr2lesLeader)? MPI_ROOT: MPI_PROC_NULL);
-
-        } else {
-            int remoteLeader = 0; // The remote group specifies the remoteRank  (remote = les).
-            if (MPI_Intercomm_create(splitComm, amr2lesLeader, amrlesPeerComm, remoteLeader, tag, &interComm) != MPI_SUCCESS) {
-                MayDay::Error("setupMPIComms had an error creating the AMR to LES intercommunicator");
-            }
-
-            // Collective communications never want a local rank, they want a special macro.
-            les2amrLeader = ((lesRank == les2amrLeader)? MPI_ROOT: MPI_PROC_NULL);
-        }
-    } else {
-        amr2lesLeader = MPI_UNDEFINED_RANK;
-        amrlesPeerComm = MPI_COMM_NULL;
-        interComm = MPI_COMM_NULL;
-    }
-
-    // Name the communicators to help debugging along.
-    if (isGroupMember(amrGroup)) {
-        MPI_Comm_set_name(amrComm, "amrComm");
-    }
-    if (isGroupMember(lesGroup)) {
-        MPI_Comm_set_name(lesComm, "lesComm");
-    }
-    if (amrSize > 0 && lesSize > 0) {
-        MPI_Comm_set_name(interComm, "interComm");
-    }
-}
-
-
-// -----------------------------------------------------------------------------
-// Passes magic values among the AMR and LES groups to test the
-// intercommunicator.
-// -----------------------------------------------------------------------------
-void testMPIComms () {
-    using namespace AMRLESMeta;
-
-    // Do we have an intercommunicator?
-    if (amrSize <= 0 || lesSize <= 0) return;
-
-    // Make sure Chombo is using amrComm.
-    if (isGroupMember(amrGroup)) {
-        if (Chombo_MPI::comm != amrComm) {
-            MayDay::Error("testMPIComms found that Chombo is not using amrComm");
-        }
-        if (procID() != amrRank) {
-            MayDay::Error("testMPIComms found that Chombo is not using amrComm to compute ranks");
-        }
-        if (numProc() != amrSize) {
-            MayDay::Error("testMPIComms found that Chombo is not using amrComm to compute comm size");
-        }
-    }
-
-    // AMR to LES intercommunication
-    {
-        const double targetMagic = 12345.09876;
-
-        double localMagic = -1.0;
-        if (amr2lesLeader == MPI_ROOT) {
-            localMagic = targetMagic;
-        }
-
-        if (MPI_Bcast(&localMagic, 1, MPI_DOUBLE, amr2lesLeader, interComm) != MPI_SUCCESS) {
-            MayDay::Error("testMPIComms could not broadcast a magic number from AMR to LES");
-        }
-
-        if (isGroupMember(lesGroup)) {
-            if (localMagic != targetMagic) {
-                MayDay::Error("testMPIComms received an invalid magic number while testing AMR to LES intercommunication");
-            }
-        } else {
-            if (amr2lesLeader == MPI_ROOT) {
-                if (localMagic != targetMagic) {
-                    MayDay::Error("testMPIComms clobbered the magic number while testing AMR to LES intercommunication");
-                }
-            } else {
-                if (localMagic != -1.0) {
-                    MayDay::Error("testMPIComms broadcasted the magic number to too many ranks during AMR to LES intercommunication");
-                }
-            }
-        }
-    }
-
-    // AMR to LES intercommunication
-    {
-        const double targetMagic = 92753.41608;
-
-        double localMagic = -1.0;
-        if (les2amrLeader == MPI_ROOT) {
-            localMagic = targetMagic;
-        }
-
-        if (MPI_Bcast(&localMagic, 1, MPI_DOUBLE, les2amrLeader, interComm) != MPI_SUCCESS) {
-            MayDay::Error("testMPIComms could not broadcast a magic number from LES to AMR");
-        }
-
-        if (isGroupMember(amrGroup)) {
-            if (localMagic != targetMagic) {
-                MayDay::Error("testMPIComms received an invalid magic number while testing LES to AMR intercommunication");
-            }
-        } else {
-            if (les2amrLeader == MPI_ROOT) {
-                if (localMagic != targetMagic) {
-                    MayDay::Error("testMPIComms clobbered the magic number while testing LES to AMR intercommunication");
-                }
-            } else {
-                if (localMagic != -1.0) {
-                    MayDay::Error("testMPIComms broadcasted the magic number to too many ranks during LES to AMR intercommunication");
-                }
-            }
-        }
-    }
 }
 
 

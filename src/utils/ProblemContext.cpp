@@ -30,7 +30,7 @@
 #include "CartesianMap.H"
 #include "TwistedMap.H"
 #include "BeamGeneratorMap.H"
-#include "NewBeamGeneratorMap.H"
+// #include "NewBeamGeneratorMap.H"
 #include "CylindricalMap.H"
 #include "LedgeMap.H"
 
@@ -602,13 +602,13 @@ void ProblemContext::readGeometry ()
             beamGenMapAlpha *= PI / 180.0;
         }
         break;
-    case CoordMap::NEWBEAMGENERATOR:
-        {
-            ppGeo.get("alpha", beamGenMapAlpha);
-            pout() << "\talpha = " << beamGenMapAlpha << endl;
-            beamGenMapAlpha *= PI / 180.0;
-        }
-        break;
+    // case CoordMap::NEWBEAMGENERATOR:
+    //     {
+    //         ppGeo.get("alpha", beamGenMapAlpha);
+    //         pout() << "\talpha = " << beamGenMapAlpha << endl;
+    //         beamGenMapAlpha *= PI / 180.0;
+    //     }
+    //     break;
     case CoordMap::DEMMAP:
         {
             ppGeo.get("DemFile", demFile);
@@ -654,9 +654,9 @@ GeoSourceInterface* ProblemContext::newGeoSourceInterface () const
     case ProblemContext::CoordMap::LEDGE:
         geoSourcePtr = new LedgeMap;
         break;
-    case ProblemContext::CoordMap::NEWBEAMGENERATOR:
-        geoSourcePtr = new NewBeamGeneratorMap;
-        break;
+    // case ProblemContext::CoordMap::NEWBEAMGENERATOR:
+    //     geoSourcePtr = new NewBeamGeneratorMap;
+    //     break;
     case ProblemContext::CoordMap::DEMMAP:
         geoSourcePtr = new DEMMap;
         break;
@@ -796,6 +796,8 @@ void ProblemContext::readIBC ()
     // We need to know about the domain length.
     this->readAMR();
 
+    Vector<Real> vreal;
+
     ParmParse ppIBC("ibc");
     pout() << "ProblemContext::readIBC:" << endl;
 
@@ -813,8 +815,6 @@ void ProblemContext::readIBC ()
     pout() << "\tuseSpongeLayer = " << useSpongeLayer << endl;
 
     if (useSpongeLayer) {
-        Vector<Real> vreal;
-
         // Lo side widths
         vreal = Vector<Real>(SpaceDim, 0.0);
         if (ppIBC.queryarr("spongeWidthLo", vreal, 0, SpaceDim)) {
@@ -882,8 +882,11 @@ void ProblemContext::readIBC ()
     ppIBC.query("tidalOmega", tidalOmega);
     pout() << "\ttidalOmega = " << tidalOmega << endl;
 
-    tidalU0 = 0.0;
-    ppIBC.query("tidalU0", tidalU0);
+    vreal = Vector<Real>(SpaceDim, 0.0);
+    ppIBC.queryarr("tidalU0", vreal, 0, SpaceDim-1);
+    D_TERM(tidalU0[0] = vreal[0];,
+           tidalU0[1] = vreal[1];,
+           tidalU0[2] = vreal[2];)
     pout() << "\ttidalU0 = " << tidalU0 << endl;
 
 

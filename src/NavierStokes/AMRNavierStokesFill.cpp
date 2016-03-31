@@ -240,7 +240,8 @@ void AMRNavierStokes::setGhostsLambda (LevelData<FArrayBox>& a_lambda,
 void AMRNavierStokes::setGhostsScalar (LevelData<FArrayBox>& a_scal,
                                        BCMethodHolder&       a_scalBC,
                                        const Real            a_time,
-                                       const int             a_comp) const
+                                       const int             a_comp,
+                                       const bool            a_onlyAtValid) const
 {
     CH_TIME("AMRNavierStokes::setGhostsScalar");
 
@@ -316,7 +317,7 @@ void AMRNavierStokes::setGhostsScalar (LevelData<FArrayBox>& a_scal,
     const int nJgupComp = m_levGeoPtr->getFCJgup().nComp();
     for (dit.reset(); dit.ok(); ++dit) {
         const Box& stateBox = a_scal[dit].box();
-        const Box valid = stateBox & domain.domainBox();
+        const Box valid = (a_onlyAtValid? grids[dit]: stateBox & domain.domainBox());
         const FluxBox& JgupFB = m_levGeoPtr->getFCJgup()[dit];
 
         if (JgupFB.box().contains(stateBox)) {
@@ -529,13 +530,13 @@ void AMRNavierStokes::fillScalars (LevelData<FArrayBox>& a_scal,
                                    const int             a_comp,
                                    const bool            a_addBackground) const
 {
-    // Collect some needed data
-    const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
-    const IntVect ghostVect(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW));
-
     // Define the level data holder
-    CH_assert(!a_scal.isDefined());
-    a_scal.define(grids, m_scal_new[a_comp]->nComp(), ghostVect);
+    if (!a_scal.isDefined()) {
+        const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
+        const IntVect ghostVect(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW));
+
+        a_scal.define(grids, m_scal_new[a_comp]->nComp(), ghostVect);
+    }
 
     // Interpolate the scalar in time
     this->scalar(a_scal, a_time, a_comp);
@@ -669,7 +670,7 @@ void AMRNavierStokes::fillTidalSource (LevelData<FArrayBox>& a_tidalSource,
 {
     CH_TIME("AMRNavierStokes::fillTidalSource");
 
-    CH_assert(s_tidalOmega * s_tidalU0 != 0.0);
+    CH_assert(s_tidalOmega * s_tidalU0.sum() != 0.0);
     CH_assert(a_tidalSource.nComp() == SpaceDim);
     DataIterator dit = a_tidalSource.dataIterator();
 
@@ -678,14 +679,21 @@ void AMRNavierStokes::fillTidalSource (LevelData<FArrayBox>& a_tidalSource,
         setValLevel(a_tidalSource, s_bogus_value);
     }
 
-    if (s_tidalOmega * s_tidalU0 != 0.0) {
+    if (s_tidalOmega * s_tidalU0.sum() != 0.0) {
         const Real oldArg = s_tidalOmega * a_oldTime;
         const Real newArg = s_tidalOmega * (a_oldTime + a_dt);
-        const Real tidalForce = s_tidalU0 * (sin(newArg) - sin(oldArg)) / a_dt;
+
+        RealVect tidalForce;
+        D_TERM(
+        tidalForce[SpaceDim-1] = 0.0;,
+        tidalForce[0] = s_tidalU0[0] * (sin(newArg) - sin(oldArg)) / a_dt;,  //  U0 * omega * cos(omega*t)
+        tidalForce[1] = s_tidalU0[1] * (cos(newArg) - cos(oldArg)) / a_dt;)  // -U0 * omega * sin(omega*t)
 
         for (dit.reset(); dit.ok(); ++dit) {
-            a_tidalSource[dit].setVal(tidalForce, 0);
-            a_tidalSource[dit].setVal(0.0, a_tidalSource[dit].box(), 1, SpaceDim-1);
+            D_TERM(
+            a_tidalSource[dit].setVal(tidalForce[SpaceDim-1], a_tidalSource[dit].box(), 1, SpaceDim-1);,
+            a_tidalSource[dit].setVal(tidalForce[0], 0);,
+            a_tidalSource[dit].setVal(tidalForce[1], 1);)
         }
 
     } else {

@@ -890,7 +890,6 @@ void EllipticNeumBCFluxClass::operator() (FArrayBox&           a_state,
     SideIterator sit;
     for (sit.reset(); sit.ok(); ++sit) {
         Side::LoHiSide iside = sit();
-        Real isign = sign(iside);
 
         if (m_doSide[iside][a_dir] == 0) continue;
 
@@ -1024,8 +1023,6 @@ void EllipticExtrapBCGhostClass::operator() (FArrayBox&           a_state,
 
     // Alias the state components we want to alter
     const Interval interv = (a_interval == Interval())? a_state.interval(): a_interval;
-    const int scomp = interv.begin();
-    const int ncomp = interv.size();
     CH_assert(a_state.nComp() > interv.end());
     FArrayBox stateAlias(interv, a_state);
 

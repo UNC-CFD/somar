@@ -437,7 +437,8 @@ protected:
     void setGhostsScalar (LevelData<FArrayBox>& a_scal,
                           BCMethodHolder&       a_scalBC,
                           const Real            a_time,
-                          const int             a_comp) const;
+                          const int             a_comp,
+                          const bool            a_onlyAtValid = false) const;
 
     // Returns velocity at time a_time.
     // This does a linear interpolation in time between old and new time velocities,
@@ -571,12 +572,6 @@ protected:
     void syncBottomDiagnostics (const Vector<LevelData<FArrayBox>*>& a_compVel);
     void syncSingleGridDiagnostics ();
     void syncTermDiagnostics ();
-
-    // Provides syncing with a subgrid scale model.
-    // This function does nothing by default. Feel free to add whatever code you
-    // like, but future versions of SOMAR will use this function to update the
-    // stress tensor via LES.
-    void syncWithSGS ();
 
 
     // AMRNavierStokesBasics.cpp -----------------------------------------------
@@ -783,7 +778,7 @@ protected:
 
     // The tidal parameters (set to zero for no tide)
     static Real s_tidalOmega;
-    static Real s_tidalU0;
+    static RealVect s_tidalU0;
 
     // -- I/O options --
 

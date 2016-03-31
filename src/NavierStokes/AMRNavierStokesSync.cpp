@@ -28,7 +28,6 @@
 #include "SetValLevel.H"
 #include "MappedAMRPoissonOpFactory.H"
 #include "Constants.H"
-#include "AMRLESMeta.H"
 #include "Printing.H"
 #include "AMRCCProjector.H"
 #include "StressMetric.H"
@@ -50,7 +49,6 @@ void AMRNavierStokes::postTimeStep()
         if (m_level == 0) {
             // TODO: This may be better suited in tagCells on level 0 so
             // that we know not to tag the turbulent region.
-            this->syncWithSGS();
             this->syncSingleGridDiagnostics();
         }
         this->syncTermDiagnostics();
@@ -67,7 +65,6 @@ void AMRNavierStokes::postTimeStep()
     AMRNavierStokes* fineAMRNavierStokesPtr = fineNSPtr();
     bool isViscous = (s_nu > 0.0);
     VelBCHolder velBC(m_physBCPtr->uStarFuncBC(isViscous));
-    const RealVect& dx = m_levGeoPtr->getDx();
     const bool considerCellVols = true;
 
     if (!finestLevel()) {
@@ -250,7 +247,7 @@ void AMRNavierStokes::postTimeStep()
         }
 
         // 2.5) Sync projection
-        int projIters = (s_isIncompressible? s_sync_projection_iters: 0);
+        // int projIters = (s_isIncompressible? s_sync_projection_iters: 0);
         {
             // Collect sync pressure pointers and set an initial guess of zero.
             Vector<LevelData<FArrayBox>*> eSync = lBaseAMRNavierStokes->gatherSyncPressure();
@@ -330,12 +327,7 @@ void AMRNavierStokes::postTimeStep()
         }
     } // End multi-level, sync operations
 
-    // 3.) Sync with LES
-    // TODO: This may be better suited in tagCells on level 0 so
-    // that we know not to tag the turbulent region.
-    this->syncWithSGS();
-
-    // 4.) Write terminal output
+    // 3.) Write terminal output
     this->syncTermDiagnostics();
 }
 
@@ -427,7 +419,7 @@ void AMRNavierStokes::doImplicitScalarReflux ()
             }
 
             // Do refluxing
-            thisNSPtr->m_scal_fluxreg_ptrs[scalComp]->reflux(levelRefluxRHS, *(thisNSPtr->m_levGeoPtr));
+            levelFR.reflux(levelRefluxRHS, *(thisNSPtr->m_levGeoPtr));
 
             // Initial guess for correction is RHS
             levelRefluxRHS.copyTo(solverComps, levelRefluxCorr, solverComps);
@@ -631,7 +623,7 @@ void AMRNavierStokes::doImplicitMomentumReflux (const Vector<LevelData<FArrayBox
     }
     CH_assert(thisNSPtr->finestLevel());
     finest_level = thisNSPtr->m_level;
-    AMRNavierStokes* finestNSPtr = thisNSPtr;
+    // AMRNavierStokes* finestNSPtr = thisNSPtr;
 
     // Loop over levels and compute RHS
     Vector<LevelData<FArrayBox>*> refluxRHS(finest_level+1,NULL);
@@ -1251,16 +1243,4 @@ void AMRNavierStokes::syncTermDiagnostics()
         }
         s_totalEnergy = globalEnergy;
     }
-}
-
-
-// -----------------------------------------------------------------------------
-// Provides syncing with a subgrid scale model.
-// This function does nothing by default. Feel free to add whatever code you
-// like, but future versions of SOMAR will use this function to update the
-// stress tensor via LES.
-// -----------------------------------------------------------------------------
-void AMRNavierStokes::syncWithSGS ()
-{
-    return;
 }

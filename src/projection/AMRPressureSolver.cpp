@@ -44,13 +44,13 @@ bool AMRPressureSolver::s_useAMRMGSolver = true;
 // Default constructor -- leaves object unusable.
 // -----------------------------------------------------------------------------
 AMRPressureSolver::AMRPressureSolver ()
-: m_isDefined(false),
+: m_useLevelLepticSolver(false),
+  m_useLevelMGSolver(false),
+  m_isDefined(false),
   m_numLevels(-1),
   m_lepticSolverPtr(NULL),
   m_amrmgSolverPtr(NULL),
-  m_bottomSolverPtr(NULL),
-  m_useLevelLepticSolver(false),
-  m_useLevelMGSolver(false)
+  m_bottomSolverPtr(NULL)
 {
     // Set the default parameters
     const ProblemContext* ctx = ProblemContext::getInstance();

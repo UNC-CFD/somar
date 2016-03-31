@@ -215,13 +215,13 @@ public:
     // that usually get set and are the number of relaxations performed
     // before and after multigrid recursion. See AMRMultiGrid for a
     // more user-friendly interface.
-    int  m_depth;           // Stores the current refinement depth. Useful because cycle is recursive.
-    int  m_defaultDepth;    // This is where m_depth is when not in a cycle. (max depth + 1).
-    int  m_maxForcedDepth;  // This is how deep the coarsening pattern was forced in define.
     int  m_pre;             // Number of relaxation iters on the way down the V-cycle.
     int  m_post;            // Number of relaxation iters on the way up the V-cycle.
     int  m_bottom;          // Number of relaxation iters before calling the bottom solver.
     int  m_cycle;           // 1 = V-cycle, 2 = W-cycle, etc... (If cycle is < 0, then FMG).
+    int  m_depth;           // Stores the current refinement depth. Useful because cycle is recursive.
+    int  m_defaultDepth;    // This is where m_depth is when not in a cycle. (max depth + 1).
+    int  m_maxForcedDepth;  // This is how deep the coarsening pattern was forced in define.
     bool m_homogeneous;     // Have the BCs already been handled? (Are we working on the residual equation?)
     LinearSolver<T>* m_bottomSolver;
     int m_verbosity;
@@ -300,8 +300,8 @@ MappedMultiGrid<T>::MappedMultiGrid ()
   m_cycle(1),
   m_maxForcedDepth(-1),
   m_homogeneous(true),
-  m_defined(false),
-  m_verbosity(3)
+  m_verbosity(3),
+  m_defined(false)
 {;}
 
 

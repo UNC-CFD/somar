@@ -45,7 +45,7 @@ int writeLevel(HDF5Handle& a_handle,
                const Interval& comps)
 {
     int error;
-    char levelName[10];
+    char levelName[20];
     std::string currentGroup = a_handle.getGroup();
     sprintf(levelName, "/level_%i", a_level);
     error = a_handle.setGroup(currentGroup + levelName);
@@ -90,7 +90,7 @@ int readLevel(HDF5Handle&   a_handle,
     // int nComp = header.m_int["num_components"];
 
     int error;
-    char levelName[10];
+    char levelName[20];
     std::string currentGroup = a_handle.getGroup();
     sprintf(levelName, "/level_%i", a_level);
     error = a_handle.setGroup(currentGroup + levelName);
@@ -176,7 +176,7 @@ void writeTextFile( const FArrayBox&    a_data,
                     const char*         a_filename,
                     const Real&         a_time)
 {
-    char fn[50];
+    char fn[80];
     sprintf(fn, "%s.%d", a_filename, procID());
     fstream fstr;
     fstr.open(fn, fstream::out);
@@ -207,7 +207,7 @@ void writeTextFile( const LevelData<FArrayBox>& a_data,
 {
     const DisjointBoxLayout& grids = a_data.getBoxes();
 
-    char fn[50];
+    char fn[80];
     sprintf(fn, "%s.%d", a_filename, procID());
     fstream fstr;
     fstr.open(fn, fstream::out);
@@ -241,7 +241,7 @@ void writeTextFile( const FluxBox&  a_data,
                     const char*     a_filename,
                     const Real&     a_time)
 {
-    char fn[50];
+    char fn[80];
     sprintf(fn, "%s.%d", a_filename, procID());
     fstream fstr;
     fstr.open(fn, fstream::out);
@@ -270,7 +270,7 @@ void writeTextFile( const LevelData<FluxBox>&   a_data,
                     const char*                 a_filename,
                     const Real&                 a_time)
 {
-    char fn[50];
+    char fn[80];
     sprintf(fn, "%s.%d", a_filename, procID());
     fstream fstr;
     fstr.open(fn, fstream::out);
@@ -298,7 +298,6 @@ void writeTextFile( const LevelData<FluxBox>&   a_data,
 }
 
 
-#include "AMRLESMeta.H"
 // -----------------------------------------------------------------------------
 // Write a LevelData to HDF5
 // -----------------------------------------------------------------------------
@@ -324,7 +323,7 @@ void _writeLevelHDF5 (const LevelData<FArrayBox>& a_data,
         for (int dir = 0; dir < SpaceDim; ++dir) {
             int localDataTypeDir = dataType[dir];
             int dataTypeDir;
-            int ierr = MPI_Allreduce(&localDataTypeDir, &dataTypeDir, 1, MPI_INT, MPI_SUM, AMRLESMeta::amrComm);
+            int ierr = MPI_Allreduce(&localDataTypeDir, &dataTypeDir, 1, MPI_INT, MPI_SUM, Chombo_MPI::comm);
             if (ierr != MPI_SUCCESS) {
                 std::ostringstream errmsg;
                 errmsg << "MPI_Allreduce failed. Error " << ierr << std::endl;

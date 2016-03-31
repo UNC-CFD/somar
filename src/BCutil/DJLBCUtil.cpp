@@ -119,10 +119,7 @@ void DJLBCUtil::setVelIC (FArrayBox&           a_velFAB,
     const Box valid = a_levGeo.getBoxes()[a_di] & a_velFAB.box();
     const RealVect physDx = a_levGeo.getDx();
     const IntVect& Nx = domBox.size();
-    const RealVect L = a_levGeo.getDomainLength();
-
-    const Real sinA = sin(s_rotAngle);
-    const Real cosA = cos(s_rotAngle);
+    // const RealVect L = a_levGeo.getDomainLength();
 
     // Read eta from file.
     Vector<Vector<Real> > eta(Nx[SpaceDim-1]+1, Vector<Real>(Nx[0]+1, 0.0));
@@ -133,9 +130,6 @@ void DJLBCUtil::setVelIC (FArrayBox&           a_velFAB,
     for (int i = 0; i < Nx[0]; ++i) {
         x[i] = (Real(domBox.smallEnd(0) + i) + 0.5) * physDx[0];
     }
-    const Real minX = x[0];
-    const Real maxX = x[Nx[0]-1];
-
 
     // Loop over horizontal slices
     IntVect cc = valid.smallEnd();
@@ -143,7 +137,6 @@ void DJLBCUtil::setVelIC (FArrayBox&           a_velFAB,
     for (; cc[SpaceDim-1] <= valid.bigEnd(SpaceDim-1); ++cc[SpaceDim-1], ++k) {
 
         // Construct CC DJL velocity
-        const Real thisZ = (Real(cc[SpaceDim-1]) + 0.5) * physDx[SpaceDim-1];
         Vector<Real> velDJL;
         if (a_velComp == SpaceDim-1) {
             fill_wDJL(velDJL, eta[k+1], eta[k], physDx[0]);
@@ -161,6 +154,12 @@ void DJLBCUtil::setVelIC (FArrayBox&           a_velFAB,
         }
 
 #else // CH_SPACEDIM == 3
+        const Real sinA = sin(s_rotAngle);
+        const Real cosA = cos(s_rotAngle);
+
+        const Real minX = x[0];
+        const Real maxX = x[Nx[0]-1];
+
         // Construct splines of DJL velocity
         CubicSpline velDJLSpline;
         velDJLSpline.solve(velDJL, x);
@@ -224,23 +223,15 @@ void DJLBCUtil::setScalarIC (FArrayBox&           a_scalarFAB,
     const Box valid = a_levGeo.getBoxes()[a_di] & a_scalarFAB.box();
     const RealVect physDx = a_levGeo.getDx();
     const IntVect& Nx = domBox.size();
-    const RealVect L = a_levGeo.getDomainLength();
-
-    const Real sinA = sin(s_rotAngle);
-    const Real cosA = cos(s_rotAngle);
 
     // Read eta from file.
     Vector<Vector<Real> > eta(Nx[SpaceDim-1]+1, Vector<Real>(Nx[0]+1, 0.0));
-    const Real c = readDJLICFile(eta, Nx[0], Nx[SpaceDim-1]);
 
     // Compute locations of cell centers.
     Vector<Real> x(Nx[0]);
     for (int i = 0; i < Nx[0]; ++i) {
         x[i] = (Real(domBox.smallEnd(0) + i) + 0.5) * physDx[0];
     }
-    const Real minX = x[0];
-    const Real maxX = x[Nx[0]-1];
-
 
     // Loop over horizontal slices
     IntVect cc = valid.smallEnd();
@@ -248,11 +239,8 @@ void DJLBCUtil::setScalarIC (FArrayBox&           a_scalarFAB,
     for (; cc[SpaceDim-1] <= valid.bigEnd(SpaceDim-1); ++cc[SpaceDim-1], ++k) {
 
         // Construct CC DJL buoyancy
-        const Real thisZ = (Real(cc[SpaceDim-1]) + 0.5) * physDx[SpaceDim-1];
         Vector<Real> ccEta, bDJL;
         convertSliceNC2CC(ccEta, eta[k+1], eta[k]);
-        const Real bgScalar = fill_bDJL(bDJL, ccEta, c, thisZ);
-
 
 #if CH_SPACEDIM == 2
         // Loop over this horizontal slice and fill FAB.
@@ -264,6 +252,15 @@ void DJLBCUtil::setScalarIC (FArrayBox&           a_scalarFAB,
         }
 
 #else // CH_SPACEDIM == 3
+        const Real sinA = sin(s_rotAngle);
+        const Real cosA = cos(s_rotAngle);
+        const Real minX = x[0];
+        const Real maxX = x[Nx[0]-1];
+        const Real thisZ = (Real(cc[SpaceDim-1]) + 0.5) * physDx[SpaceDim-1];
+
+        const Real c = readDJLICFile(eta, Nx[0], Nx[SpaceDim-1]);
+        const Real bgScalar = fill_bDJL(bDJL, ccEta, c, thisZ);
+
         // Construct splines of DJL buoyancy
         CubicSpline bDJLSpline;
         bDJLSpline.solve(bDJL, x);

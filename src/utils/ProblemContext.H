@@ -171,7 +171,7 @@ public:
             CYLINDRICAL      = 4,
             LEDGE            = 5,
             // MASSBAY          = 6, // Removed - no longer available.
-            NEWBEAMGENERATOR = 7,
+            // NEWBEAMGENERATOR = 7,
             DEMMAP           = 8,
             _NUM_COORD_MAPS
         };
@@ -251,7 +251,7 @@ public:
     Real spongeWidth[CH_SPACEDIM][2];
     Real spongeDtMult[CH_SPACEDIM][2];
     Real tidalOmega;
-    Real tidalU0;
+    RealVect tidalU0;
     RealVect inflowVel;
     bool specifyInitialGrids;
     std::string initialGridFile;

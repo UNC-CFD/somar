@@ -116,7 +116,7 @@ Real AMRNavierStokes::advance ()
     // The "new" state is now the old state.
     const Real old_time = m_time;
     this->swapOldAndNewStates();
-    const Real new_time = m_time;
+    // const Real new_time = m_time; // unused, so commented.
 
     // Initialize all flux registers
     if (!finestLevel()) {

@@ -56,7 +56,7 @@ void defineOneProcGrids (DisjointBoxLayout&   a_grids,
 // it will just copy everything.
 void defineImpartialCopier (Copier&                  a_copier,
                             const DisjointBoxLayout& a_srcGrids,
-                            const DisjointBoxLayout& a_destGrids,
+                            const BoxLayout&         a_destGrids,
                             const IntVect&           a_ghostVect,
                             const IntVect&           a_shift = IntVect::Zero);
 

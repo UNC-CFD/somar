@@ -34,7 +34,7 @@ bool     PhysBCUtil::s_staticMembersSet = false;
 RealVect PhysBCUtil::s_domLength = RealVect::Zero;
 bool     PhysBCUtil::s_useBackgroundScalar = false;
 
-Real     PhysBCUtil::s_tidalU0 = 0.0;
+RealVect PhysBCUtil::s_tidalU0 = RealVect::Zero;
 Real     PhysBCUtil::s_tidalOmega = 0.0;
 bool     PhysBCUtil::s_doTidalFlow = false;
 
@@ -73,7 +73,7 @@ void PhysBCUtil::define ()
 
     s_tidalU0 = ctx->tidalU0;
     s_tidalOmega = ctx->tidalOmega;
-    s_doTidalFlow = (s_tidalU0 * s_tidalOmega != 0.0);
+    s_doTidalFlow = (s_tidalU0.sum() * s_tidalOmega != 0.0);
 
     s_useSpongeLayer = ctx->useSpongeLayer;
     for (int dir = 0; dir < SpaceDim; ++dir) {
@@ -103,7 +103,7 @@ void PhysBCUtil::setVelIC (FArrayBox&           a_velFAB,
     CH_assert(a_velComp < SpaceDim);
 
     if (s_doTidalFlow && SpaceDim == 3 && a_velComp == 1) {
-        a_velFAB.setVal(s_tidalU0, a_velComp);
+        a_velFAB.setVal(s_tidalU0[1], 1);
     } else {
         a_velFAB.setVal(0.0, a_velComp);
     }
@@ -520,9 +520,9 @@ void PhysBCUtil::fillVelSpongeLayerTarget (FArrayBox&           a_target,
     if (s_doTidalFlow) {
         // Default velocity is the tidal velocity.
         if (a_velComp == 0) {
-            a_target.setVal(s_tidalU0 * sin(s_tidalOmega * a_time));
+            a_target.setVal(s_tidalU0[0] * sin(s_tidalOmega * a_time));
         } else if (SpaceDim == 3 && a_velComp == 1) {
-            a_target.setVal(s_tidalU0 * cos(s_tidalOmega * a_time));
+            a_target.setVal(s_tidalU0[1] * cos(s_tidalOmega * a_time));
         } else {
             a_target.setVal(0.0);
         }
@@ -1030,16 +1030,117 @@ BCMethodHolder PhysBCUtil::basicVelFuncBC (int a_veldir, bool a_isViscous) const
 {
     BCMethodHolder holder;
 
-    RefCountedPtr<BCGhostClass> velBCPtr = RefCountedPtr<BCGhostClass>(
-        new BasicVelocityBCGhostClass(0.0,      //s_inflowVel,
-                                      -1,       //s_inflowDir,
-                                      Side::Lo, //s_inflowSide,
-                                      -1,       //s_outflowDir,
-                                      Side::Lo, //s_outflowSide,
-                                      a_veldir,
-                                      a_isViscous)
-    );
-    holder.addBCMethod(velBCPtr);
+    if (!s_doTidalFlow) {
+        RefCountedPtr<BCGhostClass> velBCPtr = RefCountedPtr<BCGhostClass>(
+            new BasicVelocityBCGhostClass(0.0,      //s_inflowVel,
+                                          -1,       //s_inflowDir,
+                                          Side::Lo, //s_inflowSide,
+                                          -1,       //s_outflowDir,
+                                          Side::Lo, //s_outflowSide,
+                                          a_veldir,
+                                          a_isViscous)
+        );
+        holder.addBCMethod(velBCPtr);
+
+    } else {
+
+        if (!s_useSpongeLayer) {
+            MayDay::Error("If you are tidally forcing the flow, you should use a sponge. "
+                          "basicVelFuncBC only extrapolates in the horizontal. "
+                          "It is the sponge that actually enforces the BCs.");
+        }
+
+        const IntVect hUnit = IntVect::Unit - BASISV(CH_SPACEDIM-1);
+        const IntVect vUnit = BASISV(CH_SPACEDIM-1);
+
+        if (a_veldir < SpaceDim-1) {
+            //                 Freeslip
+            // u,v: Extrap 0 |==========| Extrap 0
+            //                  Diri 0 (or free slip if a_viscous is false)
+
+            // Low order extrap in horizontal (sponged) directions
+            int extrapOrder = 0;
+            RefCountedPtr<BCGhostClass> horizBCPtr(
+                new EllipticExtrapBCGhostClass(extrapOrder,
+                                               hUnit,
+                                               hUnit)
+            );
+            holder.addBCMethod(horizBCPtr);
+
+            RefCountedPtr<BCFluxClass> fluxBCPtr(
+                new EllipticConstNeumBCFluxClass(RealVect::Zero,
+                                                 RealVect::Zero,
+                                                 BASISV(0),
+                                                 BASISV(0))
+            );
+            holder.addBCMethod(fluxBCPtr);
+
+            // Free slip on high end in vertical dir
+            RefCountedPtr<BCGhostClass> hiVertBCPtr = RefCountedPtr<BCGhostClass>(
+                new BasicVelocityBCGhostClass(0.0,             // inflowVel
+                                              -1,              // inflowDir
+                                              Side::Lo,        // inflowSide
+                                              -1,              // outflowDir
+                                              Side::Hi,        // outflowSide
+                                              a_veldir,
+                                              false,           // isViscous?
+                                              IntVect(D_DECL(0,0,0)),
+                                              vUnit)
+            );
+            holder.addBCMethod(hiVertBCPtr);
+
+
+            // No slip on low end in vertical dir
+            RefCountedPtr<BCGhostClass> loVertBCPtr = RefCountedPtr<BCGhostClass>(
+                new BasicVelocityBCGhostClass(0.0,             // inflowVel
+                                              -1,              // inflowDir
+                                              Side::Lo,        // inflowSide
+                                              -1,              // outflowDir
+                                              Side::Hi,        // outflowSide
+                                              a_veldir,
+                                              a_isViscous,
+                                              vUnit,
+                                              IntVect(D_DECL(0,0,0)))
+            );
+            holder.addBCMethod(loVertBCPtr);
+
+        } else {
+            //                Diri 0
+            // w:   Neum 0 |==========| Neum 0
+            //                Diri 0
+
+            // Low order extrap in horizontal (sponged) directions
+            int extrapOrder = 0;
+            RefCountedPtr<BCGhostClass> horizBCPtr(
+                new EllipticExtrapBCGhostClass(extrapOrder,
+                                               hUnit,
+                                               hUnit)
+            );
+            holder.addBCMethod(horizBCPtr);
+
+            RefCountedPtr<BCFluxClass> fluxBCPtr(
+                new EllipticConstNeumBCFluxClass(RealVect::Zero,
+                                                 RealVect::Zero,
+                                                 BASISV(0),
+                                                 BASISV(0))
+            );
+            holder.addBCMethod(fluxBCPtr);
+
+            // Diri 0 in vertical dir
+            RefCountedPtr<BCGhostClass> vertBCPtr = RefCountedPtr<BCGhostClass>(
+                new BasicVelocityBCGhostClass(0.0,             // inflowVel
+                                              -1,              // inflowDir
+                                              Side::Lo,        // inflowSide
+                                              -1,              // outflowDir
+                                              Side::Hi,        // outflowSide
+                                              a_veldir,
+                                              a_isViscous,
+                                              vUnit,
+                                              vUnit)
+            );
+            holder.addBCMethod(vertBCPtr);
+        }
+    }
 
     return holder;
 }

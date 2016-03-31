@@ -56,11 +56,9 @@ void AMRNavierStokes::PPMTimeStep (const Real a_oldTime,
     pout() << setiosflags(ios::scientific) << setprecision(8) << flush;
 
     // Set up some basic values
-    const RealVect& dx = m_levGeoPtr->getDx();
     const DisjointBoxLayout& grids = newVel().getBoxes();
     DataIterator dit = grids.dataIterator();
     const Box domainBox = m_problem_domain.domainBox();
-    const bool isViscous = (s_nu > 0.0);
 
     // Initialize all flux registers
     if (!finestLevel()) {
@@ -226,7 +224,8 @@ void AMRNavierStokes::computeAdvectingVelocities (LevelData<FluxBox>&   a_advVel
                         halfTime);
 
     // This seems to help multi-level, mapped solves.
-    a_advVel.exchange(m_oneGhostExCopier);
+    Copier cp(grids, grids, m_problem_domain, a_advVel.ghostVect(), true);
+    a_advVel.exchange(cp);
 }
 
 
@@ -571,7 +570,7 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
                            Interval(0,0));
 
                 BCMethodHolder scalBC = m_physBCPtr->diffusiveSourceFuncBC();
-                setGhostsScalar(halfScalar, scalBC, halfTime, a_comp);
+                setGhostsScalar(halfScalar, scalBC, halfTime, a_comp, true); // Changed to true, ES 2016-3-17
 
                 // Set up crse level BC.
                 // Remember, coarse level may be at a more advanced time than this level.
@@ -642,6 +641,8 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
             }
 
             { // Do the diffusive update
+                CH_assert(m_diffSolverPtrs[a_comp] != NULL);
+
                 int ncomp = a_oldScalar.nComp();
                 LevelData<FluxBox> diffFlux(grids, ncomp, IntVect::Zero); // The IntVect::Zero is important here!
                 m_diffSolverPtrs[a_comp]->updateSoln(a_newScalar,
@@ -992,7 +993,7 @@ void AMRNavierStokes::getNewVelocity (LevelData<FArrayBox>&       a_rhs,
     }
 
     // Compute the tidal forcing term
-    if (s_tidalU0 * s_tidalOmega != 0.0) {
+    if (s_tidalU0.sum() * s_tidalOmega != 0.0) {
         // Compute the gravitational source term.
         LevelData<FArrayBox> tidalSource(grids, SpaceDim);
         this->fillTidalSource(tidalSource, a_oldTime, a_dt);
@@ -1309,7 +1310,6 @@ void AMRNavierStokes::predictVelocities (LevelData<FluxBox>&       a_predVel,
     // Declare variables
     const bool isViscous = (s_nu > 0.0);
 
-    const RealVect& dx = m_levGeoPtr->getDx();
     const DisjointBoxLayout& grids = newVel().getBoxes();
     DataIterator dit = grids.dataIterator();
 
@@ -1367,7 +1367,7 @@ void AMRNavierStokes::predictVelocities (LevelData<FluxBox>&       a_predVel,
     }
 
     // Compute the tidal forcing term.
-    if (s_tidalU0 * s_tidalOmega != 0.0) {
+    if (s_tidalU0.sum() * s_tidalOmega != 0.0) {
         // The a_dt passed in is used to compute a derivative.
         // This only needs to be first order, so passing in 0.5*a_dt ot a_dt
         // shouldn't make much of a difference.

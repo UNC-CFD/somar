@@ -55,7 +55,7 @@ TwistedMap::~TwistedMap ()
 // -----------------------------------------------------------------------------
 const char* TwistedMap::getCoorMapName () const
 {
-    static char name[20];
+    static char name[40];
     sprintf(name, "Twisted (type %d)", m_twistType);
     return name;
 }

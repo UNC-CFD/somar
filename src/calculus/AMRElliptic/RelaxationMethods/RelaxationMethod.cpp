@@ -224,8 +224,6 @@ void RelaxationMethod::collectBoundaryData ()
     m_simpleBoundaryBoxData.resize(0);
 
     for (dit.reset(); dit.ok(); ++dit) {
-        const FluxBox&   JgupFlub = (*m_FCJgup)[dit];
-        const FArrayBox& JinvFAB  = (*m_CCJinv)[dit];
         const Box& valid = grids[dit];
         const Box interior = grow(valid, -m_activeDirs);
 

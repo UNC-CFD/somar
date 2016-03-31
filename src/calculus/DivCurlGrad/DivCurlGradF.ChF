@@ -26,6 +26,51 @@ c*******************************************************************************
 
 
 c -------------------------------------------------------------------
+c CCPartialD
+c  This subroutine computes cell-centered (CC) partial derivatives in
+c  a single component direction.
+c
+c  INPUTS/OUTPUTS:
+c  pd       <=  cell centered partial deriv of phi in direction dir
+c  phi       => cell-centered field
+c  region    => CC box where partial deriv is needed
+c  dx        => cell spacing
+c  pdDir     => direction of derivative
+c -----------------------------------------------------------------
+      subroutine CCPartialD (
+     &    CHF_FRA1[pd],
+     &    CHF_CONST_FRA1[phi],
+     &    CHF_BOX[region],
+     &    CHF_CONST_REAL[dx],
+     &    CHF_CONST_INT[pdDir])
+
+      integer CHF_DDECL[i ; j ; k ]
+      REAL_T dxScale
+
+      CH_assert((0 .le. pdDir) .and. (pdDir .lt. CH_SPACEDIM))
+
+      dxScale = half / dx;
+
+      ! Compute the derivative
+      if (pdDir .eq. 0) then
+          CHF_MULTIDO[region;i;j;k]
+            pd(CHF_IX[i;j;k]) = (phi(CHF_IX[i+1;j;k]) - phi(CHF_IX[i-1;j;k])) * dxScale;
+          CHF_ENDDO
+      else if (pdDir .eq. 1) then
+          CHF_MULTIDO[region;i;j;k]
+            pd(CHF_IX[i;j;k]) = (phi(CHF_IX[i;j+1;k]) - phi(CHF_IX[i;j-1;k])) * dxScale;
+          CHF_ENDDO
+      else
+          CHF_MULTIDO[region;i;j;k]
+            pd(CHF_IX[i;j;k]) = (phi(CHF_IX[i;j;k+1]) - phi(CHF_IX[i;j;k-1])) * dxScale;
+          CHF_ENDDO
+      endif
+
+      return
+      end
+
+
+c -------------------------------------------------------------------
 c  This subroutine computes the edge-centered (MAC) gradient in
 c  a single component direction.
 c

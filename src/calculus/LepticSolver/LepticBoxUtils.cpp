@@ -27,6 +27,7 @@
 #include "CH_Timer.H"
 #include "MergeBoxesOnLines.H"
 #include "Subspace.H"
+#include "GNUC_Extensions.H"
 
 
 // -----------------------------------------------------------------------------
@@ -341,10 +342,10 @@ void LepticBoxUtils::inflateLevelGrids (std::list<Box>&       a_inflatedList,
             const Box& ob = a_originalBoxes[idx];
 
             // Does ob contain *flatIt? If so, add ob to the list.
-            if (D_TERM(,
-                smallEnd[0] >= ob.smallEnd(0) && bigEnd[0] <= ob.bigEnd(0), &&
-                smallEnd[1] >= ob.smallEnd(1) && bigEnd[1] <= ob.bigEnd(1))) {
-
+            D_TERM(bool containsFlatIt = ,
+                   smallEnd[0] >= ob.smallEnd(0) && bigEnd[0] <= ob.bigEnd(0), &&
+                   smallEnd[1] >= ob.smallEnd(1) && bigEnd[1] <= ob.bigEnd(1));
+            if (containsFlatIt) {
                 hoverList.push_back(ob);
             }
         }
@@ -459,7 +460,7 @@ void LepticBoxUtils::createDisjointBoxList (std::list<Box>&    a_disjointBoxList
         IntVect ref(D_DECL(4,4,4));
         ref[CH_SPACEDIM-1] = 1;
 
-        bool needsReplacement = false;
+        __nowarn_unused bool needsReplacement = false; // Do we actually need this?
 
         // Create the resolved list of boxes over disjointBox.
         if (coarsenable(disjointBox, ref)) {
@@ -510,7 +511,7 @@ bool LepticBoxUtils::resolveQuadrants (std::list<Box>&   a_quadrantList,
     CH_assert(a_boxArray.size() > 0);
 
     // Split the test box into quadrants.
-    const int numBoxes = D_TERM(,2,*2);
+    const int numBoxes = D_TERM(1,*2,*2);
     Vector<Box> quadrants(numBoxes, a_testBox);
 
     int choppt = a_testBox.smallEnd(0) + a_testBox.size(0) / 2;

@@ -184,7 +184,7 @@ void Gradient::levelGradientMAC (LevelData<FluxBox>&           a_edgeGrad,
                 // loop over component directions in edgeGrad
                 // (this will be direction of gradient)
                 for (int dir = 0; dir < thisEdgeGrad.nComp(); ++dir) {
-                    int gradComp = dir;
+                    // int gradComp = dir;
                     int phiComp = 0;
                     int numComp = 1;
                     singleBoxMacGrad(thisEdgeGradDirFab, thisPhi,

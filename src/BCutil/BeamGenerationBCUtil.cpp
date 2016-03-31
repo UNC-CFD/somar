@@ -28,10 +28,6 @@
 #include "Debug.H"
 
 
-bool BeamGenerationBCUtil::s_tidalParamsRead = false;
-Real BeamGenerationBCUtil::s_tidalOmega = 0.0;
-Real BeamGenerationBCUtil::s_tidalU0 = 0.0;
-
 
 // -----------------------------------------------------------------------------
 // This not only sets BC values, but also determines the background
@@ -46,7 +42,7 @@ void BeamGenerationBCUtil::bscalBCValues (Real*           a_pos,
                                           Real            a_time)
 {
     // Linear stratification
-    const static Real Nsq = 0.00001493;
+    const static Real Nsq = 1.493e-5;
     a_value[0] = -Nsq * a_pos[CH_SPACEDIM-1];
 
     // // Quadratic stratification
@@ -62,16 +58,7 @@ void BeamGenerationBCUtil::bscalBCValues (Real*           a_pos,
 // Default constructor
 // -----------------------------------------------------------------------------
 BeamGenerationBCUtil::BeamGenerationBCUtil ()
-{
-    if (s_tidalParamsRead) return;
-
-    const ProblemContext* ctx = ProblemContext::getInstance();
-
-    s_tidalOmega = ctx->tidalOmega;
-    s_tidalU0 = ctx->tidalU0;
-
-    s_tidalParamsRead = true;
-}
+{}
 
 
 // -----------------------------------------------------------------------------
@@ -154,141 +141,6 @@ void BeamGenerationBCUtil::setBackgroundScalar (FArrayBox&           a_scalarFAB
         // We do not have a background scalar.
         a_scalarFAB.setVal(0.0);
     }
-}
-
-
-// -----------------------------------------------------------------------------
-// Sets the (vector scaled) target velocity for the sponge layer. By default,
-// this function persuades the velocity field to approach its inflow value.
-// -----------------------------------------------------------------------------
-void BeamGenerationBCUtil::fillVelSpongeLayerTarget (FArrayBox&           a_target,
-                                                     const int            a_velComp,
-                                                     const int            a_spongeDir,
-                                                     const Side::LoHiSide a_spongeSide,
-                                                     const LevelGeometry& a_levGeo,
-                                                     const DataIndex&     a_di,
-                                                     const Real           a_time)
-{
-    // Sanity checks
-    CH_assert(useSpongeLayer());
-    CH_assert(a_target.nComp() == 1);
-    CH_assert(0 <= a_spongeDir);
-    CH_assert(a_spongeDir < SpaceDim);
-
-    // Target is the inflow/outflow value.
-    if (a_spongeDir == 0) {
-        if (a_velComp == 0) {
-            a_target.setVal(s_tidalU0 * sin(s_tidalOmega * a_time));
-        } else {
-            a_target.setVal(0.0);
-        }
-    } else {
-        MayDay::Error("BeamGenerationBCUtil::fillVelSpongeLayerTarget "
-                      "can only set a sponge target when a_spongeDir = 0");
-    }
-}
-
-
-// -----------------------------------------------------------------------------
-// basicVelFuncBC
-// Sets physical BCs on velocities.
-// -----------------------------------------------------------------------------
-BCMethodHolder BeamGenerationBCUtil::basicVelFuncBC (int a_veldir, bool a_isViscous) const
-{
-    const IntVect hUnit = IntVect::Unit - BASISV(CH_SPACEDIM-1);
-    const IntVect vUnit = BASISV(CH_SPACEDIM-1);
-
-    BCMethodHolder holder;
-
-    if (a_veldir == 0) {
-        //               Freeslip
-        // u: Extrap 0 |==========| Extrap 0
-        //                Diri 0
-
-        // Low order extrap in horizontal (sponged) directions
-        int extrapOrder = 0;
-        RefCountedPtr<BCGhostClass> horizBCPtr(
-            new EllipticExtrapBCGhostClass(extrapOrder,
-                                           hUnit,
-                                           hUnit)
-        );
-        holder.addBCMethod(horizBCPtr);
-
-        RefCountedPtr<BCFluxClass> fluxBCPtr(
-            new EllipticConstNeumBCFluxClass(RealVect::Zero,
-                                             RealVect::Zero,
-                                             BASISV(0),
-                                             BASISV(0))
-        );
-        holder.addBCMethod(fluxBCPtr);
-
-        // Free slip on high end in vertical dir
-        RefCountedPtr<BCGhostClass> hiVertBCPtr = RefCountedPtr<BCGhostClass>(
-            new BasicVelocityBCGhostClass(0.0,             // inflowVel
-                                          -1,              // inflowDir
-                                          Side::Lo,        // inflowSide
-                                          -1,              // outflowDir
-                                          Side::Hi,        // outflowSide
-                                          a_veldir,
-                                          false,           // isViscous?
-                                          IntVect(D_DECL(0,0,0)),
-                                          vUnit)
-        );
-        holder.addBCMethod(hiVertBCPtr);
-
-
-        // No slip on low end in vertical dir
-        RefCountedPtr<BCGhostClass> loVertBCPtr = RefCountedPtr<BCGhostClass>(
-            new BasicVelocityBCGhostClass(0.0,             // inflowVel
-                                          -1,              // inflowDir
-                                          Side::Lo,        // inflowSide
-                                          -1,              // outflowDir
-                                          Side::Hi,        // outflowSide
-                                          a_veldir,
-                                          a_isViscous,
-                                          vUnit,
-                                          IntVect(D_DECL(0,0,0)))
-        );
-        holder.addBCMethod(loVertBCPtr);
-
-    } else {
-        //                Diri 0
-        // w:   Neum 0 |==========| Neum 0
-        //                Diri 0
-
-        // Low order extrap in horizontal (sponged) directions
-        int extrapOrder = 0;
-        RefCountedPtr<BCGhostClass> horizBCPtr(
-            new EllipticExtrapBCGhostClass(extrapOrder,
-                                           hUnit,
-                                           hUnit)
-        );
-        holder.addBCMethod(horizBCPtr);
-
-        RefCountedPtr<BCFluxClass> fluxBCPtr(
-            new EllipticConstNeumBCFluxClass(RealVect::Zero,
-                                             RealVect::Zero,
-                                             BASISV(0),
-                                             BASISV(0))
-        );
-        holder.addBCMethod(fluxBCPtr);
-
-        // Diri 0 in vertical dir
-        RefCountedPtr<BCGhostClass> vertBCPtr = RefCountedPtr<BCGhostClass>(
-            new BasicVelocityBCGhostClass(0.0,             // inflowVel
-                                          -1,              // inflowDir
-                                          Side::Lo,        // inflowSide
-                                          -1,              // outflowDir
-                                          Side::Hi,        // outflowSide
-                                          a_veldir,
-                                          a_isViscous,
-                                          vUnit,
-                                          vUnit)
-        );
-        holder.addBCMethod(vertBCPtr);
-    }
-
-    return holder;
 }
 
 
@@ -464,7 +316,7 @@ void BeamGeneratorNeumBCGhostClass::operator() (FArrayBox&           a_state,
 
     // Alias only the components we want to alter
     const Interval interv = (a_interval == Interval())? a_state.interval(): a_interval;
-    const int scomp = interv.begin();
+    // const int scomp = interv.begin();
     const int ncomp = interv.size();
     CH_assert(a_state.nComp() > interv.end());
     FArrayBox stateAlias(interv, a_state);

@@ -164,7 +164,7 @@ public:
         };
     };
     inline virtual int exitStatusInt () const;
-    virtual char* exitStatusStr () const;
+    virtual const char* exitStatusStr () const;
 
 protected:
     // Computing utilities...

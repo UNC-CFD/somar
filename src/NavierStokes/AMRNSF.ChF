@@ -115,6 +115,7 @@ c ----------------------------------------------------------------
       REAL_T thisVel
       REAL_T thisC0i
       REAL_T totalVel(0:CH_SPACEDIM-1)
+      REAL_T, parameter :: SMALLVAL = 1.0e-12
 
       CH_assert((CHF_NCOMP[c0i] .eq. CH_SPACEDIM))
       CH_assert((CHF_NCOMP[vel] .eq. CH_SPACEDIM))
@@ -136,13 +137,13 @@ c ----------------------------------------------------------------
 
         ! minDt = Min_i[dXi^i / totalVel]
         CHF_DTERM[
-        if (totalVel(0) .ne. zero) then
+        if (totalVel(0) .le. SMALLVAL) then
           minDt = Min(minDt, dXi(0) / totalVel(0))
         endif;
-        if (totalVel(1) .ne. zero) then
+        if (totalVel(1) .le. SMALLVAL) then
           minDt = Min(minDt, dXi(1) / totalVel(1))
         endif;
-        if (totalVel(2) .ne. zero) then
+        if (totalVel(2) .le. SMALLVAL) then
           minDt = Min(minDt, dXi(2) / totalVel(2))
         endif]
       CHF_ENDDO
@@ -216,10 +217,11 @@ c ----------------------------------------------------------------
 
       integer CHF_AUTODECL[i]
       integer ncomp, comp
+      REAL_T, parameter :: SMALLVAL = 1.0d-12
 
       ncomp = CHF_NCOMP[state]
 
-      if (power .eq. half) then
+      if (abs(power-half) .le. SMALLVAL) then
         do comp = 0, ncomp-1
           CHF_AUTOMULTIDO[region;i]
             state(CHF_AUTOIX[i],comp) = sqrt(state(CHF_AUTOIX[i],comp))

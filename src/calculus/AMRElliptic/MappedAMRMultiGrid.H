@@ -519,15 +519,13 @@ public:
     Real m_eps;
     Real m_hang;
     Real m_normThresh;
-    bool m_solverParamsSet;
     int m_imin;
     int m_iterMax;
-    int m_exitStatus;
+    int m_verbosity;
     int m_pre;
     int m_post;
     int m_bottom;
     int m_numMG;
-    int m_verbosity;
 
     // max no. of coarsenings -- -1 (default) means coarsen as far as possible
     // If using a value besides the default, need to set it _before_ the define
@@ -542,6 +540,9 @@ public:
 
     // used to give an additional cushion in the EPS used for bottom solves
     Real m_bottomSolverEpsCushion;
+
+    bool m_solverParamsSet;
+    int m_exitStatus;
 
 protected:
     //
@@ -710,9 +711,9 @@ MappedAMRMultiGrid<T>::MappedAMRMultiGrid ()
   m_maxDepth(-1),
   m_convergenceMetric(0.),
   m_bottomSolverEpsCushion(1.0),
+  m_solverParamsSet(false),
   m_bottomSolver(NULL),
-  m_inspectors(),
-  m_solverParamsSet(false)
+  m_inspectors()
 {;}
 
 

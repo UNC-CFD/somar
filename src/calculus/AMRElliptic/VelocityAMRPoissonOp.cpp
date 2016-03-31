@@ -36,6 +36,12 @@
 //#define _USE_EXTRAP_AT_CF_
 #define _CF_EXTRAP_ORDER_ 2
 
+#if CH_SPACEDIM == 2
+#   define D_HTERM(a,b) a
+#else
+#   define D_HTERM(a,b) a b
+#endif
+
 
 // -----------------------------------------------------------------------------
 // Defines this op to simply calculate Laplacians and residuals.
@@ -105,9 +111,8 @@ void VelocityAMRPoissonOp::applyOpI (LevelData<FArrayBox>&        a_lhs,
                    this->getFluxComplete(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);,
                    this->getFluxComplete(fluxFB[2], phiFAB, extrapFAB, surroundingNodes(valid,2), dit(), 2);)
         } else {
-            D_TERM(,
-                   this->getFluxComplete(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
-                   this->getFluxComplete(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
+            D_HTERM(this->getFluxComplete(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
+                    this->getFluxComplete(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
         }
 
         // Set boundary fluxes

@@ -690,8 +690,8 @@ MappedAMRPoissonOpFactory::MGnewOp(const ProblemDomain&   a_indexSpace,
 
     if (removeAvg) {
         const Real dxProduct = m_horizontalFactory?
-                               (D_TERM(,dx[0],*dx[1])):
-                               (D_TERM(dx[0],*dx[1],*dx[2]));
+                               (D_TERM(1.0, *dx[0], *dx[1])):
+                               (D_TERM(dx[0], *dx[1], *dx[2]));
         newOp->m_prolongPtr = new ZeroAvgConstInterpPS(dxProduct, newOp->m_CCJinv);
         // pout() << "Using ZeroAvgConstInterpPS" << endl;
     } else {
@@ -899,8 +899,8 @@ MappedAMRPoissonOpFactory::AMRnewOp(const ProblemDomain& a_indexSpace)
     if (removeAvg) {
         const RealVect& dx = newOp->m_dx;
         const Real dxProduct = m_horizontalFactory?
-                               (D_TERM(,dx[0],*dx[1])):
-                               (D_TERM(dx[0],*dx[1],*dx[2]));
+                               (D_TERM(1.0, *dx[0], *dx[1])):
+                               (D_TERM(dx[0], *dx[1], *dx[2]));
         newOp->m_prolongPtr = new ZeroAvgConstInterpPS(dxProduct, newOp->m_CCJinv);
         // pout() << "Using ZeroAvgConstInterpPS" << endl;
     } else {
@@ -1180,7 +1180,7 @@ void MappedAMRPoissonOpFactory::fill_MGfields(const int      a_AMRlevel,
         // Grab the fine fields
         const RefCountedPtr<LevelData<FluxBox> >& fineJgup = m_vvJgup[a_AMRlevel][a_MGdepth-1];
         const RefCountedPtr<LevelData<FArrayBox> >& fineJinv = m_vvJinv[a_AMRlevel][a_MGdepth-1];
-        const RefCountedPtr<LevelData<FArrayBox> >& fineLapDiag = m_vvlapDiag[a_AMRlevel][a_MGdepth-1];
+        // const RefCountedPtr<LevelData<FArrayBox> >& fineLapDiag = m_vvlapDiag[a_AMRlevel][a_MGdepth-1];
 
         const DisjointBoxLayout& fineGrids = fineJgup->getBoxes();
         const DisjointBoxLayout& crseGrids = Jgup->getBoxes();

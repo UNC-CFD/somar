@@ -20,7 +20,8 @@ c  USA
 c
 c  For up-to-date contact information, please visit the repository homepage,
 c  https://github.com/somarhub.
-c*******************************************************************************#include "CONSTANTS.H"
+c*******************************************************************************
+#include "CONSTANTS.H"
 #include "Subspace.H"
 #include "AddlFortranMacros.H"
 
@@ -56,9 +57,6 @@ c ----------------------------------------------------------------
 
       integer CHF_AUTODECL[i]
       REAL_T offset, xFrac, xiFrac
-
-      ! Declare stretching functions
-      double precision, external :: HORIZPHI
 
       CH_assert(((xBoxDirType .eq. 0) .or. (xBoxDirType .eq. 1)))
       offset = half * (one - dble(xBoxDirType))
@@ -100,9 +98,6 @@ c ----------------------------------------------------------------
       REAL_T H, dZeta, zetaFrac, zFrac, dFrac
       REAL_T zOffset
 
-      ! Declare stretching functions
-      double precision, external :: VERTPHI
-
       H = L(CH_SPACEDIM-1)
       dZeta = dXi(CH_SPACEDIM-1)
       zOffset = half * (one - dble(zBoxType(CH_SPACEDIM-1)))
@@ -136,9 +131,6 @@ c ----------------------------------------------------------------
       integer CHF_AUTODECL[i]
       integer CHF_AUTODECL[ii]
       REAL_T offsetF, offsetB, invDXi, twoDXiOnL, XiF, XiB
-
-      ! Declare stretching functions
-      double precision, external :: HORIZPHI
 
       CHF_AUTOID[ii;nu]
       offsetF = half * (one - dble(destBoxType(nu))) + half
@@ -184,9 +176,6 @@ c ----------------------------------------------------------------
       integer CHF_AUTODECL[ii]
       REAL_T invDXi, dZeta, H, zetaFrac, DDepthDXi
 
-      ! Declare stretching functions
-      double precision, external :: VERTPHI
-
       CHF_AUTOID[ii;nu]
       invDXi = one / dXi(nu)
       dZeta = dXi(CH_SPACEDIM-1)
@@ -219,9 +208,6 @@ c ----------------------------------------------------------------
 
       integer CHF_AUTODECL[i]
       REAL_T H, dZeta, zetaFrac, depthFrac
-
-      ! Declare stretching functions
-      double precision, external :: DVERTPHI
 
       H = L(CH_SPACEDIM-1)
       dZeta = dXi(CH_SPACEDIM-1)

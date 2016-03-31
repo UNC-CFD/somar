@@ -174,8 +174,6 @@ void ExtrapolateCFEV (FArrayBox&           a_state,
     CH_TIME("ExtrapolateCFEV");
     CH_assert(0 <= a_order && a_order <= 4);
 
-    const int isign = sign(a_side);
-
     const CFIVS* cfivs = NULL;
     CFRegion& cfregionRef = const_cast<CFRegion&>(a_region);
 

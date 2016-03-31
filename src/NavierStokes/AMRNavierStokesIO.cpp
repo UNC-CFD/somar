@@ -52,7 +52,7 @@ void AMRNavierStokes::writeCheckpointHeader(HDF5Handle& a_handle) const
 
     // Scalar metadata...
     header.m_int["num_components"] = s_num_scal_comps;
-    char comp_str[30];
+    char comp_str[40];
     for (int comp = 0; comp < s_num_scal_comps; ++comp) {
         sprintf (comp_str, "component_%d", comp);
         header.m_string[comp_str] = s_scal_names[comp];
@@ -454,7 +454,7 @@ void AMRNavierStokes::readCheckpointLevel (HDF5Handle& a_handle)
         // Read scalar data
         for (int comp = 0; comp < s_num_scal_comps; ++comp) {
             {
-                char scal_str[20];
+                char scal_str[50];
                 sprintf(scal_str, "new_scalar_component_%d", comp);
 
                 LevelData<FArrayBox>& new_scal = *m_scal_new[comp];
@@ -467,7 +467,7 @@ void AMRNavierStokes::readCheckpointLevel (HDF5Handle& a_handle)
                 }
             }
             {
-                char scal_str[20];
+                char scal_str[50];
                 sprintf(scal_str, "old_scalar_component_%d", comp);
 
                 LevelData<FArrayBox>& old_scal = *m_scal_old[comp];
@@ -540,7 +540,7 @@ void AMRNavierStokes::readCheckpointLevel (HDF5Handle& a_handle)
                                                            m_eLambda,
                                                            "eLambda",
                                                            grids);
-            if (ccPressureData_status != 0) {
+            if (eLambdaData_status != 0) {
                 MayDay::Error("AMRNavierStokes::readCheckpointLevel: file does not contain eLambda data");
             }
 

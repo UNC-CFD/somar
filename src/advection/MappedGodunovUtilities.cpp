@@ -316,8 +316,6 @@ void MappedGodunovUtilities::slopeLimiterExtPreserving (FArrayBox&       a_dW,
             CHF_CONST_INT(a_dir),
             CHF_BOX(centerBox));
     }
-    // dummy statement in order to get around gdb bug
-    int dummy_unused = 0; dummy_unused = 0;
 }
 
 
@@ -462,9 +460,6 @@ void MappedGodunovUtilities::PPMLimiter (FArrayBox& a_dWMinus,
             CHF_CONST_REAL(limitC),
             CHF_CONST_REAL(c3),
             CHF_CONST_REAL(eps));
-
-        // dummy statement in order to get around gdb bug
-        int dummy_unused = 0; dummy_unused = 0;
 
     } else {
         FORT_PPMLIMITERF (

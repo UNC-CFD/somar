@@ -45,6 +45,12 @@
 #define HEADER() \
 //    if(procID() == 0) {cout << m_levid << " [" << __LINE__ << "]: " << __PRETTY_FUNCTION__ << endl;}
 
+#if CH_SPACEDIM == 2
+#   define D_HTERM(a,b) a
+#else
+#   define D_HTERM(a,b) a b
+#endif
+
 static const bool considerCellSizes = false;
 
 int MappedAMRPoissonOp::s_maxCoarse = 4;    // The smallest allowable grid size
@@ -658,7 +664,6 @@ void MappedAMRPoissonOp::residualI(LevelData<FArrayBox>&       a_lhs,
     // Loop through grids and calculate rhs-L[phi].
     for (dit.begin(); dit.ok(); ++dit) {
         FArrayBox& lhsFAB = a_lhs[dit];
-        const FArrayBox& phiFAB = a_phi[dit];
         const FArrayBox& rhsFAB = a_rhs[dit];
         const Box& region = grids[dit];
 
@@ -798,7 +803,6 @@ void MappedAMRPoissonOp::applyOpI (LevelData<FArrayBox>&       a_lhs,
         const FluxBox&   JgupFB    = (*m_FCJgup)[dit];
         const FArrayBox& JinvFAB   = (*m_CCJinv)[dit];
         const Box&       valid     = grids[dit];
-        const Box&       phiBox    = phiFAB.box();
 
         // Create temp holders
         FluxBox fluxFB(valid, ncomps);
@@ -822,9 +826,8 @@ void MappedAMRPoissonOp::applyOpI (LevelData<FArrayBox>&       a_lhs,
                    this->getFluxComplete(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);,
                    this->getFluxComplete(fluxFB[2], phiFAB, extrapFAB, surroundingNodes(valid,2), dit(), 2);)
         } else {
-            D_TERM(,
-                   this->getFluxComplete(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
-                   this->getFluxComplete(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
+            D_HTERM(this->getFluxComplete(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
+                    this->getFluxComplete(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
         }
         CH_STOP(gradTmr);
 
@@ -928,7 +931,6 @@ void MappedAMRPoissonOp::applyOpNoBoundary(LevelData<FArrayBox>&       a_lhs,
         FluxBox&         fluxFB    = flux[dit];
         const FArrayBox& phiFAB    = a_phi[dit];
         FArrayBox&       extrapFAB = extrap[dit];
-        const FluxBox&   JgupFB    = (*m_FCJgup)[dit];
         Box              valid     = grids[dit];
 
         // Extrapolate ghosts for non-diagonal derivatives
@@ -956,9 +958,8 @@ void MappedAMRPoissonOp::applyOpNoBoundary(LevelData<FArrayBox>&       a_lhs,
                    this->getFluxDuringExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);,
                    this->getFluxDuringExchange(fluxFB[2], phiFAB, extrapFAB, surroundingNodes(valid,2), dit(), 2);)
         } else {
-            D_TERM(,
-                   this->getFluxDuringExchange(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
-                   this->getFluxDuringExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
+            D_HTERM(this->getFluxDuringExchange(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
+                    this->getFluxDuringExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
         }
     }
 
@@ -978,9 +979,8 @@ void MappedAMRPoissonOp::applyOpNoBoundary(LevelData<FArrayBox>&       a_lhs,
                    this->getFluxAfterExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);,
                    this->getFluxAfterExchange(fluxFB[2], phiFAB, extrapFAB, surroundingNodes(valid,2), dit(), 2);)
         } else {
-            D_TERM(,
-                   this->getFluxAfterExchange(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
-                   this->getFluxAfterExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
+            D_HTERM(this->getFluxAfterExchange(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
+                    this->getFluxAfterExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
         }
 
         // Set boundary fluxes
@@ -1491,7 +1491,6 @@ void MappedAMRPoissonOp::reflux(const LevelData<FArrayBox>&              a_phiFi
     CH_START(t2);
     for (DataIterator ditc(crseGrids); ditc.ok(); ++ditc) {
         const FArrayBox& crsePhi = a_phi[ditc];
-        const Box& crseRegion = crseGrids[ditc];
 
         if (m_levfluxreg.hasCF(ditc())) {
             for (int idir = 0; idir < dims; ++idir) {
@@ -1657,7 +1656,6 @@ void MappedAMRPoissonOp::getFlux (FArrayBox&       a_flux,
 
     // Create references for convenience
     const DisjointBoxLayout& grids = m_FCJgup->getBoxes();
-    const FArrayBox& JgupFAB = (*m_FCJgup)[a_di][a_dir];
     const int ncomps = a_data.nComp();
 
 #ifndef NDEBUG
@@ -2053,10 +2051,6 @@ void MappedAMRPoissonOp::interpCFGhosts (LevelData<FArrayBox>&       a_phi,
         CH_assert(a_phi.getBoxes().physDomain() == m_domain); // This level must be the fine level.
         CH_assert(!m_horizontalOp); // Because we don't have the coarse phi available.
 
-        const DisjointBoxLayout& fineGrids = a_phi.getBoxes();
-        const DisjointBoxLayout& crseGrids = a_phiCoarsePtr->getBoxes();
-        const ProblemDomain& crseDomain = crseGrids.physDomain();
-        const int ncomps = a_phi.nComp();
         const IntVect refRatio = this->refToCoarser();
         const IntVect activeDirs = this->getActiveDirs();
 

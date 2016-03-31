@@ -35,7 +35,6 @@
 #include "SetValLevel.H"
 #include <fstream>
 #include <iomanip>
-
 #include "AMRCCProjector.H"
 
 
@@ -179,7 +178,6 @@ void AMRNavierStokes::initialData ()
     // Gather geometric info
     const Box domBox = m_problem_domain.domainBox();
     const IntVect iv0 = domBox.smallEnd();
-    const RealVect dx = m_levGeoPtr->getDx();
     const DisjointBoxLayout& grids = newVel().getBoxes();
     DataIterator dit(grids);
 
@@ -254,7 +252,6 @@ void AMRNavierStokes::initializeInternalWaveSpeed ()
 {
     CH_TIME("AMRNavierStokes::initializeInternalWaveSpeed");
 
-    static int maxLevelSolved = -1;
     const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
 
     if (m_level == 0) {
@@ -301,8 +298,6 @@ void AMRNavierStokes::initializeInternalWaveSpeed ()
                 CHF_CONST_FRA(dXidxFAB),
                 CHF_BOX(valid));
         }
-
-        maxLevelSolved = 0;
 
     } else {
         MayDay::Error("Right now, I'm not allowing this to be solved on levels > 0. "
@@ -639,8 +634,6 @@ void AMRNavierStokes::levelSetup (const DisjointBoxLayout& a_grids)
         crseGridsPtr = &(crse_amrns_ptr->newVel().getBoxes());
         CH_assert(m_levGeoPtr->getCoarserPtr()->getBoxes() == *crseGridsPtr);
 
-        const LevelGeometry* crseLevGeoPtr = m_levGeoPtr->getCoarserPtr();
-
         // Define averaging tools
         m_coarse_average.define(a_grids, *crseGridsPtr, SpaceDim, nRefCrse, IntVect::Zero);
         m_coarse_average_scal.define(a_grids, *crseGridsPtr, 1, nRefCrse, IntVect::Zero);
@@ -692,7 +685,8 @@ void AMRNavierStokes::levelSetup (const DisjointBoxLayout& a_grids)
     // Check if any of the scalars are diffusive
     bool isDiffusive = false;
     for (int comp = 0; comp < s_num_scal_comps; ++comp) {
-        if (s_scal_coeffs[comp] > 0) isDiffusive = true;
+        if (s_scal_coeffs[comp] > 0.0) isDiffusive = true;
+        if (s_nu > 0.0) isDiffusive = true;
     }
 
     // If so, define the Laplacian op for the scalars

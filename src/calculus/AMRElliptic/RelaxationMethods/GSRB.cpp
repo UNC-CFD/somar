@@ -45,6 +45,12 @@
            CHFPTR(a.hiVect()[4] - iv[4]),    \
            CHFPTR(a.hiVect()[5] - iv[5]) )
 
+#if CH_SPACEDIM == 2
+#   define D_HTERM(a,b) a
+#else
+#   define D_HTERM(a,b) a b
+#endif
+
 
 // -----------------------------------------------------------------------------
 // The complete GSRB method with no shortcuts for speed.
@@ -112,7 +118,6 @@ void LooseGSRB::relax (LevelData<FArrayBox>&       a_phi,
     // Gather needed info
     const DisjointBoxLayout& grids = a_phi.disjointBoxLayout();
     DataIterator dit = a_phi.dataIterator();
-    const ProblemDomain& domain = grids.physDomain();
 
     // Begin communication
     a_phi.exchangeBegin(m_exchangeCopier);
@@ -161,7 +166,6 @@ void LineGSRB::relax (LevelData<FArrayBox>&       a_phi,
     const DisjointBoxLayout& grids = a_phi.getBoxes();
     DataIterator dit = grids.dataIterator();
     const ProblemDomain& domain = grids.physDomain();
-    const Box& domBox = domain.domainBox();
     const BCDescriptor& fluxDesc = m_bc.getFluxDescriptor();
     int stencil[CH_SPACEDIM][2];
 
@@ -364,9 +368,8 @@ void BaseGSRB::fullStencilGSRB (FArrayBox&       a_phi,
 
     // For now, m_activeDirs can't be just anything.
     const bool horizontalOp = (m_activeDirs[SpaceDim-1] == 0);
-    D_TERM(,
-           CH_assert(m_activeDirs[0] == 1);,
-           CH_assert(m_activeDirs[1] == 1);)
+    D_HTERM(CH_assert(m_activeDirs[0] == 1);,
+            CH_assert(m_activeDirs[1] == 1);)
 
     // Call the appropriate Fortran routine.
     if (CH_SPACEDIM == 2) {
@@ -502,9 +505,8 @@ void BaseGSRB::boundaryGSRB (LevelData<FArrayBox>&       a_phi,
 
     // For now, m_activeDirs can't be just anything.
     const bool horizontalOp = (m_activeDirs[SpaceDim-1] == 0);
-    D_TERM(,
-           CH_assert(m_activeDirs[0] == 1);,
-           CH_assert(m_activeDirs[1] == 1);)
+    D_HTERM(CH_assert(m_activeDirs[0] == 1);,
+            CH_assert(m_activeDirs[1] == 1);)
 
     const Vector<BoundaryBoxData>& boundaryBoxDataRef
         = (a_doAllBoundaries? m_simpleBoundaryBoxData: m_boundaryBoxData);
@@ -515,7 +517,6 @@ void BaseGSRB::boundaryGSRB (LevelData<FArrayBox>&       a_phi,
         // Grab references to metric and diagonals.
         const FluxBox&   JgupFB     = (*m_FCJgup)[data.index];
         const FArrayBox& JinvFAB    = (*m_CCJinv)[data.index];
-        const FArrayBox& lapDiagFAB = (*m_lapDiag)[data.index];
 
         // Grab references to fields
         FArrayBox&       phiFAB     = a_phi[data.index];

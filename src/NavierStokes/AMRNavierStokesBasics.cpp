@@ -59,7 +59,7 @@ bool AMRNavierStokes::s_limitDtViaPressureGradient = false;
 bool AMRNavierStokes::s_limitDtViaInternalWaveSpeed = false;
 
 Real AMRNavierStokes::s_tidalOmega = 0.0;
-Real AMRNavierStokes::s_tidalU0 = 0.0;
+RealVect AMRNavierStokes::s_tidalU0 = RealVect::Zero;
 
 bool AMRNavierStokes::s_advective_momentum_reflux = false;
 bool AMRNavierStokes::s_diffusive_momentum_reflux = false;
@@ -192,9 +192,9 @@ Vector<std::string> AMRNavierStokes::s_scal_names(0);
 // Default constructor
 // -----------------------------------------------------------------------------
 AMRNavierStokes::AMRNavierStokes ()
-: m_cfl(0.8),
-  m_finest_level(false),
-  m_is_empty(true)
+: m_finest_level(false),
+  m_is_empty(true),
+  m_cfl(0.8)
 {
     if (s_verbosity >= 5) {
         pout() << "AMRNavierStokes default constructor" << endl;

@@ -139,8 +139,6 @@ void DEMMap::fill_bathymetry (FArrayBox&       a_dest,
     // We determine what level has called fill_bathymetry
     // and copy the bathymetry from the FArrayBox at the
     // appropriate level.
-    const ProblemContext* ctx = ProblemContext::getInstance();
-
     RealVect DX = a_dXi;
     int level = this->whatIsMyLevel(DX);
     if (level < 0) {
@@ -294,8 +292,8 @@ void DEMMap::Create_Level_DEM_3D (const Vector<Real>& depthVect,
     }
 
     // Stuff we need on the level=0 grid. We iterate from here on
-    Real dX = m_lev0DXi[0];
-    Real dY = m_lev0DXi[1];
+    RealVect levDXi = m_lev0DXi;
+    levDXi[SpaceDim-1] = 0.0;
     Box interpBox = ctx->domain.domainBox();
 
     // We enlarge the box to accomodate all the necessary ghost points.
@@ -308,12 +306,9 @@ void DEMMap::Create_Level_DEM_3D (const Vector<Real>& depthVect,
     for (int level = 0; level < ctx->max_level + 1; ++level) {
         s_depthPtr[level] = RefCountedPtr<FArrayBox>(new FArrayBox(interpBox, 1));
 
-        BoxIterator bit(interpBox);
-        for (bit.reset(); bit.ok(); ++bit) {
-            const IntVect& nc = bit();
-            xInterp(nc) = nc[0]*dX;
-            yInterp(nc) = nc[1]*dY;
-        }
+        // Gether horizontal Cartesian locations.
+        fill_physCoor(xInterp, 0, 0, levDXi);
+        fill_physCoor(yInterp, 0, 1, levDXi);
 
         // Interpolate onto our interpBox and store the results in the appropriate container
         if (ctx->interpOrder > 0) {
@@ -341,8 +336,8 @@ void DEMMap::Create_Level_DEM_3D (const Vector<Real>& depthVect,
         }
 
         // move on to the next grid
-        dX /= Real(ctx->refRatios[level][0]);
-        dY /= Real(ctx->refRatios[level][1]);
+        levDXi[0] /= Real(ctx->refRatios[level][0]);
+        levDXi[1] /= Real(ctx->refRatios[level][1]);
         interpBox.refine(ctx->refRatios[level]);
         xInterp.resize(interpBox,1);
         yInterp.resize(interpBox,1);
@@ -353,7 +348,7 @@ void DEMMap::Create_Level_DEM_3D (const Vector<Real>& depthVect,
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 void DEMMap::Create_Level_DEM_2D (const Vector<Real>& depthVect,
-                                  const Vector<Real>&xVect)
+                                  const Vector<Real>& xVect)
 {
     const ProblemContext* ctx = ProblemContext::getInstance();
 
@@ -362,7 +357,7 @@ void DEMMap::Create_Level_DEM_2D (const Vector<Real>& depthVect,
     cs.solve(depthVect, xVect);
 
     // Stuff we need on the level=0 grid
-    Real dX = m_lev0DXi[0];
+    RealVect dXi = m_lev0DXi;
 
     // We enlarge the box to accomodate all the necessary ghosts.
     Box interpBox = ctx->domain.domainBox();
@@ -374,9 +369,18 @@ void DEMMap::Create_Level_DEM_2D (const Vector<Real>& depthVect,
     Vector<Real> depthInterp(interpBox.size(0));
 
     for (int level = 0; level < ctx->max_level + 1; ++level) {
-        // we create the coordinates where we will interpolate
-        for (int i = interpBox.smallEnd(0); i < interpBox.bigEnd(0); ++i) {
-            xInterp[i-interpBox.smallEnd(0)] = dX * Real(i);
+        // We need to get the Cartesian x coordinates from the
+        // underlying GeoSourceInterface. We cannot use the
+        // curvilinear xi coordinates because they will not
+        // match the x data in the DEM file.
+        // -ES, 2015-09-22
+        FArrayBox xFAB(interpBox, 1);
+        fill_physCoor(xFAB, 0, 0, dXi);
+
+        IntVect cc = interpBox.smallEnd();
+        for (int idx = 0; idx < xInterp.size(); ++idx) {
+            xInterp[idx] = xFAB(cc);
+            ++cc[0];
         }
 
         cs.interp(depthInterp, xInterp);
@@ -395,7 +399,7 @@ void DEMMap::Create_Level_DEM_2D (const Vector<Real>& depthVect,
         }
 
         // now we update the stuff we need for the next level
-        dX /= Real(ctx->refRatios[level][0]);
+        dXi /= RealVect(ctx->refRatios[level]);
         interpBox.refine(ctx->refRatios[level]);
         xInterp.resize(interpBox.size(0));
         depthInterp.resize(interpBox.size(0));

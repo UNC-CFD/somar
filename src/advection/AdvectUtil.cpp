@@ -99,9 +99,6 @@ void MappedAdvectionUtil::define (const LevelGeometry* a_levGeoPtr,
     m_useHighOrderLimiter = a_useHighOrderLimiter;
     m_useUpwinding = a_useUpwinding;
 
-    const ProblemDomain& domain = a_levGeoPtr->getDomain();
-    const RealVect& dx = a_levGeoPtr->getDx();
-
     // GodunovUtilities asked for a scalar dx, but never used it. Lucky me.
     m_util.define(a_levGeoPtr);
     m_util.highOrderLimiter(a_useHighOrderLimiter);
@@ -1305,9 +1302,6 @@ void MappedAdvectionUtil::PPMFaceValues (FArrayBox&       a_WFace,
         // WAS if (a_a_useLimiting) call face limiter;
         // this removed by petermc, 7 Oct 2010
 
-        // dummy statement in order to get around gdb bug
-        int dummy_unused = 0; dummy_unused = 0;
-
     } else { // !m_highOrderLimiter :  this is the old method
 
         // A box one larger (in direction "a_dir") than the final result box
@@ -1383,9 +1377,6 @@ void MappedAdvectionUtil::PPMFaceValues (FArrayBox&       a_WFace,
 
         // WAS if (a_a_useLimiting) call face limiter;
         // this removed by petermc, 7 Oct 2010
-
-        // dummy statement in order to get around gdb bug
-        int dummy_unused = 0; dummy_unused = 0;
 
     } else { // !m_highOrderLimiter :  this is the old method
 

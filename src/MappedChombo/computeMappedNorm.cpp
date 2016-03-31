@@ -771,12 +771,6 @@ Real computeMappedNormGhost (const Vector<LevelData<FArrayBox>*>& a_phi,
     Real localNormPow = 0.0;
     for (lev = a_lBase; lev <= topLevel; ++lev) {
         const LevelData<FArrayBox>& levelPhi = *a_phi[lev];
-
-        const DisjointBoxLayout* finerGridsPtr = NULL;
-        if (lev < topLevel) {
-            finerGridsPtr = &(a_phi[lev+1]->getBoxes());
-        }
-
         const LevelGeometry& levGeoRef = *vLevGeos[lev];
         CH_assert(levGeoRef.getBoxes() == levelPhi.getBoxes()); // This may be overdoing it.
 

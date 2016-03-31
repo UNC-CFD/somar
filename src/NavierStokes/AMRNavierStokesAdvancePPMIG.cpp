@@ -44,11 +44,9 @@ void AMRNavierStokes::PPMIGTimeStep (const Real a_oldTime,
     pout() << setiosflags(ios::scientific) << setprecision(8) << flush;
 
     // Set up some basic values
-    const RealVect& dx = m_levGeoPtr->getDx();
     const DisjointBoxLayout& grids = newVel().getBoxes();
     DataIterator dit = grids.dataIterator();
     const Box domainBox = m_problem_domain.domainBox();
-    const bool isViscous = (s_nu > 0.0);
 
     // Initialize all flux registers
     if (!finestLevel()) {
@@ -144,7 +142,7 @@ void AMRNavierStokes::doCCIGProjection (LevelData<FArrayBox>&       a_newVel,
 {
     CH_TIME("AMRNavierStokes::doCCIGProjection");
 
-    const Real halfTime = a_oldTime + 0.5 * a_dt;
+    // const Real halfTime = a_oldTime + 0.5 * a_dt;
     const Real newTime  = a_oldTime + 1.0 * a_dt;
     const Real dummyTime = -1.0e300;
     const GeoSourceInterface& geoSource = *(m_levGeoPtr->getGeoSourcePtr());
@@ -297,12 +295,6 @@ void AMRNavierStokes::doCCIGProjection (LevelData<FArrayBox>&       a_newVel,
 
     // 3. Project the velocity.
     if (s_isIncompressible) {
-        // const DisjointBoxLayout* crseGridsPtr = (m_level == 0)? NULL: &(crseNSPtr()->newVel().getBoxes());
-        const DisjointBoxLayout* crseGridsPtr = NULL;
-        if (m_level > 0) {
-            crseGridsPtr = &(crseNSPtr()->newVel().getBoxes());
-        }
-
         // Define the metric.
         m_alteredMetric.define(&geoSource, m_physBCPtr, a_dt*s_gravityTheta);
 

@@ -92,6 +92,21 @@ void AMRNavierStokes::tagCells (IntVectSet& a_tags)
     const DisjointBoxLayout& grids = newVel().getBoxes();
     a_tags.makeEmpty();
 
+    // Fill velocity ghosts.
+    {
+        if (s_nu > 0.0) {
+            // Use viscous BCs
+            VelBCHolder velBC(m_physBCPtr->viscousVelFuncBC());
+            this->setGhostsVelocity(*m_vel_new_ptr, velBC, m_time);
+        } else {
+            // Use inviscid BCs for tracing
+            VelBCHolder velBC(m_physBCPtr->tracingVelFuncBC());
+            this->setGhostsVelocity(*m_vel_new_ptr, velBC, m_time);
+        }
+        // TODO: Use copier.
+        m_vel_new_ptr->exchange();
+    }
+
 
     // ------ Begin of specialized tagging ------
     // To eliminate the painful removal of //s in emacs and vi, I've
@@ -206,7 +221,6 @@ void AMRNavierStokes::tagCells (IntVectSet& a_tags)
     }
     // ------- End of specialized tagging -------
 
-    m_vel_new_ptr->exchange();
 
 
     // Tag on vorticity
@@ -668,6 +682,7 @@ void AMRNavierStokes::regrid (const Vector<Box>& a_new_grids)
         crseNSPtr()->finestLevel(false);
 
 
+        // Setup post-regrid smoothers.
         if (s_smooth_after_regrid) {
             AMRNavierStokes* baseNSPtr = this;
             if (m_level > 0) baseNSPtr = baseNSPtr->crseNSPtr();
@@ -738,10 +753,11 @@ void AMRNavierStokes::regrid (const Vector<Box>& a_new_grids)
                 fine_interp.interpToFine(oldVel(), amrns_ptr->oldVel());
             }
 
-            { // scalars
+            { // lambda and scalars
                 MappedFineInterp fine_interp_scal(grids, 1, nRefCrse, m_problem_domain,
                                                   m_levGeoPtr,
                                                   considerCellVols);
+
                 fine_interp_scal.interpToFine(newLambda(), amrns_ptr->newLambda());
 
                 for (int comp = 0; comp < s_num_scal_comps; ++comp) {
@@ -1005,7 +1021,7 @@ void AMRNavierStokes::postRegrid (int a_lBase)
             lBaseAMRNavierStokes->initializeGlobalPressure();
         } else {
             if (s_isIncompressible) {
-                MayDay::Warning("Fluid is incompressible and you don't want to initialize the pressure??! "
+                MayDay::Warning("Fluid is incompressible and you don't want to initialize the pressure?! "
                                 "You're probably going to blow up.");
             }
         }
@@ -1431,7 +1447,6 @@ void AMRNavierStokes::doPostRegridSmoothing (int a_lBase)
         CH_assert(thisNSPtr->m_level == lev);
 
         // These will be aliased to individual vel comps later.
-        const DisjointBoxLayout& levelGrids = thisNSPtr->m_levGeoPtr->getBoxes();
         newS[lev] = new LevelData<FArrayBox>;
         oldS[lev] = new LevelData<FArrayBox>;
 

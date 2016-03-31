@@ -162,7 +162,6 @@ void BoundaryData<Real>::deepCopy (const BoundaryData<Real>& a_src)
     m_isFlat = a_src.m_isFlat;
 
     const ProblemDomain& domain = m_grids.physDomain();
-    const Box& domBox = domain.domainBox();
     DataIterator dit = m_grids.dataIterator();
 
     for (int dir = 0; dir < SpaceDim; ++dir) {
@@ -397,7 +396,7 @@ RealVect BoundaryData<Real>::integrate (const RealVect& a_dx,
     }
 
 #else
-    Real globalSum = localSum;
+    RealVect globalSum = localSum;
 #endif
 
     // If this is a flat object, fix the z-comp.

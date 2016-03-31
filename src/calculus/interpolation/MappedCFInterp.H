@@ -115,9 +115,9 @@ bool MappedCFInterp::isDefined () const
 // -----------------------------------------------------------------------------
 Real MappedCFInterp::minmod (const Real a, const Real b, const Real c)
 {
-    if (a > 0.0 && b > 0.0 & c > 0.0) {
+    if ((a > 0.0) && (b > 0.0) & (c > 0.0)) {
         return Min(a,Min(b,c));
-    } else if (a < 0.0 && b < 0.0 & c < 0.0) {
+    } else if ((a < 0.0) && (b < 0.0) & (c < 0.0)) {
         return Max(a,Max(b,c));
     }
     return 0.0;

@@ -165,12 +165,14 @@ void AMRNavierStokes::computeVorticity (LevelData<FArrayBox>& a_vorticity) const
     // This breaks the "const"-ness of the function,
     // but is necessary to ensure that boundary
     // conditions are properly set.
-    LevelData<FArrayBox>& vel = *(const_cast<LevelData<FArrayBox>*>(m_vel_new_ptr));
-    const DisjointBoxLayout& grids = vel.getBoxes();
-    DataIterator dit = vel.dataIterator();
-    const Interval& velComps = vel.interval();
+    const DisjointBoxLayout& grids = a_vorticity.getBoxes();
+    DataIterator dit = a_vorticity.dataIterator();
     const RealVect& dx = m_levGeoPtr->getDx();
     const bool isViscous = (s_nu > 0.0);
+
+    // Copy velocity to new holder so we can set BCs.
+    LevelData<FArrayBox> vel(grids, SpaceDim, IntVect::Unit);
+    newVel().copyTo(vel);
 
     // CF BCs
     if (m_level > 0) {

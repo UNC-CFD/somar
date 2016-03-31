@@ -482,7 +482,6 @@ void Divergence::compDivergenceMAC(LevelData<FArrayBox>&     a_div,
         DataIterator ditFine = a_uEdgeFinePtr->dataIterator();
         for (ditFine.reset(); ditFine.ok(); ++ditFine) {
             const FluxBox& thisFineFlux = (*a_uEdgeFinePtr)[ditFine()];
-            Real scale = 1.0;
             Interval srcComps(comp,comp);
 
             for (int dir = 0; dir < SpaceDim; ++dir) {

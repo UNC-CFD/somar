@@ -8,6 +8,37 @@
 extern "C"
 {
 
+#ifndef GUARDCCPARTIALD 
+#define GUARDCCPARTIALD 
+// Prototype for Fortran procedure CCPartialD ...
+//
+void FORTRAN_NAME( CCPARTIALD ,ccpartiald )(
+      CHFp_FRA1(pd)
+      ,CHFp_CONST_FRA1(phi)
+      ,CHFp_BOX(region)
+      ,CHFp_CONST_REAL(dx)
+      ,CHFp_CONST_INT(pdDir) );
+
+#define FORT_CCPARTIALD FORTRAN_NAME( inlineCCPARTIALD, inlineCCPARTIALD)
+#define FORTNT_CCPARTIALD FORTRAN_NAME( CCPARTIALD, ccpartiald)
+
+inline void FORTRAN_NAME(inlineCCPARTIALD, inlineCCPARTIALD)(
+      CHFp_FRA1(pd)
+      ,CHFp_CONST_FRA1(phi)
+      ,CHFp_BOX(region)
+      ,CHFp_CONST_REAL(dx)
+      ,CHFp_CONST_INT(pdDir) )
+{
+ CH_TIMELEAF("FORT_CCPARTIALD");
+ FORTRAN_NAME( CCPARTIALD ,ccpartiald )(
+      CHFt_FRA1(pd)
+      ,CHFt_CONST_FRA1(phi)
+      ,CHFt_BOX(region)
+      ,CHFt_CONST_REAL(dx)
+      ,CHFt_CONST_INT(pdDir) );
+}
+#endif  // GUARDCCPARTIALD 
+
 #ifndef GUARDMAPPEDMACGRAD 
 #define GUARDMAPPEDMACGRAD 
 // Prototype for Fortran procedure MAPPEDMACGRAD ...

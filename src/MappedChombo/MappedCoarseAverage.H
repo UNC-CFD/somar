@@ -96,18 +96,18 @@ protected:
     // Did you call the full define constructor?
     bool m_isDefined;
 
+    // Has a copier been defined to transfer data to coarse-grid layout?
+    bool m_isCopierDefined;
+
+    // Cached copier to handle transfer to coarse-grid layout.
+    Copier m_copier;
+
     // The refinement ratio
     IntVect m_refRatio;
 
     // Work array for the coarsening of the fine data, of the same "shape"
     // as the fine data.
     LevelData<FArrayBox>* m_coarsenedFineData;
-
-    // Has a copier been defined to transfer data to coarse-grid layout?
-    bool m_isCopierDefined;
-
-    // Cached copier to handle transfer to coarse-grid layout.
-    Copier m_copier;
 };
 
 

@@ -1571,7 +1571,7 @@ void LepticMeshRefine::receiveBoxesParallel (const Interval& a_from,
                  source, tag, Chombo_MPI::comm, &status );
     }
 
-    delete sendBuffers.back();
+    delete[] sendBuffers.back();
     sendBuffers.pop_back();
     ch_count.pop_back();
 

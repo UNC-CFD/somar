@@ -324,7 +324,7 @@ protected:
     static RealVect s_domLength;
     static bool s_useBackgroundScalar;
 
-    static Real s_tidalU0;
+    static RealVect s_tidalU0;
     static Real s_tidalOmega;
     static bool s_doTidalFlow;
 

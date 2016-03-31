@@ -228,7 +228,7 @@ void TaylorGreenBCUtil::computeVelError (FArrayBox&           a_errFAB,
     CH_assert(a_mapped || !a_multByJ);
 
     // Get solution data
-    const Real scale = -1.0;
+    // const Real scale = -1.0;
     this->fillVelSoln(a_errFAB, a_levGeo, a_di, a_time);
 
     // Convert solution to match vel.
@@ -357,8 +357,6 @@ void TaylorGreenBCGhostClass::operator() (FArrayBox&           a_state,
 
     for (int idir = 0; idir < SpaceDim; ++idir) {
         if (a_domain.isPeriodic(idir)) continue;
-
-        const FArrayBox& Jgupi = (*a_JgupPtr)[idir];
 
         SideIterator sit;
         for (sit.reset(); sit.ok(); ++sit) {

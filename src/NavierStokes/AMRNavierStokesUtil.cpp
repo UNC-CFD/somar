@@ -573,7 +573,7 @@ Real AMRNavierStokes::computeDt ()
         // Compute min(dx), max(speed), etc.
         const RealVect dx = m_levGeoPtr->getDx();
         RealVect maxVel;
-        int maxVelDir = 0;
+        // int maxVelDir = 0;
         Real maxSpeed = 0.0;
         Real minDx = dx[0];
 
@@ -582,7 +582,7 @@ Real AMRNavierStokes::computeDt ()
 
             if (maxSpeed < maxVel[dir]) {
                 maxSpeed = maxVel[dir];
-                maxVelDir = dir;
+                // maxVelDir = dir;
             }
 
             if (dx[dir] < minDx) {

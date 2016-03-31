@@ -342,6 +342,7 @@ levelProject (Vector<LevelData<FluxType>*> a_amrVel,
 
         if (a_amrVel.size() == 1) {
 #ifndef NDEBUG
+            // TODO: Why did I write this and what does it mean?!
             // I'll allow this only for FC velocity holders since we won't need
             // to interpolate ghosts.
             FluxType fluxDummy;

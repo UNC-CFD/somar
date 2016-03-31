@@ -223,9 +223,10 @@ bool LepticBoxUtils::horizontallyContains (const Box& a_container,
     CH_assert(a_container.sameType(a_element));
     CH_assert(!a_container.isEmpty());
     CH_assert(!a_element.isEmpty());
-    return D_TERM(,
-                  (a_container.smallEnd(0) <= a_element.smallEnd(0) && a_element.bigEnd(0) <= a_container.bigEnd(0)), &&
-                  (a_container.smallEnd(1) <= a_element.smallEnd(1) && a_element.bigEnd(1) <= a_container.bigEnd(1)));
+    D_TERM(bool res = ,
+           (a_container.smallEnd(0) <= a_element.smallEnd(0) && a_element.bigEnd(0) <= a_container.bigEnd(0)), &&
+           (a_container.smallEnd(1) <= a_element.smallEnd(1) && a_element.bigEnd(1) <= a_container.bigEnd(1)));
+    return res;
 }
 
 

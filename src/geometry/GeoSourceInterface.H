@@ -39,6 +39,9 @@ class FluxBox;
 class FillJgupInterface
 {
 public:
+    virtual ~FillJgupInterface ()
+    {;}
+
     virtual void fill_Jgup (FArrayBox&       a_dest,
                             const int        a_destComp,
                             const int        a_mu,
