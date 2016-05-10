@@ -26,6 +26,97 @@ c*******************************************************************************
 
 
 c ----------------------------------------------------------------
+c ComputeBVUpdateVec3D
+c
+c   updateVec^x = F' * (dt*theta*f   * u - v)
+c   updateVec^y = F' * (dt*theta*f   * v + u)
+c   updateVec^z = S' * (dt*theta*N^2 * w + b')
+c  where
+c   F' = dt*f / (1 + (dt*theta*f)^2)
+c   S' = dt   / (1 + (dt*theta*N)^2)
+c   b' = b * gravityCoef
+c ----------------------------------------------------------------
+      subroutine ComputeBVUpdateVec3D (
+     &      CHF_FRA[updateVec],
+     &      CHF_CONST_FRA[vel],
+     &      CHF_CONST_FRA1[buoyancy],
+     &      CHF_CONST_FRA1[Nsq],
+     &      CHF_CONST_REAL[dt],
+     &      CHF_CONST_REAL[theta],
+     &      CHF_CONST_REAL[coriolisF],
+     &      CHF_CONST_REAL[gravityCoef],
+     &      CHF_BOX[region])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T dtTheta, dtThetaF, dtThetaNsq
+      REAL_T Fprime, Sprime
+      REAL_T u,v,w,bprime
+
+      ! Sanity checks
+      CH_assert((CH_SPACEDIM .eq. 3))
+      CH_assert((CHF_NCOMP[updateVec] .eq. CH_SPACEDIM))
+      CH_assert((CHF_NCOMP[vel] .eq. CH_SPACEDIM))
+
+      ! Define some commonly used values
+      dtTheta = dt*theta
+      dtThetaF = dtTheta*coriolisF
+      Fprime = dt*coriolisF / (one + dtThetaF*dtThetaF)
+
+      CHF_MULTIDO[region;i;j;k]
+        ! Grab state values
+        u = vel(CHF_IX[i;j;k],0)
+        v = vel(CHF_IX[i;j;k],1)
+        w = vel(CHF_IX[i;j;k],2)
+        bprime = buoyancy(CHF_IX[i;j;k]) * gravityCoef
+
+        ! Coriolis comps
+        updateVec(CHF_IX[i;j;k],0) = Fprime * (dtThetaF*u - v)
+        updateVec(CHF_IX[i;j;k],1) = Fprime * (dtThetaF*v + u)
+
+        ! Gravity and background advection comp
+        dtThetaNsq = dtTheta * Nsq(CHF_IX[i;j;k])
+        Sprime = dt / (one + dtTheta*dtThetaNsq)
+        updateVec(CHF_IX[i;j;k],2) = Sprime * (dtThetaNsq*w + bprime)
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c BVUpdateBuoyancy
+c ----------------------------------------------------------------
+      subroutine BVUpdateBuoyancy (
+     &      CHF_FRA1[buoyancy],
+     &      CHF_CONST_FRA[thetaVel],
+     &      CHF_CONST_FRA[dzdXi],
+     &      CHF_CONST_FRA1[Nsq],
+     &      CHF_CONST_REAL[dt],
+     &      CHF_BOX[region])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T W
+
+      ! Sanity checks
+      CH_assert((CHF_NCOMP[thetaVel] .eq. CH_SPACEDIM))
+      CH_assert((CHF_NCOMP[dzdXi] .eq. CH_SPACEDIM))
+
+      CHF_MULTIDO[region;i;j;k]
+        ! Compute Cartesian W
+        CHF_DTERM[
+        W = dzdXi(CHF_IX[i;j;k],0) * thetaVel(CHF_IX[i;j;k],0);
+     &    + dzdXi(CHF_IX[i;j;k],1) * thetaVel(CHF_IX[i;j;k],1);
+     &    + dzdXi(CHF_IX[i;j;k],2) * thetaVel(CHF_IX[i;j;k],2)]
+
+        ! Update buoyancy
+        buoyancy(CHF_IX[i;j;k]) = buoyancy(CHF_IX[i;j;k]) + dt*Nsq(CHF_IX[i;j;k])*W
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
 c ComputeNsqAndDinv2D
 C Sets Nsq = -db/dz and Dinv = 1/(1+dt^2*theta^2*Nsq)
 c ----------------------------------------------------------------

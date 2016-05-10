@@ -8,6 +8,83 @@
 extern "C"
 {
 
+#ifndef GUARDCOMPUTEBVUPDATEVEC3D 
+#define GUARDCOMPUTEBVUPDATEVEC3D 
+// Prototype for Fortran procedure ComputeBVUpdateVec3D ...
+//
+void FORTRAN_NAME( COMPUTEBVUPDATEVEC3D ,computebvupdatevec3d )(
+      CHFp_FRA(updateVec)
+      ,CHFp_CONST_FRA(vel)
+      ,CHFp_CONST_FRA1(buoyancy)
+      ,CHFp_CONST_FRA1(Nsq)
+      ,CHFp_CONST_REAL(dt)
+      ,CHFp_CONST_REAL(theta)
+      ,CHFp_CONST_REAL(coriolisF)
+      ,CHFp_CONST_REAL(gravityCoef)
+      ,CHFp_BOX(region) );
+
+#define FORT_COMPUTEBVUPDATEVEC3D FORTRAN_NAME( inlineCOMPUTEBVUPDATEVEC3D, inlineCOMPUTEBVUPDATEVEC3D)
+#define FORTNT_COMPUTEBVUPDATEVEC3D FORTRAN_NAME( COMPUTEBVUPDATEVEC3D, computebvupdatevec3d)
+
+inline void FORTRAN_NAME(inlineCOMPUTEBVUPDATEVEC3D, inlineCOMPUTEBVUPDATEVEC3D)(
+      CHFp_FRA(updateVec)
+      ,CHFp_CONST_FRA(vel)
+      ,CHFp_CONST_FRA1(buoyancy)
+      ,CHFp_CONST_FRA1(Nsq)
+      ,CHFp_CONST_REAL(dt)
+      ,CHFp_CONST_REAL(theta)
+      ,CHFp_CONST_REAL(coriolisF)
+      ,CHFp_CONST_REAL(gravityCoef)
+      ,CHFp_BOX(region) )
+{
+ CH_TIMELEAF("FORT_COMPUTEBVUPDATEVEC3D");
+ FORTRAN_NAME( COMPUTEBVUPDATEVEC3D ,computebvupdatevec3d )(
+      CHFt_FRA(updateVec)
+      ,CHFt_CONST_FRA(vel)
+      ,CHFt_CONST_FRA1(buoyancy)
+      ,CHFt_CONST_FRA1(Nsq)
+      ,CHFt_CONST_REAL(dt)
+      ,CHFt_CONST_REAL(theta)
+      ,CHFt_CONST_REAL(coriolisF)
+      ,CHFt_CONST_REAL(gravityCoef)
+      ,CHFt_BOX(region) );
+}
+#endif  // GUARDCOMPUTEBVUPDATEVEC3D 
+
+#ifndef GUARDBVUPDATEBUOYANCY 
+#define GUARDBVUPDATEBUOYANCY 
+// Prototype for Fortran procedure BVUpdateBuoyancy ...
+//
+void FORTRAN_NAME( BVUPDATEBUOYANCY ,bvupdatebuoyancy )(
+      CHFp_FRA1(buoyancy)
+      ,CHFp_CONST_FRA(thetaVel)
+      ,CHFp_CONST_FRA(dzdXi)
+      ,CHFp_CONST_FRA1(Nsq)
+      ,CHFp_CONST_REAL(dt)
+      ,CHFp_BOX(region) );
+
+#define FORT_BVUPDATEBUOYANCY FORTRAN_NAME( inlineBVUPDATEBUOYANCY, inlineBVUPDATEBUOYANCY)
+#define FORTNT_BVUPDATEBUOYANCY FORTRAN_NAME( BVUPDATEBUOYANCY, bvupdatebuoyancy)
+
+inline void FORTRAN_NAME(inlineBVUPDATEBUOYANCY, inlineBVUPDATEBUOYANCY)(
+      CHFp_FRA1(buoyancy)
+      ,CHFp_CONST_FRA(thetaVel)
+      ,CHFp_CONST_FRA(dzdXi)
+      ,CHFp_CONST_FRA1(Nsq)
+      ,CHFp_CONST_REAL(dt)
+      ,CHFp_BOX(region) )
+{
+ CH_TIMELEAF("FORT_BVUPDATEBUOYANCY");
+ FORTRAN_NAME( BVUPDATEBUOYANCY ,bvupdatebuoyancy )(
+      CHFt_FRA1(buoyancy)
+      ,CHFt_CONST_FRA(thetaVel)
+      ,CHFt_CONST_FRA(dzdXi)
+      ,CHFt_CONST_FRA1(Nsq)
+      ,CHFt_CONST_REAL(dt)
+      ,CHFt_BOX(region) );
+}
+#endif  // GUARDBVUPDATEBUOYANCY 
+
 #ifndef GUARDCOMPUTENSQANDDINV2D 
 #define GUARDCOMPUTENSQANDDINV2D 
 // Prototype for Fortran procedure ComputeNsqAndDinv2D ...

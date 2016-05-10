@@ -780,6 +780,9 @@ protected:
     static Real s_tidalOmega;
     static RealVect s_tidalU0;
 
+    // The Coriolis parameter
+    static Real s_coriolisF;
+
     // -- I/O options --
 
     // Should we write to standard out?

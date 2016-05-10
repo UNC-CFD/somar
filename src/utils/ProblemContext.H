@@ -133,6 +133,7 @@ public:
     };
     int gravityMethod;
     Real gravityTheta;
+    Real coriolisF;
 
     struct HeatSolverScheme {
         enum {

@@ -60,6 +60,7 @@ bool AMRNavierStokes::s_limitDtViaInternalWaveSpeed = false;
 
 Real AMRNavierStokes::s_tidalOmega = 0.0;
 RealVect AMRNavierStokes::s_tidalU0 = RealVect::Zero;
+Real AMRNavierStokes::s_coriolisF = 0.0;
 
 bool AMRNavierStokes::s_advective_momentum_reflux = false;
 bool AMRNavierStokes::s_diffusive_momentum_reflux = false;
@@ -390,6 +391,7 @@ void AMRNavierStokes::readParameters ()
     s_limitDtViaInternalWaveSpeed = ctx->limitDtViaInternalWaveSpeed;
     s_tidalOmega = ctx->tidalOmega;
     s_tidalU0 = ctx->tidalU0;
+    s_coriolisF = ctx->coriolisF;
 
     s_bogus_value = ctx->bogus_value;
     s_smooth_after_regrid = ctx->smooth_after_regrid;

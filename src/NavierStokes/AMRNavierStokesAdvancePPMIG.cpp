@@ -24,7 +24,6 @@
 #include "AMRNavierStokes.H"
 #include "AMRNSF_F.H"
 #include "SetValLevel.H"
-#include "BoxIterator.H"
 #include "AlteredMetric.H"
 #include "ProblemContext.H"
 #include <iomanip>
@@ -124,6 +123,14 @@ void AMRNavierStokes::PPMIGTimeStep (const Real a_oldTime,
         doCCProjection(new_vel, a_oldTime + a_dt, a_dt, a_doLevelProj);
     }
 }
+
+
+// #define USE_OLD_PPMIG_METHOD
+#if defined(USE_OLD_PPMIG_METHOD) || (CH_SPACEDIM == 2)
+
+#if !defined(USE_OLD_PPMIG_METHOD) && (CH_SPACEDIM == 2)
+#pragma message ("\n *** WARNING *** : Not using the Coriolis code since we are in 2D.\n")
+#endif
 
 
 // -----------------------------------------------------------------------------
@@ -296,7 +303,8 @@ void AMRNavierStokes::doCCIGProjection (LevelData<FArrayBox>&       a_newVel,
     // 3. Project the velocity.
     if (s_isIncompressible) {
         // Define the metric.
-        m_alteredMetric.define(&geoSource, m_physBCPtr, a_dt*s_gravityTheta);
+        const Real coriolisDummy = 0.0;
+        m_alteredMetric.define(&geoSource, m_physBCPtr, a_dt*s_gravityTheta, coriolisDummy);
 
         // Install the new metric into the pressure solver. Unfortunately, we
         // need to do this at each timestep since the metric keeps changing.
@@ -356,3 +364,190 @@ void AMRNavierStokes::doCCIGProjection (LevelData<FArrayBox>&       a_newVel,
     }
 }
 
+#else
+
+#include "LevelGeometryF_F.H"
+#include "StratUtils.H"
+// -----------------------------------------------------------------------------
+// Semi-implicitly handles the gravity forcing and projection.
+// The old* inputs should be the values at t^n.
+// The new* inputs should be the updated values from the TGA solver.
+// -----------------------------------------------------------------------------
+void AMRNavierStokes::doCCIGProjection (LevelData<FArrayBox>&       a_newVel,
+                                        LevelData<FArrayBox>&       a_newB,
+                                        const LevelData<FArrayBox>& a_oldVel,
+                                        const LevelData<FArrayBox>& a_oldB,
+                                        const LevelData<FluxBox>&   a_advVel,
+                                        const Real                  a_oldTime,
+                                        const Real                  a_dt,
+                                        const bool                  a_doProj)
+{
+    CH_TIME("AMRNavierStokes::doCCIGProjection");
+
+    const Real halfTime = a_oldTime + 0.5 * a_dt;
+    const Real newTime  = a_oldTime + 1.0 * a_dt;
+    const Real dummyTime = -1.0e300;
+    const Real localCoriolisF = s_coriolisF;
+    const GeoSourceInterface& geoSource = *(m_levGeoPtr->getGeoSourcePtr());
+    const RealVect& dx = m_levGeoPtr->getDx();
+    const DisjointBoxLayout& grids = a_newVel.getBoxes();
+    DataIterator dit = grids.dataIterator();
+
+    LevelData<FArrayBox> Nsq(grids, 1);
+
+    for (dit.reset(); dit.ok(); ++dit) {
+        FArrayBox& newBFAB = a_newB[dit];
+        FArrayBox& newVelFAB = a_newVel[dit];
+        const FArrayBox& oldBFAB = a_oldB[dit];
+        const FArrayBox& oldVelFAB = a_oldVel[dit];
+        FArrayBox& NsqFAB = Nsq[dit];
+        const Box& valid = grids[dit];
+
+        // Make sure regions are sized correctly
+        CH_assert(newVelFAB.box().contains(valid));
+        CH_assert(oldVelFAB.box().contains(valid));
+        CH_assert(newBFAB.box().contains(valid));
+        CH_assert(oldBFAB.box().contains(valid));
+
+        // 1. Compute Cartesian thetaVel and thetaB
+
+        // Compute thetaVel
+        FArrayBox thetaVelFAB(valid, SpaceDim);
+        FORT_WEIGHTEDAVG(
+            CHF_FRA(thetaVelFAB),
+            CHF_CONST_FRA(newVelFAB),
+            CHF_CONST_FRA(oldVelFAB),
+            CHF_CONST_REAL(s_gravityTheta),
+            CHF_BOX(valid));
+
+        // Send to Cartesian basis
+        FArrayBox dxdXiFAB(valid, SpaceDim*SpaceDim);
+        m_levGeoPtr->fill_dxdXi(dxdXiFAB);
+        FORT_CONTRACTMATRIXVECTORCC(
+            CHF_FRA(thetaVelFAB),
+            CHF_CONST_FRA(dxdXiFAB),
+            CHF_BOX(valid));
+        dxdXiFAB.clear();
+
+        // Compute thetaB
+        FArrayBox thetaBFAB(valid, 1);
+        FORT_WEIGHTEDAVG(
+            CHF_FRA(thetaBFAB),
+            CHF_CONST_FRA(newBFAB),
+            CHF_CONST_FRA(oldBFAB),
+            CHF_CONST_REAL(s_gravityTheta),
+            CHF_BOX(valid));
+
+
+        // 2. Compute Nsq.
+
+        // Fill FC background buoyancy
+        FluxBox bbarFB(valid, 1);
+        m_physBCPtr->setBackgroundScalar(bbarFB[0], 0, *m_levGeoPtr, dit(), dummyTime);
+        m_physBCPtr->setBackgroundScalar(bbarFB[1], 0, *m_levGeoPtr, dit(), dummyTime);
+        m_physBCPtr->setBackgroundScalar(bbarFB[2], 0, *m_levGeoPtr, dit(), dummyTime);
+
+        // Compute CC Nsq
+        computeBVFreq(NsqFAB, bbarFB, valid, *m_levGeoPtr, 2.0);
+
+        // 3. Compute H vector. This is what we will remove from newVelFAB.
+
+        // Compute H^x and H^y
+        FArrayBox HFAB(valid, SpaceDim);
+        const Real gravityMult = 1.0; // Exists for testing purposes.
+        FORT_COMPUTEBVUPDATEVEC3D (
+            CHF_FRA(HFAB),
+            CHF_CONST_FRA(thetaVelFAB),
+            CHF_CONST_FRA1(thetaBFAB,0),
+            CHF_CONST_FRA1(NsqFAB,0),
+            CHF_CONST_REAL(a_dt),
+            CHF_CONST_REAL(s_gravityTheta),
+            CHF_CONST_REAL(localCoriolisF),
+            CHF_CONST_REAL(gravityMult),
+            CHF_BOX(valid));
+
+        // Convert HFAB to mapped coordinates
+        FArrayBox dXidxFAB(valid, SpaceDim*SpaceDim);
+        m_levGeoPtr->fill_dXidx(dXidxFAB);
+        FORT_CONTRACTMATRIXVECTORCC(
+            CHF_FRA(HFAB),
+            CHF_CONST_FRA(dXidxFAB),
+            CHF_BOX(valid));
+        dXidxFAB.clear();
+
+        // 4. Update the velocity, newVelFAB -= HFAB.
+        newVelFAB.plus(HFAB, -1.0);
+
+    } // end loop over grids (dit)
+
+
+    // 5. Project the velocity.
+    if (s_isIncompressible) {
+        // const DisjointBoxLayout* crseGridsPtr = (m_level == 0)? NULL: &(crseNSPtr()->newVel().getBoxes());
+        const DisjointBoxLayout* crseGridsPtr = NULL;
+        if (m_level > 0) {
+            crseGridsPtr = &(crseNSPtr()->newVel().getBoxes());
+        }
+
+        // Define the metric.
+        m_alteredMetric.define(&geoSource, m_physBCPtr, a_dt*s_gravityTheta, localCoriolisF);
+
+        // Install the new metric into the pressure solver. Unfortunately, we
+        // need to do this at each timestep since the metric keeps changing.
+        const LevelData<FArrayBox>* crsePressurePtr = NULL;
+        if (m_level > 0) {
+            crsePressurePtr = &(crseNSPtr()->m_ccPressure);
+        }
+        m_ccProjector.define(&m_ccPressure,
+                             crsePressurePtr,
+                             *m_physBCPtr,
+                             *m_levGeoPtr,
+                             &m_alteredMetric);
+
+        // Perform the elliptic solve.
+        doCCProjection(a_newVel, newTime, a_dt, a_doProj);
+
+        // Restore the projector
+        // TODO: Is this necessary?
+        m_ccProjector.define(&m_ccPressure,
+                             crsePressurePtr,
+                             *m_physBCPtr,
+                             *m_levGeoPtr,
+                             NULL);
+    }
+
+
+    // 6. Perform the semi-implicit buoyancy update.
+
+    // newB += dt * Nsq * [theta*newVel + (1-theta)*oldVel]
+    for (dit.reset(); dit.ok(); ++dit) {
+        FArrayBox& newBFAB = a_newB[dit];
+        const FArrayBox& newVelFAB = a_newVel[dit];
+        const FArrayBox& oldVelFAB = a_oldVel[dit];
+        const FArrayBox& NsqFAB = Nsq[dit];
+        const Box& valid = grids[dit];
+
+        // Compute the CC advecting velocity, theta*newVel + (1-theta)*oldVel.
+        FArrayBox thetaVelFAB(valid, SpaceDim);
+        FORT_WEIGHTEDAVG(
+            CHF_FRA(thetaVelFAB),
+            CHF_CONST_FRA(newVelFAB),
+            CHF_CONST_FRA(oldVelFAB),
+            CHF_CONST_REAL(s_gravityTheta),
+            CHF_BOX(valid));
+
+        FArrayBox dzdXiFAB(valid, SpaceDim);
+        geoSource.fill_dxdXi(dzdXiFAB, 0, 2, 0, dx);
+        geoSource.fill_dxdXi(dzdXiFAB, 1, 2, 1, dx);
+        geoSource.fill_dxdXi(dzdXiFAB, 2, 2, 2, dx);
+
+        FORT_BVUPDATEBUOYANCY (
+            CHF_FRA1(newBFAB,0),
+            CHF_CONST_FRA(thetaVelFAB),
+            CHF_CONST_FRA(dzdXiFAB),
+            CHF_CONST_FRA1(NsqFAB,0),
+            CHF_CONST_REAL(a_dt),
+            CHF_BOX(valid));
+    }
+}
+#endif

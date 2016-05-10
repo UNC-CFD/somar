@@ -526,6 +526,16 @@ void ProblemContext::readAMR ()
         pout() << "\tgravityTheta = " << gravityTheta << endl;
     }
 
+    coriolisF = 0.0;
+    if (ppAMR.query("coriolisF", coriolisF)) {
+        if (SpaceDim != 3) {
+            MayDay::Warning("Ignoring coriolisF since we are not in 3D");
+            coriolisF = 0.0;
+        } else {
+            pout() << "\tcoriolisF = " << coriolisF << endl;
+        }
+    }
+
     viscSolverScheme = HeatSolverScheme::CRANK_NICOLSON;
     ppAMR.query("viscous_solver_type", viscSolverScheme);
     pout() << "\tviscSolverScheme = " << viscSolverScheme << endl;

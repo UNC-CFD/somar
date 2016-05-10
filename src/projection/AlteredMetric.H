@@ -40,7 +40,8 @@ public:
     // Full constructor
     AlteredMetric (const GeoSourceInterface* a_geoSourcePtr,
                    const PhysBCUtil*         a_physBCPtr,
-                   const Real                a_dtTheta);
+                   const Real                a_dtTheta,
+                   const Real                a_coriolisF);
 
     // Destructor
     virtual ~AlteredMetric ();
@@ -48,7 +49,8 @@ public:
     // Full constructor
     virtual void define (const GeoSourceInterface* a_geoSourcePtr,
                          const PhysBCUtil*         a_physBCPtr,
-                         const Real                a_dtTheta);
+                         const Real                a_dtTheta,
+                         const Real                a_coriolisF);
 
     // Set dest = J*(gup^{ij} - (omega^2 / (1 + omega^2)) * dXi^i/dz * dXi^j/dz)
     // where omega = (dt*N*theta)^2
@@ -62,7 +64,8 @@ public:
 protected:
     const GeoSourceInterface* m_geoSourcePtr;
     const PhysBCUtil*         m_physBCPtr;
-    Real                      m_theta;
+    Real                      m_dtTheta;
+    Real                      m_coriolisF;
 };
 
 
