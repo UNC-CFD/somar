@@ -397,12 +397,11 @@ void AMRNavierStokes::computeMOLSources (LevelData<FArrayBox>& a_Su,
                        Interval(0,0));
         }
 
-        // Compute the diffusive source term, coeff * L[scalar] and add to total.
+        // Compute the diffusive source term, D[kappa G[scalar]] and add to total.
         // (The op takes care of the exchanges.)
         LevelData<FArrayBox> diffusiveSrc(grids, 1);
-        this->computeLapScal(diffusiveSrc, a_b, crseDataPtr, NULL);
+        this->computeDiffusiveSrc(diffusiveSrc, a_b, crseDataPtr, 0, a_stateTime);
         for (dit.reset(); dit.ok(); ++dit) {
-            diffusiveSrc[dit] *= s_scal_coeffs[0];
             a_Sb[dit].plus(diffusiveSrc[dit], 1.0);
         }
 
@@ -629,7 +628,7 @@ void AMRNavierStokes::computeMOLSources (LevelData<FArrayBox>& a_Su,
         m_levGeoPtr->sendToCartesianBasis(a_u, true);
 
         LevelData<FArrayBox> viscSource(grids, SpaceDim);
-        fillViscousSource(viscSource, a_u, a_stateTime);
+        computeViscousSrc(viscSource, a_u, a_stateTime);
         for (dit.reset(); dit.ok(); ++dit) {
             a_Su[dit].plus(viscSource[dit], 1.0);
         }

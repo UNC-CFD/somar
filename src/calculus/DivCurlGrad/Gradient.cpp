@@ -47,7 +47,7 @@
 // #define USE_SIMPLE_STENCIL
 
 
-// Single-level gradient fuunctions ============================================
+// Single-level gradient functions =============================================
 // -----------------------------------------------------------------------------
 void Gradient::levelGradientMAC (LevelData<FluxBox>&         a_edgeGrad,
                                  LevelData<FArrayBox>&       a_phi,
@@ -92,7 +92,7 @@ void Gradient::levelGradientMAC (LevelData<FluxBox>&           a_edgeGrad,
 {
     CH_TIME("Gradient::levelGradientMAC_2");
 
-    CH_assert(a_edgeGrad.nComp() >= a_phi.nComp());
+    CH_assert((a_edgeGrad.nComp() == a_phi.nComp()) || (a_edgeGrad.nComp() == SpaceDim*a_phi.nComp()));
     CH_assert(a_edgeGrad.getBoxes() == a_phi.getBoxes());
 
     const ProblemDomain& domain = a_levGeo.getDomain();
@@ -105,6 +105,12 @@ void Gradient::levelGradientMAC (LevelData<FluxBox>&           a_edgeGrad,
         CH_assert(a_cfInterpCrse.isDefined());
 
         a_cfInterpCrse.coarseFineInterp(a_phi, *a_phiCrsePtr);
+
+        // Added on 2016-04-11
+        if (!a_levGeo.isDiagonal()) {
+            CFRegion cfregion(grids, domain);
+            ExtrapolateCFEV(a_phi, cfregion, 2);
+        }
     }
 
     Box validDomain = domain.domainBox();
@@ -181,20 +187,19 @@ void Gradient::levelGradientMAC (LevelData<FluxBox>&           a_edgeGrad,
                 FArrayBox& thisEdgeGradDirFab = thisEdgeGrad[edgeDir];
                 const Box& edgeBox = thisEdgeGradDirFab.box();
 
-                // loop over component directions in edgeGrad
-                // (this will be direction of gradient)
-                for (int dir = 0; dir < thisEdgeGrad.nComp(); ++dir) {
-                    // int gradComp = dir;
-                    int phiComp = 0;
-                    int numComp = 1;
-                    singleBoxMacGrad(thisEdgeGradDirFab, thisPhi,
-                                     dir, phiComp, numComp,
-                                     edgeBox,
-                                     validPhi,
-                                     dir, edgeDir,
-                                     dit(), a_levGeo,
-                                     a_time, a_fluxBC);
-                }
+                for (int phiComp = 0; phiComp < thisPhi.nComp(); ++phiComp) {
+                    for (int gradDir = 0; gradDir < SpaceDim; ++gradDir) {
+                        const int gradComp = gradDir + phiComp*SpaceDim;
+                        const int numComp = 1;
+                        singleBoxMacGrad(thisEdgeGradDirFab, thisPhi,
+                                         gradComp, phiComp, numComp,
+                                         edgeBox,
+                                         validPhi,
+                                         gradDir, edgeDir,
+                                         dit(), a_levGeo,
+                                         a_time, a_fluxBC);
+                    } // end loop over gradDir
+                } // end loop over phiComp
             } // end loop over edgeDir
         } // end loop over grids
     } // end if we're also computing transverse direcctions
@@ -1076,6 +1081,7 @@ void Gradient::singleBoxMacGrad (FArrayBox&            a_gradFab,
             const Box& valid = a_levGeo.getBoxes()[a_di];
             const ProblemDomain& domain = a_levGeo.getDomain();
             Interval interv = Interval(a_phiComp, a_phiComp + a_numComp - 1);
+            const FluxBox& JgupRef = a_levGeo.getFCJgup()[a_di];
 
             a_fluxBC->setFluxes(a_gradFab,      // state
                                 NULL,           // extrap
@@ -1083,7 +1089,7 @@ void Gradient::singleBoxMacGrad (FArrayBox&            a_gradFab,
                                 domain,         // domain
                                 dx,             // dx
                                 a_di,           // dataIndex
-                                NULL,           // &JgupFB
+                                &JgupRef,       // &JgupFB
                                 a_gradDir,      // edge dir
                                 false,          // isHomogeneous
                                 a_time,         // time

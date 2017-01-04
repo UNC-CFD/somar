@@ -618,7 +618,7 @@ Real AMRNavierStokes::computeDt ()
         // Viscous stability limit...
         if (s_limitDtViaViscosity) {
             if (s_nu > 0.0) {
-                Real viscDt = m_cfl * minDx * minDx / s_nu;
+                Real viscDt = m_cfl * 2.0 * minDx * minDx / (s_nu * Pi * Pi);
                 if (s_verbosity > verbThresh) {
                     pout() << "dt limit by viscosity = " << viscDt << endl;
                 }

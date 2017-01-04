@@ -41,11 +41,12 @@
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-void Divergence::levelDivergenceMAC (LevelData<FArrayBox>&      a_div,
-                                     const LevelData<FluxBox>&  a_uEdge,
-                                     const LevelGeometry&       a_levGeo,
-                                     const Real                 a_time,
-                                     const BC_type*             a_fluxBC)
+void Divergence::levelDivergenceMAC (LevelData<FArrayBox>&     a_div,
+                                     const LevelData<FluxBox>& a_uEdge,
+                                     const LevelGeometry&      a_levGeo,
+                                     const Real                a_time,
+                                     const BC_type*            a_fluxBC,
+                                     const bool                a_onlyValid)
 {
     CH_TIME("Divergence::levelDivergenceMAC");
 
@@ -63,7 +64,10 @@ void Divergence::levelDivergenceMAC (LevelData<FArrayBox>&      a_div,
 
         // Gather CC region to perform calculation
         // NOTE: Changed from grids[dit] & divFAB.box() on Nov 4, 2013 to fix bkgdSrc bug.
-        const Box& region = divFAB.box();
+        Box region = divFAB.box();
+        if (a_onlyValid) {
+            region &= grids[dit];
+        }
         CH_assert(fluxFB.box().contains(region));
 
         // Gather reference to 1/J

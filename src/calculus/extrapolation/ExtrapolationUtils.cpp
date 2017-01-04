@@ -530,7 +530,17 @@ void ExtrapolateCF (FArrayBox&       a_dest,
                                      CHF_CONST_INT(a_order));
         }
     } else {
-        if (a_order == 1) {
+        if (a_order == 0) {
+            const IntVectSet& region = cfivs->getIVS();
+            for (IVSIterator ivsit(region); ivsit.ok(); ++ivsit) {
+                const IntVect& ivTo = ivsit();
+                const IntVect ivNear = ivTo - isign*BASISV(a_dir);
+
+                for (int icomp = a_interval.begin(); icomp <= a_interval.end(); ++icomp) {
+                    a_dest(ivTo, icomp) = a_state(ivNear, icomp);
+                }
+            }
+        } else if (a_order == 1) {
             const IntVectSet& region = cfivs->getIVS();
             for (IVSIterator ivsit(region); ivsit.ok(); ++ivsit) {
                 const IntVect& ivTo = ivsit();

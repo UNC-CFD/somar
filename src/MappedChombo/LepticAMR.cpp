@@ -688,7 +688,7 @@ void LepticAMR::conclude() const
     for (int level = 0; level <= m_finest_level; ++level)
         m_amrlevels[level]->conclude(m_cur_step);
 
-    if (m_verbosity >= 2) {
+    if (m_verbosity >= 1) {
         long long total_cell_updates = 0;
         for (int ll = 0; ll < m_max_level + 1; ll++) {
             total_cell_updates += m_cell_updates[ll];
@@ -752,7 +752,7 @@ void LepticAMR::run(Real a_max_time, int a_max_step)
             int origPrecision = pout().precision();
             pout() << '\n' << std::string(80, '-') << '\n'
                    << resetiosflags(ios::fixed)
-                   << "Coarse time step " << setw(3) << m_cur_step
+                   << "Coarse time step " << setw(3) << (m_cur_step + 1)
                    << setprecision(6)
                    << setiosflags(ios::showpoint)
                    << setiosflags(ios::scientific)

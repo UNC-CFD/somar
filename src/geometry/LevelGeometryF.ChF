@@ -150,6 +150,100 @@ c ----------------------------------------------------------------
 
 
 c ----------------------------------------------------------------
+c CONTRACTMATRIXVECTORCC2D
+c Contract a matrix with a vector in-place.
+c ----------------------------------------------------------------
+      subroutine CONTRACTMATRIXVECTORCC2D (
+     &      CHF_FRA1[vector0],
+     &      CHF_FRA1[vector1],
+     &      CHF_CONST_FRA[matrix],
+     &      CHF_BOX[region])
+#if CH_SPACEDIM == 2
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[src]
+
+#ifndef NDEBUG
+      ! Sanity checks
+      if (CHF_NCOMP[matrix] .ne. CH_SPACEDIM**2) then
+        write(*,*) 'CONTRACTMATRIXVECTORCC2D: matrix has bad number of comps ', CHF_NCOMP[matrix]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ! Loop through this grid and do calculation
+      CHF_AUTOMULTIDO[region; i]
+          ! 2D version
+          src0 = vector0(CHF_AUTOIX[i])
+          src1 = vector1(CHF_AUTOIX[i])
+
+          vector0(CHF_AUTOIX[i]) = matrix(CHF_AUTOIX[i],xxComp) * src0
+     &                           + matrix(CHF_AUTOIX[i],xyComp) * src1
+
+          vector1(CHF_AUTOIX[i]) = matrix(CHF_AUTOIX[i],yxComp) * src0
+     &                           + matrix(CHF_AUTOIX[i],yyComp) * src1
+      CHF_ENDDO
+#else
+      print*, 'CONTRACTMATRIXVECTORCC2D called with SpaceDim != 2'
+      call MAYDAYERROR()
+#endif
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c CONTRACTMATRIXVECTORCC3D
+c Contract a matrix with a vector in-place.
+c ----------------------------------------------------------------
+      subroutine CONTRACTMATRIXVECTORCC3D (
+     &      CHF_FRA1[vector0],
+     &      CHF_FRA1[vector1],
+     &      CHF_FRA1[vector2],
+     &      CHF_CONST_FRA[matrix],
+     &      CHF_BOX[region])
+
+#if CH_SPACEDIM == 3
+      ! Declare variables
+      integer CHF_AUTODECL[i]
+      REAL_T CHF_AUTODECL[src]
+
+#ifndef NDEBUG
+      ! Sanity checks
+      if (CHF_NCOMP[matrix] .ne. CH_SPACEDIM**2) then
+        write(*,*) 'CONTRACTMATRIXVECTORCC3D: matrix has bad number of comps ', CHF_NCOMP[matrix]
+        call MAYDAYERROR()
+      endif
+#endif
+
+      ! Loop through this grid and do calculation
+      CHF_AUTOMULTIDO[region; i]
+          ! 3D version
+          src0 = vector0(CHF_AUTOIX[i])
+          src1 = vector1(CHF_AUTOIX[i])
+          src2 = vector2(CHF_AUTOIX[i])
+
+          vector0(CHF_AUTOIX[i]) = matrix(CHF_AUTOIX[i],xxComp) * src0
+     &                           + matrix(CHF_AUTOIX[i],xyComp) * src1
+     &                           + matrix(CHF_AUTOIX[i],xzComp) * src2
+
+          vector1(CHF_AUTOIX[i]) = matrix(CHF_AUTOIX[i],yxComp) * src0
+     &                           + matrix(CHF_AUTOIX[i],yyComp) * src1
+     &                           + matrix(CHF_AUTOIX[i],yzComp) * src2
+
+          vector2(CHF_AUTOIX[i]) = matrix(CHF_AUTOIX[i],zxComp) * src0
+     &                           + matrix(CHF_AUTOIX[i],zyComp) * src1
+     &                           + matrix(CHF_AUTOIX[i],zzComp) * src2
+      CHF_ENDDO
+
+#else
+      print*, 'CONTRACTMATRIXVECTORCC3D called with SpaceDim != 3'
+      call MAYDAYERROR()
+#endif
+      return
+      end
+
+
+c ----------------------------------------------------------------
 c CONTRACTVECTORMATRIXCC
 c Contract a vector with a matrix in-place.
 c ----------------------------------------------------------------

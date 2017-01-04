@@ -34,6 +34,7 @@ class FArrayBox;
 class FluxBox;
 class StructurePool;
 class PhysBCUtil;
+class DataIndex;
 
 
 // Computes N = sqrt(max|db/dz|) over the entire level.
@@ -63,6 +64,27 @@ void solveVertEigenProblem (LevelData<FArrayBox>&       a_c0,
                             const LevelData<FArrayBox>& a_Nsq,
                             const LevelGeometry&        a_levGeo);
 
+// Computes Rig = N^2 / S^2 over an entire level.
+void computeGradRiNumber (LevelData<FArrayBox>&       a_Rig,
+                          const int                   a_RigComp,
+                          const LevelData<FArrayBox>& a_cartVel,
+                          const LevelData<FArrayBox>& a_b,
+                          const LevelGeometry&        a_levGeo,
+                          const Real                  a_time,
+                          const bool                  a_useHorizSsq = true,
+                          const Real                  a_tol = 10.0,
+                          const Real                  a_maskVal = 10.0);
+
+// Computes Rig = N^2 / S^2 over a single FAB.
+void computeGradRiNumber (FArrayBox&           a_RigFAB,
+                          const FArrayBox&     a_cartVelFAB,
+                          const FArrayBox&     a_bFAB,
+                          const LevelGeometry& a_levGeo,
+                          const DataIndex&     a_di,
+                          const Real           a_time,
+                          const bool           a_useHorizSsq = false,
+                          const Real           a_tol = 10.0,
+                          const Real           a_maskVal = 10.0);
 
 
 // These functions were just copied from old code....

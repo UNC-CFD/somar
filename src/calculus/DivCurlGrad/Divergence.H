@@ -53,11 +53,12 @@ public:
     /** computes cell-centered level-operator divergence of
         edge-centered vector field uEdge; assumes all coarse-fine BC's
         have already been set. */
-    static void levelDivergenceMAC (LevelData<FArrayBox>&       a_div,
-                                    const LevelData<FluxBox>&   a_uEdge,
-                                    const LevelGeometry&        a_levGeo,
-                                    const Real                  a_time = BOGUS_TIME,
-                                    const BC_type*              a_fluxBC = NULL);
+    static void levelDivergenceMAC (LevelData<FArrayBox>&     a_div,
+                                    const LevelData<FluxBox>& a_uEdge,
+                                    const LevelGeometry&      a_levGeo,
+                                    const Real                a_time = BOGUS_TIME,
+                                    const BC_type*            a_fluxBC = NULL,
+                                    const bool                a_onlyValid = false);
 
 
     /// really basic single-fab MAC divergence

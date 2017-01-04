@@ -277,11 +277,6 @@ public:
                                    Real                 a_time = BOGUS_TIME,
                                    const Interval&      a_interval = Interval()) const;
 
-    // Returns true if all BCs on a level are periodic or Neumann.
-    bool hasNullSpace (const DisjointBoxLayout& a_grids,
-                       const CFRegion&          a_cfregion,
-                       const IntVect&           a_activeDirs) const;
-
     // Used to identify what will be done when setGhosts is called.
     inline const BCDescriptor& getGhostDescriptor () const
     {
@@ -304,12 +299,6 @@ public:
     }
 
 private:
-    // Returns true if all BCs on a level are periodic or Neumann.
-    // This does not perform communication.
-    bool hasNullSpaceNoComm (const DisjointBoxLayout& a_grids,
-                             const CFRegion&          a_cfregion,
-                             const IntVect&           a_activeDirs) const;
-
     Vector<BCGhostFunc> m_BCGhostFuncPtrs;
     Vector<BCFluxFunc> m_BCFluxFuncPtrs;
 

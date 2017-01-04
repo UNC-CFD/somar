@@ -31,6 +31,7 @@
 #include "BoxIterator.H"
 #include "Constants.H"
 #include "SetValLevel.H"
+#include "CellToEdge.H"
 
 
 // -----------------------------------------------------------------------------
@@ -128,6 +129,8 @@ void computeBVFreq (FArrayBox&           a_N,
     // Create grid references, etc...
     const RealVect& dx = a_levGeo.getDx();
     const GeoSourceInterface& geoSource = *a_levGeo.getGeoSourcePtr();
+    const int intPow = int(a_pow);
+    const int doAbs = 1;
 
     // Fill dXi^i/dz
     FArrayBox dXidzFAB(a_destBox, SpaceDim);
@@ -141,20 +144,25 @@ void computeBVFreq (FArrayBox&           a_N,
             CHF_FRA1(a_N,0),
             CHF_CONST_FRA1(a_B[0],0),
             CHF_CONST_FRA1(a_B[1],0),
-            CHF_CONST_FRA(dXidzFAB),
+            CHF_CONST_FRA1(dXidzFAB,0),
+            CHF_CONST_FRA1(dXidzFAB,1),
             CHF_CONST_REALVECT(dx),
             CHF_BOX(a_destBox),
-            CHF_CONST_REAL(a_pow));
+            CHF_CONST_INT(intPow),
+            CHF_CONST_INT(doAbs));
     } else {
         FORT_COMPUTEBVFREQ3D(
             CHF_FRA1(a_N,0),
             CHF_CONST_FRA1(a_B[0],0),
             CHF_CONST_FRA1(a_B[1],0),
             CHF_CONST_FRA1(a_B[2],0),
-            CHF_CONST_FRA(dXidzFAB),
+            CHF_CONST_FRA1(dXidzFAB,0),
+            CHF_CONST_FRA1(dXidzFAB,1),
+            CHF_CONST_FRA1(dXidzFAB,2),
             CHF_CONST_REALVECT(dx),
             CHF_BOX(a_destBox),
-            CHF_CONST_REAL(a_pow));
+            CHF_CONST_INT(intPow),
+            CHF_CONST_INT(doAbs));
     }
 }
 
@@ -203,7 +211,6 @@ void solveVertEigenProblem (LevelData<FArrayBox>&       a_c0,
     CH_assert(grids.physDomain() == domain);
 
     const IntVect nx = domain.size();
-    const int nproc = numProc();
 
     // Split the domain and create a load-balanced set of grids.
     Vector<Box> vbox;
@@ -465,6 +472,129 @@ void fillHorizontalStructure (FArrayBox&           a_A0,
 }
 
 
+// -----------------------------------------------------------------------------
+// Computes Rig = N^2 / S^2 over an entire level.
+// -----------------------------------------------------------------------------
+void computeGradRiNumber (LevelData<FArrayBox>&       a_Rig,
+                          const int                   a_RigComp,
+                          const LevelData<FArrayBox>& a_cartVel,
+                          const LevelData<FArrayBox>& a_b,
+                          const LevelGeometry&        a_levGeo,
+                          const Real                  a_time,
+                          const bool                  a_useHorizSsq,
+                          const Real                  a_tol,
+                          const Real                  a_maskVal)
+{
+    // Setup workspace
+    const DisjointBoxLayout& grids = a_levGeo.getBoxes();
+    DataIterator dit = grids.dataIterator();
+    const Interval ivl(a_RigComp, a_RigComp);
+
+    // Sanity checks
+    CH_assert(grids.compatible(a_Rig.getBoxes()));
+    CH_assert(grids.compatible(a_cartVel.getBoxes()));
+    CH_assert(0 <= a_RigComp);
+    CH_assert(a_RigComp < a_Rig.nComp());
+
+    for (dit.reset(); dit.ok(); ++dit) {
+        FArrayBox RigFAB(ivl, a_Rig[dit]);
+        const FArrayBox& cartVelFAB = a_cartVel[dit];
+        const FArrayBox& bFAB = a_b[dit];
+
+        computeGradRiNumber(RigFAB, cartVelFAB, bFAB,
+                            a_levGeo, dit(), a_time,
+                            a_tol, a_maskVal, a_useHorizSsq);
+    }
+}
+
+
+// -----------------------------------------------------------------------------
+// Computes Rig = N^2 / S^2 over a single FAB.
+// -----------------------------------------------------------------------------
+void computeGradRiNumber (FArrayBox&           a_RigFAB,
+                          const FArrayBox&     a_cartVelFAB,
+                          const FArrayBox&     a_bFAB,
+                          const LevelGeometry& a_levGeo,
+                          const DataIndex&     a_di,
+                          const Real           a_time,
+                          const bool           a_useHorizSsq,
+                          const Real           a_tol,
+                          const Real           a_maskVal)
+{
+    // Setup workspace
+    const RealVect& dx = a_levGeo.getDx();
+    const Box& valid = a_levGeo.getBoxes()[a_di];
+    const int intPow = 2;
+    const int doAbs = 0;
+
+    // Sanity checks
+    CH_assert(a_RigFAB.contains(valid));
+    CH_assert(a_cartVelFAB.contains(grow(valid,1)));
+    CH_assert(a_bFAB.contains(grow(valid,1)));
+
+    // Fill all Jacobian elements, dXi^i/dx^j.
+    FArrayBox dXidxFAB(valid, SpaceDim*SpaceDim);
+    a_levGeo.fill_dXidx(dXidxFAB);
+
+    // Compute N^2.
+    FluxBox bFB(valid, 1);
+    CellToEdge(a_bFAB, bFB);
+    if (SpaceDim == 2) {
+        FORT_COMPUTEBVFREQ2D(
+            CHF_FRA1(a_RigFAB,0),
+            CHF_CONST_FRA1(bFB[0],0),
+            CHF_CONST_FRA1(bFB[1],0),
+            CHF_CONST_FRA1(dXidxFAB, LevelGeometry::tensorCompCC(0,SpaceDim-1)),
+            CHF_CONST_FRA1(dXidxFAB, LevelGeometry::tensorCompCC(1,SpaceDim-1)),
+            CHF_CONST_REALVECT(dx),
+            CHF_BOX(valid),
+            CHF_CONST_INT(intPow),
+            CHF_CONST_INT(doAbs));
+    } else {
+        FORT_COMPUTEBVFREQ3D(
+            CHF_FRA1(a_RigFAB,0),
+            CHF_CONST_FRA1(bFB[0],0),
+            CHF_CONST_FRA1(bFB[1],0),
+            CHF_CONST_FRA1(bFB[2],0),
+            CHF_CONST_FRA1(dXidxFAB, LevelGeometry::tensorCompCC(0,SpaceDim-1)),
+            CHF_CONST_FRA1(dXidxFAB, LevelGeometry::tensorCompCC(1,SpaceDim-1)),
+            CHF_CONST_FRA1(dXidxFAB, LevelGeometry::tensorCompCC(2,SpaceDim-1)),
+            CHF_CONST_REALVECT(dx),
+            CHF_BOX(valid),
+            CHF_CONST_INT(intPow),
+            CHF_CONST_INT(doAbs));
+    }
+    bFB.clear();
+
+    // Compute S^2
+    FArrayBox SsqFAB(valid, 1);
+    if (a_useHorizSsq) {
+        FORT_COMPUTEHORIZSTRAINRATESQ (
+            CHF_FRA1(SsqFAB,0),
+            CHF_CONST_FRA(a_cartVelFAB),
+            CHF_CONST_FRA(dXidxFAB),
+            CHF_CONST_REALVECT(dx),
+            CHF_BOX(valid));
+    } else {
+        FORT_COMPUTESTRAINRATESQ (
+            CHF_FRA1(SsqFAB,0),
+            CHF_CONST_FRA(a_cartVelFAB),
+            CHF_CONST_FRA(dXidxFAB),
+            CHF_CONST_REALVECT(dx),
+            CHF_BOX(valid));
+    }
+
+    // Compute Rig = N^2/S^2. In all cells where Rig is >= tol,
+    // Rig will be set to maskVal.
+    FORT_COMPUTEMASKEDRIG (
+        CHF_FRA1(a_RigFAB,0),
+        CHF_CONST_FRA1(a_RigFAB,0),
+        CHF_CONST_FRA1(SsqFAB,0),
+        CHF_BOX(valid),
+        CHF_CONST_REAL(a_tol),
+        CHF_CONST_REAL(a_maskVal));
+}
+
 
 // StructurePool...
 
@@ -558,12 +688,8 @@ StructurePool::ElementType StructurePool::createNewLevel (const Box& a_box) {
     CH_assert(m_levGeoPtr->getDomain().domainBox() == a_box);
 
     // Gather domain data
-    const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
     const ProblemDomain& domain = m_levGeoPtr->getDomain();
     const Box domBox = domain.domainBox();
-    const int Nx = domBox.size(0);
-    const int Nz = domBox.size(1);
-    const Real physDx = m_levGeoPtr->getDx()[0];
     const Real physDz = m_levGeoPtr->getDx()[1];
 
     // Create calculation regions

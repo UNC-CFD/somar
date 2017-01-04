@@ -4,6 +4,11 @@
 #include "MergeBoxesOnLines.H"
 
 
+#define X_BF_MULT 1
+#define Y_BF_MULT 1
+#define Z_BF_MULT 1
+
+
 // -----------------------------------------------------------------------------
 // Default constructor -- leaves object in an unusable state
 // -----------------------------------------------------------------------------
@@ -240,9 +245,9 @@ int LepticMeshRefine::regrid (Vector<Vector<Box> >&       a_newmeshes,  // new s
         // Generate new meshes if requested.
         if ( TopLevel+1 > a_baseLevel ) {
             IntVect vectBF;
-            D_TERM(vectBF[0] = (m_spanDirs[0] == 1)? 1: m_blockFactor;,
-                   vectBF[1] = (m_spanDirs[1] == 1)? 1: m_blockFactor;,
-                   vectBF[2] = (m_spanDirs[2] == 1)? 1: m_blockFactor;)
+            D_TERM(vectBF[0] = (m_spanDirs[0] == 1)? 1: (X_BF_MULT)*m_blockFactor;,
+                   vectBF[1] = (m_spanDirs[1] == 1)? 1: (Y_BF_MULT)*m_blockFactor;,
+                   vectBF[2] = (m_spanDirs[2] == 1)? 1: (Z_BF_MULT)*m_blockFactor;)
 
             Box domaint = m_vectDomains[a_baseLevel].domainBox();
             Box testdom = coarsen(domaint, vectBF);
@@ -1244,7 +1249,9 @@ void LepticMeshRefine::computeLocalBlockFactors ()
         // This is simply ceil(m_blockFactor / m_nRefVect[lev]).
         m_level_blockfactors[lev] =
             (  m_nRefVect[lev]
-             + IntVect(D_DECL(m_blockFactor-1,m_blockFactor-1,m_blockFactor-1))  )
+             + IntVect(D_DECL((X_BF_MULT)*m_blockFactor-1,
+                              (Y_BF_MULT)*m_blockFactor-1,
+                              (Z_BF_MULT)*m_blockFactor-1))  )
             / m_nRefVect[lev];
 
         // for (int dir = 0; dir < SpaceDim; ++dir) {

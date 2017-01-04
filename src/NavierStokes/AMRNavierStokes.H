@@ -36,7 +36,7 @@
 #include "LevelMACProjector.H"
 #include "LevelCCProjector.H"
 
-#include "CornerCopier.H"
+#include "CopierCache.H"
 #include "AdvectUtil.H"
 #include "AlteredMetric.H"  // Perturbed metric for the BV solver
 #include "StressMetric.H"   // Viscous stress tensor
@@ -539,11 +539,22 @@ protected:
                         const CFRegion*             a_CFRegionPtr = NULL,
                         const Real                  a_time = BOGUS_TIME);
 
-    // Compute Laplacian(scalars)
-    void computeLapScal (LevelData<FArrayBox>&       a_lapScal,
-                         LevelData<FArrayBox>&       a_scal,
-                         const LevelData<FArrayBox>* a_crseScalPtr,
-                         const CFRegion*             a_CFRegionPtr = NULL);
+    // Compute D[nu G[u]].
+    void computeViscousSrc (LevelData<FArrayBox>&       a_viscSrc,
+                            const LevelData<FArrayBox>& a_vel,
+                            const Real                  a_time) const;
+
+    // Compute D[kappa G[b]].
+    void computeDiffusiveSrc (LevelData<FArrayBox>&       a_diffSrc,
+                              const LevelData<FArrayBox>& a_scal,
+                              const LevelData<FArrayBox>* a_crseScalPtr,
+                              const int                   a_comp,
+                              const Real                  a_time) const;
+
+    // Compute the gradient Richardson number.
+    void computeRiNumber (LevelData<FArrayBox>& a_Ri,
+                          const int             a_RiComp,
+                          const Real            a_time) const;
 
     // compute vorticity
     // NOTE: This returns two-form components, not a vector!
@@ -606,7 +617,7 @@ protected:
     Vector<LevelData<FArrayBox>*> m_scal_new;
 
     // number of scalars (not including lambda)
-    static int s_num_scal_comps;
+    static const unsigned int s_num_scal_comps;
 
     // names of velocity components
     static const char* s_vel_names[CH_SPACEDIM];
@@ -726,6 +737,12 @@ protected:
     // Set to zero to turn off.
     static Real s_pressure_tag_tol;
 
+    // Tag on the gradient Richardson number.
+    // Criterion: Ri <= s_Ri_tag_tol
+    //            where Ri = N^2 / S^2.
+    static bool s_do_Ri_tagging;
+    static Real s_Ri_tag_tol;
+
     // Vertically extrudes all tags when set to true.
     // This should guarantee that each *level* will vertically span the domain.
     // This DOES NOT guarantee the same for each *patch* itself.
@@ -780,6 +797,9 @@ protected:
     static Real s_tidalOmega;
     static RealVect s_tidalU0;
 
+    // The Coriolis parameter
+    static Real s_coriolisF;
+
     // -- I/O options --
 
     // Should we write to standard out?
@@ -823,6 +843,9 @@ protected:
 
     // Should we write the Jacobian, metric, etc?
     static bool s_write_geometry;
+
+    // include Gradient Richardson number
+    static bool s_write_Ri;
 
     // The total (composite) energy
     static Real s_totalEnergy;
@@ -871,13 +894,9 @@ protected:
     // cfl number
     Real m_cfl;
 
-    // Exchange copiers for hyperbolic tracing scheme
-    IntVect m_tracingGhosts;
-    Copier m_tracingExCopier;
-    CornerCopier m_tracingExCornerCopier;
-
-    // Exchange copier for any field on this level with one ghost.
-    Copier m_oneGhostExCopier;
+    // Tools for speeding up exchanges
+    // WARNING: Don't use these on LevelData<FluxBox>es.
+    mutable CopierCache m_copierCache;
 
     // averaging from fine to coarse level for velocity
     MappedCoarseAverage m_coarse_average;

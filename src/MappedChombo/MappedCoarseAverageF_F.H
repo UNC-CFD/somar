@@ -243,6 +243,34 @@ inline void FORTRAN_NAME(inlineMAPPEDAVERAGEFACE, inlineMAPPEDAVERAGEFACE)(
 }
 #endif  // GUARDMAPPEDAVERAGEFACE 
 
+#ifndef GUARDINTERPTOCOARSENODES 
+#define GUARDINTERPTOCOARSENODES 
+// Prototype for Fortran procedure InterpToCoarseNodes ...
+//
+void FORTRAN_NAME( INTERPTOCOARSENODES ,interptocoarsenodes )(
+      CHFp_FRA(coarse)
+      ,CHFp_CONST_FRA(fine)
+      ,CHFp_BOX(crseBox)
+      ,CHFp_CONST_INTVECT(refRatio) );
+
+#define FORT_INTERPTOCOARSENODES FORTRAN_NAME( inlineINTERPTOCOARSENODES, inlineINTERPTOCOARSENODES)
+#define FORTNT_INTERPTOCOARSENODES FORTRAN_NAME( INTERPTOCOARSENODES, interptocoarsenodes)
+
+inline void FORTRAN_NAME(inlineINTERPTOCOARSENODES, inlineINTERPTOCOARSENODES)(
+      CHFp_FRA(coarse)
+      ,CHFp_CONST_FRA(fine)
+      ,CHFp_BOX(crseBox)
+      ,CHFp_CONST_INTVECT(refRatio) )
+{
+ CH_TIMELEAF("FORT_INTERPTOCOARSENODES");
+ FORTRAN_NAME( INTERPTOCOARSENODES ,interptocoarsenodes )(
+      CHFt_FRA(coarse)
+      ,CHFt_CONST_FRA(fine)
+      ,CHFt_BOX(crseBox)
+      ,CHFt_CONST_INTVECT(refRatio) );
+}
+#endif  // GUARDINTERPTOCOARSENODES 
+
 }
 
 #endif

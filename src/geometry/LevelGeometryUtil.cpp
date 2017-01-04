@@ -141,6 +141,23 @@ Vector<DisjointBoxLayout> LevelGeometry::getAMRGrids () const
 // Sends a vector from the scaled, mapped basis to an unscaled, Cartesian basis.
 // uCart^{a} = [dx^{a} / dXi^{b}] * uMapped^{b}
 // -----------------------------------------------------------------------------
+void LevelGeometry::sendToCartesianBasis (FArrayBox& a_vectFAB,
+                                          const Box& a_region) const
+{
+    FArrayBox dxdXiFAB(a_region, SpaceDim*SpaceDim);
+    this->fill_dxdXi(dxdXiFAB);
+
+    FORT_CONTRACTMATRIXVECTORCC(
+        CHF_FRA(a_vectFAB),
+        CHF_CONST_FRA(dxdXiFAB),
+        CHF_BOX(a_region));
+}
+
+
+// -----------------------------------------------------------------------------
+// Sends a vector from the scaled, mapped basis to an unscaled, Cartesian basis.
+// uCart^{a} = [dx^{a} / dXi^{b}] * uMapped^{b}
+// -----------------------------------------------------------------------------
 void LevelGeometry::sendToCartesianBasis (LevelData<FArrayBox>& a_CCvect,
                                           bool                  a_doGhosts) const
 {
@@ -150,13 +167,7 @@ void LevelGeometry::sendToCartesianBasis (LevelData<FArrayBox>& a_CCvect,
         FArrayBox& vectFAB = a_CCvect[dit];
         const Box& region = (a_doGhosts ? vectFAB.box() : grids[dit]);
 
-        FArrayBox dxdXiFAB(region, SpaceDim*SpaceDim);
-        this->fill_dxdXi(dxdXiFAB);
-
-        FORT_CONTRACTMATRIXVECTORCC(
-            CHF_FRA(vectFAB),
-            CHF_CONST_FRA(dxdXiFAB),
-            CHF_BOX(region));
+        this->sendToCartesianBasis(vectFAB, region);
     }
 }
 
@@ -179,14 +190,7 @@ void LevelGeometry::sendToCartesianBasis (LevelData<FluxBox>& a_FCvect,
             FArrayBox& vectFAB = a_FCvect[dit][dir];
             const Box& region = (a_doGhosts ? vectFAB.box() : surroundingNodes(grids[dit], dir));
 
-            // Fill a holder with the inverse Jacobian matrix
-            FArrayBox dxdXiFAB(region, SpaceDim*SpaceDim);
-            this->fill_dxdXi(dxdXiFAB);
-
-            FORT_CONTRACTMATRIXVECTORCC(
-                CHF_FRA(vectFAB),
-                CHF_CONST_FRA(dxdXiFAB),
-                CHF_BOX(region));
+            this->sendToCartesianBasis(vectFAB, region);
         } // end loop over FC dirs (dir)
     } // end loop over grids (dit)
 }

@@ -77,7 +77,7 @@ void LevelGSRB::relax (LevelData<FArrayBox>&       a_phi,
 
     // Loop over red and black passes
     for (int whichPass = 0; whichPass < 2; ++whichPass) {
-        // Synchronous communication
+        // Synchronous communication - TODO: This is an MPI bottleneck.
         a_phi.exchange(m_exchangeCopier);
 
         // Fill boundary ghosts and extrapolate.

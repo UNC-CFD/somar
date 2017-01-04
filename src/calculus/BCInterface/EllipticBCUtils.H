@@ -119,7 +119,7 @@ public:
                                    const IntVect   a_doLoSides = IntVect::Unit,
                                    const IntVect   a_doHiSides = IntVect::Unit)
     {
-        m_bcDescriptor.set(BCType::Diri);
+        m_bcDescriptor.set(BCType::Diri, a_doLoSides, a_doHiSides);
 
         m_BCValue[0] = a_loSideValue;
         m_BCValue[1] = a_hiSideValue;
@@ -165,7 +165,7 @@ public:
                                    const IntVect   a_doLoSides = IntVect::Unit,
                                    const IntVect   a_doHiSides = IntVect::Unit)
     {
-        m_bcDescriptor.set(BCType::Neum);
+        m_bcDescriptor.set(BCType::Neum, a_doLoSides, a_doHiSides);
 
         m_BCValue[0] = a_loSideValue;
         m_BCValue[1] = a_hiSideValue;
@@ -216,7 +216,7 @@ public:
                                   const IntVect   a_doLoSides = IntVect::Unit,
                                   const IntVect   a_doHiSides = IntVect::Unit)
     {
-        m_bcDescriptor.set(BCType::Neum);
+        m_bcDescriptor.set(BCType::Neum, a_doLoSides, a_doHiSides);
 
         m_BCValue[0] = a_loSideValue;
         m_BCValue[1] = a_hiSideValue;
@@ -263,7 +263,7 @@ public:
     : m_funcPtr(a_funcPtr),
       m_objPtr(RefCountedPtr<EllipticBCValueClass>(NULL))
     {
-        m_bcDescriptor.set(BCType::Diri);
+        m_bcDescriptor.set(BCType::Diri, a_doLoSides, a_doHiSides);
 
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
@@ -275,6 +275,16 @@ public:
     : m_funcPtr(NULL),
       m_objPtr(a_objPtr)
     {
+        D_TERM(
+        if (a_doLoSides[0] == 1) m_bcDescriptor.set(0, Side::Lo, BCType::Diri);,
+        if (a_doLoSides[1] == 1) m_bcDescriptor.set(1, Side::Lo, BCType::Diri);,
+        if (a_doLoSides[2] == 1) m_bcDescriptor.set(2, Side::Lo, BCType::Diri);)
+
+        D_TERM(
+        if (a_doHiSides[0] == 1) m_bcDescriptor.set(0, Side::Hi, BCType::Diri);,
+        if (a_doHiSides[1] == 1) m_bcDescriptor.set(1, Side::Hi, BCType::Diri);,
+        if (a_doHiSides[2] == 1) m_bcDescriptor.set(2, Side::Hi, BCType::Diri);)
+
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
     }
@@ -318,7 +328,7 @@ public:
       m_objPtr(RefCountedPtr<EllipticBCValueClass>(NULL)),
       m_bdryDataPtr(NULL)
     {
-        m_bcDescriptor.set(BCType::Neum);
+        m_bcDescriptor.set(BCType::Neum, a_doLoSides, a_doHiSides);
 
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
@@ -331,6 +341,16 @@ public:
       m_objPtr(a_objPtr),
       m_bdryDataPtr(NULL)
     {
+        D_TERM(
+        if (a_doLoSides[0] == 1) m_bcDescriptor.set(0, Side::Lo, BCType::Neum);,
+        if (a_doLoSides[1] == 1) m_bcDescriptor.set(1, Side::Lo, BCType::Neum);,
+        if (a_doLoSides[2] == 1) m_bcDescriptor.set(2, Side::Lo, BCType::Neum);)
+
+        D_TERM(
+        if (a_doHiSides[0] == 1) m_bcDescriptor.set(0, Side::Hi, BCType::Neum);,
+        if (a_doHiSides[1] == 1) m_bcDescriptor.set(1, Side::Hi, BCType::Neum);,
+        if (a_doHiSides[2] == 1) m_bcDescriptor.set(2, Side::Hi, BCType::Neum);)
+
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
     }
@@ -342,6 +362,16 @@ public:
       m_objPtr(RefCountedPtr<EllipticBCValueClass>(NULL)),
       m_bdryDataPtr(a_bdryDataPtr)
     {
+        D_TERM(
+        if (a_doLoSides[0] == 1) m_bcDescriptor.set(0, Side::Lo, BCType::Neum);,
+        if (a_doLoSides[1] == 1) m_bcDescriptor.set(1, Side::Lo, BCType::Neum);,
+        if (a_doLoSides[2] == 1) m_bcDescriptor.set(2, Side::Lo, BCType::Neum);)
+
+        D_TERM(
+        if (a_doHiSides[0] == 1) m_bcDescriptor.set(0, Side::Hi, BCType::Neum);,
+        if (a_doHiSides[1] == 1) m_bcDescriptor.set(1, Side::Hi, BCType::Neum);,
+        if (a_doHiSides[2] == 1) m_bcDescriptor.set(2, Side::Hi, BCType::Neum);)
+
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
     }
@@ -387,7 +417,7 @@ public:
       m_fluxPtr(NULL),
       m_bdryDataPtr(NULL)
     {
-        m_bcDescriptor.set(BCType::Neum);
+        m_bcDescriptor.set(BCType::Neum, a_doLoSides, a_doHiSides);
 
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
@@ -401,7 +431,16 @@ public:
       m_fluxPtr(NULL),
       m_bdryDataPtr(NULL)
     {
-        // TODO: set the BC descriptor???
+        D_TERM(
+        if (a_doLoSides[0] == 1) m_bcDescriptor.set(0, Side::Lo, BCType::Neum);,
+        if (a_doLoSides[1] == 1) m_bcDescriptor.set(1, Side::Lo, BCType::Neum);,
+        if (a_doLoSides[2] == 1) m_bcDescriptor.set(2, Side::Lo, BCType::Neum);)
+
+        D_TERM(
+        if (a_doHiSides[0] == 1) m_bcDescriptor.set(0, Side::Hi, BCType::Neum);,
+        if (a_doHiSides[1] == 1) m_bcDescriptor.set(1, Side::Hi, BCType::Neum);,
+        if (a_doHiSides[2] == 1) m_bcDescriptor.set(2, Side::Hi, BCType::Neum);)
+
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
     }
@@ -417,7 +456,7 @@ public:
         CH_assert(!m_fluxPtr.isNull());
         CH_assert(m_fluxPtr->nComp() == 1);
 
-        m_bcDescriptor.set(BCType::Neum);
+        m_bcDescriptor.set(BCType::Neum, a_doLoSides, a_doHiSides);
 
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
@@ -431,7 +470,7 @@ public:
       m_fluxPtr(NULL),
       m_bdryDataPtr(a_bdryDataPtr)
     {
-        m_bcDescriptor.set(BCType::Neum);
+        m_bcDescriptor.set(BCType::Neum, a_doLoSides, a_doHiSides);
 
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
@@ -479,7 +518,7 @@ public:
     EllipticDoNothingUnlessHomogNeumBCFluxClass (const IntVect a_doLoSides = IntVect::Unit,
                                                  const IntVect a_doHiSides = IntVect::Unit)
     {
-        m_bcDescriptor.set(BCType::Neum);
+        m_bcDescriptor.set(BCType::Neum, a_doLoSides, a_doHiSides);
 
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
@@ -521,6 +560,8 @@ public:
                                 const IntVect a_doHiSides = IntVect::Unit)
     : m_order(a_order)
     {
+        m_bcDescriptor.set(BCType::None);
+
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
     }
@@ -562,6 +603,8 @@ public:
     : m_order(a_order),
       m_useExtrapPtrAsSource(a_useExtrapPtrAsSource)
     {
+        m_bcDescriptor.set(BCType::None);
+
         m_doSide[0] = a_doLoSides;
         m_doSide[1] = a_doHiSides;
     }

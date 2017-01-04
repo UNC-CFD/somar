@@ -34,6 +34,7 @@ AMRNavierStokes::AMRNavierStokes (MappedAMRLevel* a_coarser_level_ptr,
                                   const Box&      a_prob_domain,
                                   int             a_level,
                                   const IntVect&  a_ref_ratio)
+: m_copierCache(IntVect(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW)))
 {
     TODO();
 }
@@ -46,6 +47,7 @@ AMRNavierStokes::AMRNavierStokes (MappedAMRLevel*      a_coarser_level_ptr,
                                   const ProblemDomain& a_prob_domain,
                                   int                  a_level,
                                   const IntVect&       a_ref_ratio)
+: m_copierCache(IntVect(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW)))
 {
     TODO();
 }

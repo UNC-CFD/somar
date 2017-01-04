@@ -93,10 +93,12 @@ void FORTRAN_NAME( COMPUTEBVFREQ2D ,computebvfreq2d )(
       CHFp_FRA1(BVFreq)
       ,CHFp_CONST_FRA1(buoyancy0)
       ,CHFp_CONST_FRA1(buoyancy1)
-      ,CHFp_CONST_FRA(dXidz)
+      ,CHFp_CONST_FRA1(J01)
+      ,CHFp_CONST_FRA1(J11)
       ,CHFp_CONST_REALVECT(dx)
       ,CHFp_BOX(region)
-      ,CHFp_CONST_REAL(p) );
+      ,CHFp_CONST_INT(p)
+      ,CHFp_CONST_INT(doAbs) );
 
 #define FORT_COMPUTEBVFREQ2D FORTRAN_NAME( inlineCOMPUTEBVFREQ2D, inlineCOMPUTEBVFREQ2D)
 #define FORTNT_COMPUTEBVFREQ2D FORTRAN_NAME( COMPUTEBVFREQ2D, computebvfreq2d)
@@ -105,20 +107,24 @@ inline void FORTRAN_NAME(inlineCOMPUTEBVFREQ2D, inlineCOMPUTEBVFREQ2D)(
       CHFp_FRA1(BVFreq)
       ,CHFp_CONST_FRA1(buoyancy0)
       ,CHFp_CONST_FRA1(buoyancy1)
-      ,CHFp_CONST_FRA(dXidz)
+      ,CHFp_CONST_FRA1(J01)
+      ,CHFp_CONST_FRA1(J11)
       ,CHFp_CONST_REALVECT(dx)
       ,CHFp_BOX(region)
-      ,CHFp_CONST_REAL(p) )
+      ,CHFp_CONST_INT(p)
+      ,CHFp_CONST_INT(doAbs) )
 {
  CH_TIMELEAF("FORT_COMPUTEBVFREQ2D");
  FORTRAN_NAME( COMPUTEBVFREQ2D ,computebvfreq2d )(
       CHFt_FRA1(BVFreq)
       ,CHFt_CONST_FRA1(buoyancy0)
       ,CHFt_CONST_FRA1(buoyancy1)
-      ,CHFt_CONST_FRA(dXidz)
+      ,CHFt_CONST_FRA1(J01)
+      ,CHFt_CONST_FRA1(J11)
       ,CHFt_CONST_REALVECT(dx)
       ,CHFt_BOX(region)
-      ,CHFt_CONST_REAL(p) );
+      ,CHFt_CONST_INT(p)
+      ,CHFt_CONST_INT(doAbs) );
 }
 #endif  // GUARDCOMPUTEBVFREQ2D 
 
@@ -131,10 +137,13 @@ void FORTRAN_NAME( COMPUTEBVFREQ3D ,computebvfreq3d )(
       ,CHFp_CONST_FRA1(buoyancy0)
       ,CHFp_CONST_FRA1(buoyancy1)
       ,CHFp_CONST_FRA1(buoyancy2)
-      ,CHFp_CONST_FRA(dXidz)
+      ,CHFp_CONST_FRA1(J02)
+      ,CHFp_CONST_FRA1(J12)
+      ,CHFp_CONST_FRA1(J22)
       ,CHFp_CONST_REALVECT(dx)
       ,CHFp_BOX(region)
-      ,CHFp_CONST_REAL(p) );
+      ,CHFp_CONST_INT(p)
+      ,CHFp_CONST_INT(doAbs) );
 
 #define FORT_COMPUTEBVFREQ3D FORTRAN_NAME( inlineCOMPUTEBVFREQ3D, inlineCOMPUTEBVFREQ3D)
 #define FORTNT_COMPUTEBVFREQ3D FORTRAN_NAME( COMPUTEBVFREQ3D, computebvfreq3d)
@@ -144,10 +153,13 @@ inline void FORTRAN_NAME(inlineCOMPUTEBVFREQ3D, inlineCOMPUTEBVFREQ3D)(
       ,CHFp_CONST_FRA1(buoyancy0)
       ,CHFp_CONST_FRA1(buoyancy1)
       ,CHFp_CONST_FRA1(buoyancy2)
-      ,CHFp_CONST_FRA(dXidz)
+      ,CHFp_CONST_FRA1(J02)
+      ,CHFp_CONST_FRA1(J12)
+      ,CHFp_CONST_FRA1(J22)
       ,CHFp_CONST_REALVECT(dx)
       ,CHFp_BOX(region)
-      ,CHFp_CONST_REAL(p) )
+      ,CHFp_CONST_INT(p)
+      ,CHFp_CONST_INT(doAbs) )
 {
  CH_TIMELEAF("FORT_COMPUTEBVFREQ3D");
  FORTRAN_NAME( COMPUTEBVFREQ3D ,computebvfreq3d )(
@@ -155,10 +167,13 @@ inline void FORTRAN_NAME(inlineCOMPUTEBVFREQ3D, inlineCOMPUTEBVFREQ3D)(
       ,CHFt_CONST_FRA1(buoyancy0)
       ,CHFt_CONST_FRA1(buoyancy1)
       ,CHFt_CONST_FRA1(buoyancy2)
-      ,CHFt_CONST_FRA(dXidz)
+      ,CHFt_CONST_FRA1(J02)
+      ,CHFt_CONST_FRA1(J12)
+      ,CHFt_CONST_FRA1(J22)
       ,CHFt_CONST_REALVECT(dx)
       ,CHFt_BOX(region)
-      ,CHFt_CONST_REAL(p) );
+      ,CHFt_CONST_INT(p)
+      ,CHFt_CONST_INT(doAbs) );
 }
 #endif  // GUARDCOMPUTEBVFREQ3D 
 
@@ -443,6 +458,102 @@ inline void FORTRAN_NAME(inlineFILLHORIZSTRUCTURE, inlineFILLHORIZSTRUCTURE)(
       ,CHFt_CONST_REAL(physDx) );
 }
 #endif  // GUARDFILLHORIZSTRUCTURE 
+
+#ifndef GUARDCOMPUTESTRAINRATESQ 
+#define GUARDCOMPUTESTRAINRATESQ 
+// Prototype for Fortran procedure ComputeStrainRateSq ...
+//
+void FORTRAN_NAME( COMPUTESTRAINRATESQ ,computestrainratesq )(
+      CHFp_FRA1(Ssq)
+      ,CHFp_CONST_FRA(cartVel)
+      ,CHFp_CONST_FRA(dXidx)
+      ,CHFp_CONST_REALVECT(dx)
+      ,CHFp_BOX(region) );
+
+#define FORT_COMPUTESTRAINRATESQ FORTRAN_NAME( inlineCOMPUTESTRAINRATESQ, inlineCOMPUTESTRAINRATESQ)
+#define FORTNT_COMPUTESTRAINRATESQ FORTRAN_NAME( COMPUTESTRAINRATESQ, computestrainratesq)
+
+inline void FORTRAN_NAME(inlineCOMPUTESTRAINRATESQ, inlineCOMPUTESTRAINRATESQ)(
+      CHFp_FRA1(Ssq)
+      ,CHFp_CONST_FRA(cartVel)
+      ,CHFp_CONST_FRA(dXidx)
+      ,CHFp_CONST_REALVECT(dx)
+      ,CHFp_BOX(region) )
+{
+ CH_TIMELEAF("FORT_COMPUTESTRAINRATESQ");
+ FORTRAN_NAME( COMPUTESTRAINRATESQ ,computestrainratesq )(
+      CHFt_FRA1(Ssq)
+      ,CHFt_CONST_FRA(cartVel)
+      ,CHFt_CONST_FRA(dXidx)
+      ,CHFt_CONST_REALVECT(dx)
+      ,CHFt_BOX(region) );
+}
+#endif  // GUARDCOMPUTESTRAINRATESQ 
+
+#ifndef GUARDCOMPUTEHORIZSTRAINRATESQ 
+#define GUARDCOMPUTEHORIZSTRAINRATESQ 
+// Prototype for Fortran procedure ComputeHorizStrainRateSq ...
+//
+void FORTRAN_NAME( COMPUTEHORIZSTRAINRATESQ ,computehorizstrainratesq )(
+      CHFp_FRA1(Ssq)
+      ,CHFp_CONST_FRA(cartVel)
+      ,CHFp_CONST_FRA(dXidx)
+      ,CHFp_CONST_REALVECT(dx)
+      ,CHFp_BOX(region) );
+
+#define FORT_COMPUTEHORIZSTRAINRATESQ FORTRAN_NAME( inlineCOMPUTEHORIZSTRAINRATESQ, inlineCOMPUTEHORIZSTRAINRATESQ)
+#define FORTNT_COMPUTEHORIZSTRAINRATESQ FORTRAN_NAME( COMPUTEHORIZSTRAINRATESQ, computehorizstrainratesq)
+
+inline void FORTRAN_NAME(inlineCOMPUTEHORIZSTRAINRATESQ, inlineCOMPUTEHORIZSTRAINRATESQ)(
+      CHFp_FRA1(Ssq)
+      ,CHFp_CONST_FRA(cartVel)
+      ,CHFp_CONST_FRA(dXidx)
+      ,CHFp_CONST_REALVECT(dx)
+      ,CHFp_BOX(region) )
+{
+ CH_TIMELEAF("FORT_COMPUTEHORIZSTRAINRATESQ");
+ FORTRAN_NAME( COMPUTEHORIZSTRAINRATESQ ,computehorizstrainratesq )(
+      CHFt_FRA1(Ssq)
+      ,CHFt_CONST_FRA(cartVel)
+      ,CHFt_CONST_FRA(dXidx)
+      ,CHFt_CONST_REALVECT(dx)
+      ,CHFt_BOX(region) );
+}
+#endif  // GUARDCOMPUTEHORIZSTRAINRATESQ 
+
+#ifndef GUARDCOMPUTEMASKEDRIG 
+#define GUARDCOMPUTEMASKEDRIG 
+// Prototype for Fortran procedure ComputeMaskedRig ...
+//
+void FORTRAN_NAME( COMPUTEMASKEDRIG ,computemaskedrig )(
+      CHFp_FRA1(Rig)
+      ,CHFp_CONST_FRA1(Nsq)
+      ,CHFp_CONST_FRA1(Ssq)
+      ,CHFp_BOX(region)
+      ,CHFp_CONST_REAL(tol)
+      ,CHFp_CONST_REAL(maskVal) );
+
+#define FORT_COMPUTEMASKEDRIG FORTRAN_NAME( inlineCOMPUTEMASKEDRIG, inlineCOMPUTEMASKEDRIG)
+#define FORTNT_COMPUTEMASKEDRIG FORTRAN_NAME( COMPUTEMASKEDRIG, computemaskedrig)
+
+inline void FORTRAN_NAME(inlineCOMPUTEMASKEDRIG, inlineCOMPUTEMASKEDRIG)(
+      CHFp_FRA1(Rig)
+      ,CHFp_CONST_FRA1(Nsq)
+      ,CHFp_CONST_FRA1(Ssq)
+      ,CHFp_BOX(region)
+      ,CHFp_CONST_REAL(tol)
+      ,CHFp_CONST_REAL(maskVal) )
+{
+ CH_TIMELEAF("FORT_COMPUTEMASKEDRIG");
+ FORTRAN_NAME( COMPUTEMASKEDRIG ,computemaskedrig )(
+      CHFt_FRA1(Rig)
+      ,CHFt_CONST_FRA1(Nsq)
+      ,CHFt_CONST_FRA1(Ssq)
+      ,CHFt_BOX(region)
+      ,CHFt_CONST_REAL(tol)
+      ,CHFt_CONST_REAL(maskVal) );
+}
+#endif  // GUARDCOMPUTEMASKEDRIG 
 
 }
 

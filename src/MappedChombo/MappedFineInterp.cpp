@@ -371,6 +371,19 @@ void MappedFineInterp::interpGridData (BaseFab<Real>&       a_fine,
     const int num_comp = a_fine.nComp();
     const Box refbox(IntVect::Zero, (a_refRatio-IntVect::Unit));
 
+    // This is used to effectively remove the non-contributing directions
+    // from the interpolation. The non-contributors are the directions
+    // in which the refRatio is 1.
+    //
+    // NOTE: To bring this back to the original, full dimensional interpolation,
+    // just set refMask to IntVect::Unit;
+    // const IntVect& refMask = IntVect::Unit;
+    const IntVect refMask(D_DECL(
+        (a_refRatio[0] > 1)? 1: 0,
+        (a_refRatio[1] > 1)? 1: 0,
+        (a_refRatio[2] > 1)? 1: 0));
+
+    // Start with a piecewise constant interpolation (the prediction).
     FORT_UNMAPPEDINTERPCONSTANT(CHF_FRA(a_fine),
                                 CHF_CONST_FRA(a_coarse),
                                 CHF_BOX(b),
@@ -387,33 +400,41 @@ void MappedFineInterp::interpGridData (BaseFab<Real>&       a_fine,
     for (int dir = 0; dir < SpaceDim; ++dir) {
         BaseFab<Real>& dir_slope = slopes[dir];
 
-        const Box bcenter = grow(a_coarseDomain, -BASISV(dir)) & b;
-        if (!bcenter.isEmpty()) {
-            FORT_INTERPCENTRALSLOPE(CHF_FRA(dir_slope),
-                                    CHF_CONST_FRA(a_coarse),
-                                    CHF_BOX(bcenter),
-                                    CHF_CONST_INT(dir));
-        }
-        const Box blo = b & adjCellLo(grow(a_coarseDomain, -BASISV(dir)), dir);
-        if (!blo.isEmpty()) {
-            FORT_INTERPHISIDESLOPE(CHF_FRA(dir_slope),
-                                   CHF_CONST_FRA(a_coarse),
-                                   CHF_BOX(blo),
-                                   CHF_CONST_INT(dir));
-        }
-        const Box bhi = b & adjCellHi(grow(a_coarseDomain, -BASISV(dir)), dir);
-        if (!bhi.isEmpty()) {
-            FORT_INTERPLOSIDESLOPE(CHF_FRA(dir_slope),
-                                   CHF_CONST_FRA(a_coarse),
-                                   CHF_BOX(bhi),
-                                   CHF_CONST_INT(dir));
+        if (refMask[dir] > 0) {
+            const Box interiorBox = grow(a_coarseDomain.domainBox(), -BASISV(dir));
+
+            const Box bcenter = interiorBox & b;
+            if (!bcenter.isEmpty()) {
+                FORT_INTERPCENTRALSLOPE(CHF_FRA(dir_slope),
+                                        CHF_CONST_FRA(a_coarse),
+                                        CHF_BOX(bcenter),
+                                        CHF_CONST_INT(dir));
+            }
+            const Box blo = b & adjCellLo(interiorBox, dir, 1);
+            if (!blo.isEmpty()) {
+                FORT_INTERPHISIDESLOPE(CHF_FRA(dir_slope),
+                                       CHF_CONST_FRA(a_coarse),
+                                       CHF_BOX(blo),
+                                       CHF_CONST_INT(dir));
+            }
+            const Box bhi = b & adjCellHi(interiorBox, dir, 1);
+            if (!bhi.isEmpty()) {
+                FORT_INTERPLOSIDESLOPE(CHF_FRA(dir_slope),
+                                       CHF_CONST_FRA(a_coarse),
+                                       CHF_BOX(bhi),
+                                       CHF_CONST_INT(dir));
+            }
+        } else {
+            // Unrefined directions should not contribute. The entire
+            // refinement process should reduce in dimensionality.
+            dir_slope.setVal(0.0);
         }
     }
 
     // To do limits, we need to have a box which includes
     // the neighbors of a given point (to check for the
     // local maximum...
-    Box neighborBox(-1*IntVect::Unit, IntVect::Unit);
+    Box neighborBox(-1*refMask, refMask);
 
     // GHM 7/12/01
     // interplimit iterates over box b_mod (was b), but cells within
@@ -423,12 +444,12 @@ void MappedFineInterp::interpGridData (BaseFab<Real>&       a_fine,
     // note that this turns off slope limiting for cells adjacent to the
     // boundary -- may want to revisit this in the future
     Box b_mod(b);
-    b_mod.grow(1);
+    b_mod.grow(refMask);
     b_mod = a_coarseDomain & b_mod;
-    b_mod.grow(-1);
+    b_mod.grow(-refMask);
 
     // create a box grown big enough to remove periodic BCs from domain
-    Box domBox = grow(b, 2);
+    Box domBox = grow(b, 2*refMask);
     domBox = a_coarseDomain & domBox;
 
     FORT_INTERPLIMIT(CHF_FRA(slopes[0]),
@@ -439,7 +460,11 @@ void MappedFineInterp::interpGridData (BaseFab<Real>&       a_fine,
                      CHF_BOX(neighborBox),
                      CHF_BOX(domBox));
 
+    // Update to a linear interpolation (the correction).
     for (int dir = 0; dir < SpaceDim; ++dir) {
+        // Don't do unrefined directions since it should add nothing anyway.
+        if (a_refRatio[dir] == 1) continue;
+
         BaseFab<Real>& dir_slope = slopes[dir];
 
         FORT_UNMAPPEDINTERPLINEAR(CHF_FRA(a_fine),

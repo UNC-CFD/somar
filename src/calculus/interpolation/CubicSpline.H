@@ -65,6 +65,10 @@ public:
     void interpSecondDeriv (Vector<Real>&       a_d2f,
                             const Vector<Real>& a_x) const;
 
+    // Fills a_d2f with the interpolated second derivatives at the position
+    // indicated by a_x
+    Real interpSecondDeriv (const Real& a_x) const;
+
     // Uses a pre-computed set of data.
     void useSolution (const Vector<Real>& a_x,
                       const Vector<Real>& a_f,

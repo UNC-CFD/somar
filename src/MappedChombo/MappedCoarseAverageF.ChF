@@ -320,3 +320,31 @@ c ------------------------------------------------------------------------------
       return
       end
 
+
+c ------------------------------------------------------------------------------
+c This is hardly an interpolation. It just copies fine data to the coarse level.
+c ------------------------------------------------------------------------------
+      subroutine InterpToCoarseNodes (
+     &     CHF_FRA[coarse],
+     &     CHF_CONST_FRA[fine],
+     &     CHF_BOX[crseBox],
+     &     CHF_CONST_INTVECT[refRatio])
+
+      integer var
+      integer CHF_AUTODECL[ic]
+      integer CHF_AUTODECL[ip]
+      integer CHF_AUTODECL[ii]
+
+      do var = 0, CHF_NCOMP[coarse] - 1
+        CHF_AUTOMULTIDO[crseBox;ic]
+          CHF_DTERM[
+          ip0 = ic0*refRatio(0);
+          ip1 = ic1*refRatio(1);
+          ip2 = ic2*refRatio(2)]
+
+          coarse(CHF_AUTOIX[ic],var) = fine(CHF_AUTOIX[ip],var)
+        CHF_ENDDO
+      enddo
+
+      return
+      end

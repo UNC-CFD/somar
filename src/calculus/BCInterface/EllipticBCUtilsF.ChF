@@ -172,6 +172,29 @@ C ------------------------------------------------------------------
           CHF_ENDDO
         enddo
 
+      elseif (order .eq. 3) then
+
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            state(CHF_AUTOIX[i],n) = four * (  state(CHF_OFFSETIX[i;+  ii],n)
+     &                                       + state(CHF_OFFSETIX[i;+3*ii],n)  )
+     &                             - six * state(CHF_OFFSETIX[i;+2*ii],n)
+     &                             -       state(CHF_OFFSETIX[i;+4*ii],n)
+          CHF_ENDDO
+        enddo
+
+      elseif (order .eq. 4) then
+
+        do n = 0, ncomp-1
+          CHF_AUTOMULTIDO[toRegion; i]
+            state(CHF_AUTOIX[i],n) = five * (  state(CHF_OFFSETIX[i;+  ii],n)
+     &                                       - state(CHF_OFFSETIX[i;+4*ii],n)  )
+     &                             + ten  * (  state(CHF_OFFSETIX[i;+3*ii],n)
+     &                                       - state(CHF_OFFSETIX[i;+2*ii],n)  )
+     &                             + state(CHF_OFFSETIX[i;+5*ii],n)
+          CHF_ENDDO
+        enddo
+
       else
          print*, 'ELLIPTICEXTRAPBCGHOST: order is out of range ', order
          call MAYDAYERROR()
@@ -293,6 +316,7 @@ C     ------------------------------------------------------------------
 
       integer n,ncomp
       REAL_T cross
+      REAL_T CHF_DDECL[idxa;idxb;idxc]
 
       ncomp = CHF_NCOMP[phi]
 
@@ -347,6 +371,11 @@ C     ------------------------------------------------------------------
       vjo = -fsign*CHF_ID(adir, 1);
       vko = -fsign*CHF_ID(adir, 2)]
 
+      CHF_DTERM[
+      idxa = -fourth / dx(adir);
+      idxb = -fourth / dx(bdir);
+      idxc = -fourth / dx(cdir)]
+
       do n = 0, ncomp-1
         CHF_MULTIDO[ghostBox; gi; gj; gk]
 
@@ -360,15 +389,15 @@ C     ------------------------------------------------------------------
           vj = gj + vjo;
           vk = gk + vko]
 
-          cross = 0.25 * (CHF_DTERM[;
-     &          - (+ extrap(CHF_IX[gi+bi; gj+bj; gk+bk],n)
+          cross = CHF_DTERM[;
+     &            (  extrap(CHF_IX[gi+bi; gj+bj; gk+bk],n)
      &             - extrap(CHF_IX[gi-bi; gj-bj; gk-bk],n)
      &             + extrap(CHF_IX[vi+bi; vj+bj; vk+bk],n)
-     &             - extrap(CHF_IX[vi-bi; vj-bj; vk-bk],n)) * nhat(CHF_IX[fi;fj;fk],bdir) / dx(bdir);
-     &          - (+ extrap(CHF_IX[gi+ci; gj+cj; gk+ck],n)
+     &             - extrap(CHF_IX[vi-bi; vj-bj; vk-bk],n)) * nhat(CHF_IX[fi;fj;fk],bdir) * idxb;
+     &          + (  extrap(CHF_IX[gi+ci; gj+cj; gk+ck],n)
      &             - extrap(CHF_IX[gi-ci; gj-cj; gk-ck],n)
      &             + extrap(CHF_IX[vi+ci; vj+cj; vk+ck],n)
-     &             - extrap(CHF_IX[vi-ci; vj-cj; vk-ck],n)) * nhat(CHF_IX[fi;fj;fk],cdir) / dx(cdir) ]);
+     &             - extrap(CHF_IX[vi-ci; vj-cj; vk-ck],n)) * nhat(CHF_IX[fi;fj;fk],cdir) * idxc ];
 
           phi(CHF_IX[gi;gj;gk],n) = phi(CHF_IX[vi;vj;vk],n)
      &                            + (bcval - cross) * dx(adir) / nhat(CHF_IX[fi;fj;fk],adir)

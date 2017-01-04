@@ -24,13 +24,13 @@
 #include "ProblemContext.H"
 #include "ParmParse.H"
 #include "Constants.H"
+#include "PhysBCUtil.H"
 #include <cstdio>
 #include <sstream>
 
 #include "CartesianMap.H"
 #include "TwistedMap.H"
 #include "BeamGeneratorMap.H"
-// #include "NewBeamGeneratorMap.H"
 #include "CylindricalMap.H"
 #include "LedgeMap.H"
 
@@ -134,8 +134,8 @@ void ProblemContext::readAMR ()
     pout() << "\tcoarse level dx = " << dx << endl;
 
     Real lepticity = Min(dx[0], dx[SpaceDim-2]) / domainLength[SpaceDim-1];
-    pout() << "leptic ratio = " << lepticity << endl;
-    pout() << "inverse square leptic ratio = " << pow(lepticity, -2.0) << endl;
+    pout() << "\tleptic ratio = " << lepticity << endl;
+    pout() << "\tinverse square leptic ratio = " << pow(lepticity, -2.0) << endl;
 
 
     vreal = Vector<Real>(SpaceDim, 0.0);
@@ -224,6 +224,15 @@ void ProblemContext::readAMR ()
         pout() << "\tlevel " << lev << " ref ratio = " << refRatios[lev] << endl;
     }
     refRatios[max_level] = IntVect::Unit; // This is needed by Chombo.
+
+    // Report the effective grid.
+    {
+        Box effGrid = domain.domainBox();
+        for (int lev = 0; lev < max_level; ++lev) {
+            effGrid.refine(refRatios[lev]);
+        }
+        pout() << "\tEffective grid size = " << effGrid.size() << endl;
+    }
 
     block_factor = 8;
     ppAMR.query("block_factor", block_factor);
@@ -429,6 +438,22 @@ void ProblemContext::readAMR ()
     ppAMR.query("pressure_tag_tol", pressure_tag_tol);
     pout() << "\tpressure_tag_tol = " << pressure_tag_tol << endl;
 
+    do_Ri_tagging = false;
+    ppAMR.query("do_Ri_tagging", do_Ri_tagging);
+    pout() << "\tdo_Ri_tagging = " << do_Ri_tagging << endl;
+
+    if (do_Ri_tagging) {
+        if (ppAMR.contains("Ri_tag_tol")) {
+            Ri_tag_tol = 0.25;
+            ppAMR.get("Ri_tag_tol", Ri_tag_tol);
+            pout() << "\tRi_tag_tol = " << Ri_tag_tol << endl;
+        } else {
+            MayDay::Error("do_Ri_tagging = true, but Ri_tag_tol is not set in input file");
+        }
+    } else {
+        Ri_tag_tol = -1.0e300;
+    }
+
     vert_extrude_tags = false;
     ppAMR.query("vert_extrude_tags", vert_extrude_tags);
     pout() << "\tvert_extrude_tags = " << vert_extrude_tags << endl;
@@ -464,9 +489,16 @@ void ProblemContext::readAMR ()
 
     limitDtViaInternalWaveSpeed = false;
     {
-        int useBackgroundScalar = 0;
-        ParmParse("ibc").query("useBackgroundScalar", useBackgroundScalar);
-        if (useBackgroundScalar) {
+        int localUseBackgroundScalar = 0;
+        ParmParse("ibc").query("useBackgroundScalar", localUseBackgroundScalar);
+
+        int localBGScalarProfile = 0;
+        ParmParse("ibc").query("bgScalarProfile", localBGScalarProfile);
+        if (localBGScalarProfile != BGScalarProfile::NONE) {
+            localUseBackgroundScalar = 1;
+        }
+
+        if (localUseBackgroundScalar) {
             limitDtViaInternalWaveSpeed = true;
         }
     }
@@ -522,8 +554,18 @@ void ProblemContext::readAMR ()
     pout() << "\tgravityMethod = " << gravityMethod << endl;
 
     if (gravityMethod == ProblemContext::GravityMethod::IMPLICIT) {
-        ppAMR.query("gravityTheta", gravityTheta);
+        ppAMR.get("gravityTheta", gravityTheta);
         pout() << "\tgravityTheta = " << gravityTheta << endl;
+    }
+
+    coriolisF = 0.0;
+    if (ppAMR.query("coriolisF", coriolisF)) {
+        if (SpaceDim != 3) {
+            MayDay::Warning("Ignoring coriolisF since we are not in 3D");
+            coriolisF = 0.0;
+        } else {
+            pout() << "\tcoriolisF = " << coriolisF << endl;
+        }
     }
 
     viscSolverScheme = HeatSolverScheme::CRANK_NICOLSON;
@@ -534,10 +576,7 @@ void ProblemContext::readAMR ()
     ppAMR.query("diffusive_solver_type", diffSolverScheme);
     pout() << "\tdiffSolverScheme = " << diffSolverScheme << endl;
 
-    num_scal_comps = 1;
-    ppAMR.query("num_scal_comps", num_scal_comps);
-    pout() << "\tnum_scal_comps = " << num_scal_comps << endl;
-
+    const unsigned int num_scal_comps = PhysBCUtil::getNumScalars();
     if (num_scal_comps > 0) {
         scal_coeffs.resize(num_scal_comps);
         ppAMR.getarr("scal_diffusion_coeffs", scal_coeffs, 0, num_scal_comps);
@@ -602,13 +641,6 @@ void ProblemContext::readGeometry ()
             beamGenMapAlpha *= PI / 180.0;
         }
         break;
-    // case CoordMap::NEWBEAMGENERATOR:
-    //     {
-    //         ppGeo.get("alpha", beamGenMapAlpha);
-    //         pout() << "\talpha = " << beamGenMapAlpha << endl;
-    //         beamGenMapAlpha *= PI / 180.0;
-    //     }
-    //     break;
     case CoordMap::DEMMAP:
         {
             ppGeo.get("DemFile", demFile);
@@ -618,6 +650,28 @@ void ProblemContext::readGeometry ()
             pout() << "\tInterpolation_Order = " << interpOrder << endl;
         }
         break;
+    }
+
+    // Horizontal stretching parameters
+    if (ppGeo.query("horizStretchingStrength", horizStretchingStrength)) {
+        useHorizStretching = true;
+        pout() << "\tuseHorizStretching = true\n"
+               << "\thorizStretchingStrength = " << horizStretchingStrength
+               << endl;
+    } else {
+        useHorizStretching = false;
+        horizStretchingStrength = 0.0;
+    }
+
+    // Vertical stretching parameters
+    if (ppGeo.query("vertStretchingStrength", vertStretchingStrength)) {
+        useVertStretching = true;
+        pout() << "\tuseVertStretching = true\n"
+               << "\tvertStretchingStrength = " << vertStretchingStrength
+               << endl;
+    } else {
+        useVertStretching = false;
+        vertStretchingStrength = 0.0;
     }
 
     pout() << endl;
@@ -654,9 +708,6 @@ GeoSourceInterface* ProblemContext::newGeoSourceInterface () const
     case ProblemContext::CoordMap::LEDGE:
         geoSourcePtr = new LedgeMap;
         break;
-    // case ProblemContext::CoordMap::NEWBEAMGENERATOR:
-    //     geoSourcePtr = new NewBeamGeneratorMap;
-    //     break;
     case ProblemContext::CoordMap::DEMMAP:
         geoSourcePtr = new DEMMap;
         break;
@@ -781,6 +832,10 @@ void ProblemContext::readPlot ()
     ppPlot.query("writeGeometry", write_geometry);
     pout() << "\twrite_geometry = " << write_geometry << endl;
 
+    write_Ri = false;
+    ppPlot.query("writeRi", write_Ri);
+    pout() << "\twrite_Ri = " << write_Ri << endl;
+
     pout() << endl;
 }
 
@@ -806,8 +861,40 @@ void ProblemContext::readIBC ()
     CH_assert(0 <= problem);
     CH_assert(problem < ProblemType::_NUM_PROBLEM_TYPES);
 
-    ppIBC.get("useBackgroundScalar", useBackgroundScalar);
-    pout() << "\tuseBackgroundScalar = " << useBackgroundScalar << endl;
+    // Background scalar profile
+    {
+        // Set defaults.
+        useBackgroundScalar = false;
+        bgScalarProfile = BGScalarProfile::NONE;
+
+        // TEMPORARY!!!
+        // Check if input file sets useBacgroundScalar directly.
+        // If so, issue a warning and set bgScalarProfile to user-defined.
+        if (ppIBC.query("useBackgroundScalar", useBackgroundScalar)) {
+            MayDay::Warning("ibc.useBackgroundScalar is deprecated. "
+                            "Use bgScalarProfile enumeration instead");
+
+            if (useBackgroundScalar) {
+                bgScalarProfile = BGScalarProfile::USER_DEFINED;
+            }
+        }
+
+        // Check what BG scalar profile we are using.
+        ppIBC.query("bgScalarProfile", bgScalarProfile);
+        if (bgScalarProfile < 0 || BGScalarProfile::_NUM_BGSCALAR_PROFILES <= bgScalarProfile) {
+            ostringstream msg;
+            msg << "ibc.bgScalarProfile = " << bgScalarProfile << " is out of range. "
+                << "Value must be between 0 and " << BGScalarProfile::_NUM_BGSCALAR_PROFILES-1;
+            MayDay::Error(msg.str().c_str());
+        }
+
+        // If we are using a BG scalar profile, limit dt by the internal wave speed.
+        useBackgroundScalar = (bgScalarProfile != BGScalarProfile::NONE);
+        pout() << "\tuseBackgroundScalar = " << useBackgroundScalar << endl;
+        if (useBackgroundScalar) {
+            pout() << "\tbgScalarProfile = " << bgScalarProfile << endl;
+        }
+    }
 
     // Should we use a sponge layer?
     useSpongeLayer = false;

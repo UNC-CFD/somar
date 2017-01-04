@@ -265,6 +265,25 @@ void CubicSpline::interpSecondDeriv (Vector<Real>&       a_d2f,
 
 
 // -----------------------------------------------------------------------------
+// Fills a_d2f with the interpolated second derivatives at the position
+// indicated by a_x
+// -----------------------------------------------------------------------------
+Real CubicSpline::interpSecondDeriv (const Real& a_x) const
+{
+    // Make sure the solve has been called.
+    CH_assert(m_d2f.size() > 0);
+
+    // Just call the vector version.
+    Vector<Real> xVec(1, a_x);
+    Vector<Real> fVec(1);
+    this->interpSecondDeriv(fVec, xVec);
+
+    // Return the one and only result.
+    return fVec[0];
+}
+
+
+// -----------------------------------------------------------------------------
 // Uses a pre-computed set of data.
 // -----------------------------------------------------------------------------
 void CubicSpline::useSolution (const Vector<Real>& a_x,

@@ -27,12 +27,18 @@
 #include "EllipticBCUtils.H"
 #include "LevelGeometry.H"
 #include "BoxIterator.H"
+#include "BGScalarProfiles.H"
+#include "ParmParse.H"
+#include "Debug.H"
 
 
 // Declare static members
-bool     PhysBCUtil::s_staticMembersSet = false;
+bool     PhysBCUtil::m_isStaticDefined = false;
 RealVect PhysBCUtil::s_domLength = RealVect::Zero;
+
 bool     PhysBCUtil::s_useBackgroundScalar = false;
+int      PhysBCUtil::s_bgScalarProfile = ProblemContext::BGScalarProfile::NONE;
+RefCountedPtr<EllipticBCValueClass> PhysBCUtil::s_stdProfilePtr;
 
 RealVect PhysBCUtil::s_tidalU0 = RealVect::Zero;
 Real     PhysBCUtil::s_tidalOmega = 0.0;
@@ -41,6 +47,12 @@ bool     PhysBCUtil::s_doTidalFlow = false;
 bool     PhysBCUtil::s_useSpongeLayer = false;
 Real     PhysBCUtil::s_spongeWidth[CH_SPACEDIM][2];
 Real     PhysBCUtil::s_spongeDtMult[CH_SPACEDIM][2];
+
+
+// WARNING: Do not add scalars. SOMAR can't handle it yet.
+const PhysBCUtil::ScalarMetaData PhysBCUtil::s_scalarMetaData[ScalarIndex::_COUNT] = {
+    {"buoyancy", 1, IntVect::Unit}
+};
 
 
 // ************************ Constructors / destructors *************************
@@ -60,30 +72,191 @@ PhysBCUtil::~PhysBCUtil ()
 
 
 // -----------------------------------------------------------------------------
-// Reads BC data from file
+// Define constructor.
 // -----------------------------------------------------------------------------
 void PhysBCUtil::define ()
 {
-    if (s_staticMembersSet) return;
+    if (!isStaticDefined()) {
+        staticDefine();
+    }
+}
 
+
+// -----------------------------------------------------------------------------
+// Static utility
+// Reads BC data from file.
+// -----------------------------------------------------------------------------
+void PhysBCUtil::staticDefine ()
+{
+    // Are we already static defined? If so, scram.
+    if (isStaticDefined()) return;
+
+    // Set up some basic structures.
+    ParmParse ppIBC("ibc");
     const ProblemContext* ctx = ProblemContext::getInstance();
-
     s_domLength = ctx->domainLength;
-    s_useBackgroundScalar = ctx->useBackgroundScalar;
 
+    // Background scalar stuff...
+    s_useBackgroundScalar = ctx->useBackgroundScalar;
+    s_bgScalarProfile = ctx->bgScalarProfile;
+
+    switch (s_bgScalarProfile) {
+        case ProblemContext::BGScalarProfile::LINEAR:
+        {
+            Real Nsq;
+
+            ParmParse ppIBC("ibc");
+            ppIBC.get("Nsq", Nsq);
+
+            pout() << "\nStratification profile details:\n";
+            pout() << "\tNsq = " << Nsq << endl;
+
+            EllipticBCValueClass* newPtr = new LinearBGScalarProfile(Nsq);
+            s_stdProfilePtr = RefCountedPtr<EllipticBCValueClass>(newPtr);
+            break;
+        }
+
+        case ProblemContext::BGScalarProfile::QUADRATIC:
+        {
+            Real NsqBottom;
+            Real NsqTop;
+
+            ParmParse ppIBC("ibc");
+            ppIBC.get("NsqBottom", NsqBottom);
+            ppIBC.get("NsqTop", NsqTop);
+
+            pout() << "\nStratification profile details:\n";
+            pout() << "\tNsqBottom = " << NsqBottom << endl;
+            pout() << "\tNsqTop = " << NsqTop << endl;
+
+            EllipticBCValueClass* newPtr = new QuadraticBGScalarProfile(NsqBottom, NsqTop);
+            s_stdProfilePtr = RefCountedPtr<EllipticBCValueClass>(newPtr);
+            break;
+        }
+
+        case ProblemContext::BGScalarProfile::TANH:
+        {
+            Real z0;      // Center location
+            Real delta;   // Thickness
+            Real rho0;    // Median buoyancy value
+            Real drho;    // Max buoyancy difference
+
+            ParmParse ppIBC("ibc");
+            ppIBC.get("z0", z0);
+            ppIBC.get("delta", delta);
+            ppIBC.get("rho0", rho0);
+            ppIBC.get("drho", drho);
+
+            pout() << "\nStratification profile details:\n";
+            pout() << "\tz0 = " << z0 << "\n";
+            pout() << "\tdelta = " << delta << "\n";
+            pout() << "\trho0 = " << rho0 << "\n";
+            pout() << "\tdrho = " << drho << endl;
+
+            EllipticBCValueClass* newPtr = new TanhBGScalarProfile(z0, delta, rho0, drho);
+            s_stdProfilePtr = RefCountedPtr<EllipticBCValueClass>(newPtr);
+            break;
+        }
+    }
+
+
+    // Tidal flow stuff...
     s_tidalU0 = ctx->tidalU0;
     s_tidalOmega = ctx->tidalOmega;
-    s_doTidalFlow = (s_tidalU0.sum() * s_tidalOmega != 0.0);
+    s_doTidalFlow = (abs(s_tidalU0.sum() * s_tidalOmega) > 1.0e-12);
 
+
+    // Sponge layer stuff...
     s_useSpongeLayer = ctx->useSpongeLayer;
     for (int dir = 0; dir < SpaceDim; ++dir) {
+        // Read in Cartesian sponge widths and dt multipliers.
         s_spongeWidth[dir][0] = ctx->spongeWidth[dir][0];
         s_spongeWidth[dir][1] = ctx->spongeWidth[dir][1];
         s_spongeDtMult[dir][0] = ctx->spongeDtMult[dir][0];
         s_spongeDtMult[dir][1] = ctx->spongeDtMult[dir][1];
+
+
+        // Next, we need to convert the Cartesian sponge widths
+        // to curvilinear sponge widths...
+
+        // Gather coarse level domain info.
+        const ProblemDomain& domain = ctx->domain;
+        const Box& domBox = domain.domainBox();
+        const RealVect dXi = s_domLength / RealVect(domBox.size());
+        const RealVect loXi = RealVect(domBox.smallEnd()) * dXi;
+        const RealVect hiXi = loXi + s_domLength;
+
+        // Make a strip of cells along this dir.
+        Box lineBox;
+        {
+            IntVect smallEnd = domBox.smallEnd();
+            IntVect bigEnd = smallEnd;
+            bigEnd[dir] = domBox.bigEnd(dir);
+            lineBox.define(smallEnd, bigEnd);
+        }
+
+        // Fill that strip with Cartesian locations.
+        // Technically, this won't work if the boundaries have irregular shapes.
+        FArrayBox fcCartPosFAB(surroundingNodes(lineBox, dir), 1);
+        FArrayBox cartPosFAB(lineBox, 1);
+        {
+            if (!LevelGeometry::isStaticDefined()) {
+                LevelGeometry::staticDefine();
+            }
+
+            LevelGeometry::getGeoSourcePtr()->fill_physCoor(fcCartPosFAB,
+                                                            0,   // dest comp
+                                                            dir, // coor index
+                                                            dXi);
+
+            LevelGeometry::getGeoSourcePtr()->fill_physCoor(cartPosFAB,
+                                                            0,   // dest comp
+                                                            dir, // coor index
+                                                            dXi);
+        }
+
+        // Rescale sponge widths on lo end.
+        if (s_spongeWidth[dir][0] > 0.0) {
+            const Real xmin = fcCartPosFAB(fcCartPosFAB.box().smallEnd());
+            const Real xmax = xmin + s_spongeWidth[dir][0];
+            Real xi = loXi[dir];
+            Real x, newXi;
+
+            BoxIterator bit(lineBox);
+            for (bit.reset(); bit.ok(); ++bit) {
+                const IntVect& cc = bit();
+                x = cartPosFAB(cc);
+                if (x <= xmax) {
+                    newXi = (Real(cc[dir]) + 0.5) * dXi[dir];
+                    xi = max(xi, newXi);
+                }
+            }
+            s_spongeWidth[dir][0] = xi - loXi[dir];
+        }
+
+        // Rescale sponge widths on hi end.
+        if (s_spongeWidth[dir][1] > 0.0) {
+            const Real xmax = fcCartPosFAB(fcCartPosFAB.box().bigEnd());
+            const Real xmin = xmax - s_spongeWidth[dir][1];
+            Real xi = hiXi[dir];
+            Real x, newXi;
+
+            BoxIterator bit(lineBox);
+            for (bit.reset(); bit.ok(); ++bit) {
+                const IntVect& cc = bit();
+                x = cartPosFAB(cc);
+                if (xmin <= x) {
+                    newXi = (Real(cc[dir]) + 0.5) * dXi[dir];
+                    xi = min(xi, newXi);
+                }
+            }
+            s_spongeWidth[dir][1] = hiXi[dir] - xi;
+        }
     }
 
-    s_staticMembersSet = true;
+
+    // We are now static defined.
+    m_isStaticDefined = true;
 }
 
 
@@ -133,10 +306,43 @@ void PhysBCUtil::setBackgroundScalar (FArrayBox&           a_scalarFAB,
 {
     CH_assert(a_scalarFAB.nComp() == 1);
 
-    if (s_useBackgroundScalar) {
-        MayDay::Error("PhysBCUtil::setBackgroundScalar needs to be overridden if you plan to use a background scalar");
-    } else {
-        a_scalarFAB.setVal(0.0);
+    switch (s_bgScalarProfile) {
+        case ProblemContext::BGScalarProfile::NONE:
+        {
+            a_scalarFAB.setVal(0.0);
+            break;
+        }
+
+        case ProblemContext::BGScalarProfile::USER_DEFINED:
+        {
+            MayDay::Error("PhysBCUtil::setBackgroundScalar needs to be overridden "
+                          "if you plan to use a user-defined background scalar");
+            break;
+        }
+
+        default:
+        {
+            CH_assert(!s_stdProfilePtr.isNull());
+
+            FArrayBox posFAB(a_scalarFAB.box(), 1);
+            const RealVect& dx = a_levGeo.getDx();
+            a_levGeo.getGeoSourcePtr()->fill_physCoor(posFAB, 0, SpaceDim-1, dx);
+
+            BoxIterator bit(a_scalarFAB.box());
+            for (bit.reset(); bit.ok(); ++bit) {
+                const IntVect& iv = bit();
+
+                Real pos[CH_SPACEDIM];
+                pos[CH_SPACEDIM-1] = posFAB(iv);
+
+                int dirDummy;
+                Side::LoHiSide sideDummy;
+                Real value[1];
+                (*s_stdProfilePtr)(pos, &dirDummy, &sideDummy, value, dx, a_time);
+                a_scalarFAB(iv,a_scalarComp) = value[0];
+            }
+            break;
+        }
     }
 }
 
@@ -238,6 +444,7 @@ void PhysBCUtil::subtractBackgroundScalar (LevelData<FArrayBox>& a_scalar,
 
 
 // -----------------------------------------------------------------------------
+// TODO: This should be moved to StratUtils.
 // Computes the Brunt–Väisälä frequency on a single grid.
 // All ins and outs must be CC.
 // a_bFAB is the background buoyancy field.
@@ -266,15 +473,17 @@ void PhysBCUtil::computeNSq (FArrayBox&       a_NsqFAB,
     CH_assert(a_dXidzFAB.box().contains(a_destBox));
 
     // Calculate -dXi^i/dz * dB/dXi^i
-    FORT_COMPUTE_CCNSQ(CHF_FRA1(a_NsqFAB,0),
-                       CHF_CONST_FRA1(a_bFAB,0),
-                       CHF_CONST_FRA(a_dXidzFAB),
-                       CHF_CONST_REALVECT(a_dx),
-                       CHF_BOX(a_destBox));
+    FORT_COMPUTE_CCNSQ (
+        CHF_FRA1(a_NsqFAB,0),
+        CHF_CONST_FRA1(a_bFAB,0),
+        CHF_CONST_FRA(a_dXidzFAB),
+        CHF_CONST_REALVECT(a_dx),
+        CHF_BOX(a_destBox));
 }
 
 
 // -----------------------------------------------------------------------------
+// TODO: This should be moved to StratUtils.
 // Computes the Brunt–Väisälä frequency over an entire level.
 // a_Nsq must be CC.
 // -----------------------------------------------------------------------------
@@ -310,7 +519,7 @@ void PhysBCUtil::computeNSq (LevelData<FArrayBox>& a_Nsq,
         // Fill background bouyancy field.
         FArrayBox BFAB(grow(destBox,1), 1);
         this->setBackgroundScalar(BFAB,
-                                  0,        // scalar comp
+                                  ScalarIndex::BUOYANCY_DEVIATION,
                                   a_levGeo,
                                   dit(),
                                   a_time);
@@ -406,14 +615,11 @@ void PhysBCUtil::fillSpongeLayerSrcTerm (LevelData<FArrayBox>&       a_srcTerm,
     const DisjointBoxLayout& grids = a_srcTerm.disjointBoxLayout();
     DataIterator dit = grids.dataIterator();
 
-// LevelData<FArrayBox> spongeProfile(grids, 1);
-// setValLevel(spongeProfile, 0.0);
-
     // Sanity checks
     CH_assert(useSpongeLayer());
     CH_assert(ncomp == a_state.nComp());
     CH_assert(a_comp >=  0 || ncomp == SpaceDim);
-    CH_assert(a_comp == -1 || ncomp == 1);
+    CH_assert(a_comp == -1 || ncomp <= getNumScalars());
     CH_assert(a_state.getBoxes() == a_srcTerm.getBoxes());
 
     // Start with an inactive sponge layer, then activate the sides we need.
@@ -494,8 +700,6 @@ void PhysBCUtil::fillSpongeLayerSrcTerm (LevelData<FArrayBox>&       a_srcTerm,
             } // end loop over grids (dit)
         } // end loop over sides (sit)
     } // end loop over directions (dir)
-
-    // if (ncomp == 1) writeLevelHDF5(spongeProfile, a_dt, false);
 }
 
 
@@ -553,8 +757,24 @@ void PhysBCUtil::fillScalarSpongeLayerTarget (FArrayBox&           a_target,
     CH_assert(a_spongeDir < SpaceDim);
 
     if (s_useBackgroundScalar) {
-        // The outgoing scalar should approach its unperturbed value.
-        a_target.setVal(0.0, a_scalarComp);
+        switch (a_scalarComp) {
+            case ScalarIndex::BUOYANCY_DEVIATION:
+            {
+                // The outgoing scalar should approach its unperturbed value.
+                a_target.setVal(0.0, a_scalarComp);
+                break;
+            }
+            default:
+            {
+                // By default, set to zero and throw a warning.
+                MayDay::Warning("PhysBCUtil::fillScalarSpongeLayerTarget has not "
+                                "been set up to handle all scalars. Using default "
+                                "target value of zero");
+                a_target.setVal(0.0, a_scalarComp);
+                break;
+            }
+        }
+
     } else {
         // I don't know what values the scalar should approach.
         const char* msg = "If you plan to use a sponge layer without a background scalar, "
@@ -587,11 +807,9 @@ Tuple<BCMethodHolder, SpaceDim> PhysBCUtil::uStarFuncBC (bool a_isViscous) const
 // -----------------------------------------------------------------------------
 Tuple<BCMethodHolder, SpaceDim> PhysBCUtil::viscousSourceFuncBC () const
 {
-    const bool isViscous = true;
-
     Tuple<BCMethodHolder, SpaceDim> bcVec;
     for (int idir = 0; idir < SpaceDim; ++idir) {
-        bcVec[idir] = this->basicVelFuncBC(idir, isViscous);
+        bcVec[idir] = viscousSolveFuncBC(idir);
     }
 
     return bcVec;
@@ -603,8 +821,17 @@ Tuple<BCMethodHolder, SpaceDim> PhysBCUtil::viscousSourceFuncBC () const
 // -----------------------------------------------------------------------------
 BCMethodHolder PhysBCUtil::viscousSolveFuncBC (int a_dir) const
 {
-    const bool isViscous = true;
-    return this->basicVelFuncBC(a_dir, isViscous);
+    // const bool isViscous = true;
+    // return this->basicVelFuncBC(a_dir, isViscous);
+
+    int extrapOrder = 2; // 2 works best in TG test
+    RefCountedPtr<BCGhostClass> BCPtr(
+        new EllipticExtrapBCGhostClass(extrapOrder)
+    );
+    BCMethodHolder protoBC;
+    protoBC.addBCMethod(BCPtr);
+
+    return protoBC;
 }
 
 
@@ -752,7 +979,7 @@ Tuple<BCMethodHolder,SpaceDim> PhysBCUtil::velSlopeBC (int a_velComp, bool a_isV
 // -----------------------------------------------------------------------------
 BCMethodHolder PhysBCUtil::diffusiveSourceFuncBC () const
 {
-    return this->basicScalarFuncBC();
+    return this->diffusiveSolveFuncBC();
 }
 
 
@@ -761,11 +988,16 @@ BCMethodHolder PhysBCUtil::diffusiveSourceFuncBC () const
 // -----------------------------------------------------------------------------
 BCMethodHolder PhysBCUtil::diffusiveSolveFuncBC () const
 {
-    // This works better than 2nd order extrap for at least Diri BCs.
-    // extrap exposes the flaws at box boundaries.
+    // return this->basicScalarFuncBC();
 
-    // NOTE: basicScalarFuncBC is 1st order extrap in this function.
-    return this->basicScalarFuncBC();
+    int extrapOrder = 2;
+    RefCountedPtr<BCGhostClass> BCPtr(
+        new EllipticExtrapBCGhostClass(extrapOrder)
+    );
+    BCMethodHolder protoBC;
+    protoBC.addBCMethod(BCPtr);
+
+    return protoBC;
 }
 
 
@@ -899,7 +1131,7 @@ Tuple<BCMethodHolder,SpaceDim> PhysBCUtil::lambdaRiemannBC () const
 
 
 // -----------------------------------------------------------------------------
-// scalarSlopeBC
+// lambdaSlopeBC
 // Sets CC bdry slopes (undivided differences) in the tracing scheme.
 // -----------------------------------------------------------------------------
 Tuple<BCMethodHolder,SpaceDim> PhysBCUtil::lambdaSlopeBC () const

@@ -43,22 +43,48 @@
 class PhysBCUtil
 {
 public:
+    // Scalar info -------------------------------------------------------------
+    // This controls the number of scalars in the simulation, their names,
+    // the number of components for each scalar, etc...
+
+    // These can be used to identify a specific scalar.
+    // WARNING: Do not add scalars. SOMAR can't handle it yet.
+    struct ScalarIndex {
+        enum {
+            BUOYANCY_DEVIATION = 0,
+            _COUNT
+        };
+    };
+
+    // Basic accessors
+    static inline unsigned int getNumScalars ();
+    static inline const std::string& getName (unsigned int a_idx);
+    static inline int getNumComps (unsigned int a_idx);
+    static inline const IntVect& getGhostVect (unsigned int a_idx);
+
+
+    // Construction / destruction ----------------------------------------------
+
     // Constructor
     PhysBCUtil ();
 
     // Destructor
     virtual ~PhysBCUtil ();
 
-    // Derived classes should be thier own factories.
+    // Derived classes should be their own factories.
     virtual PhysBCUtil* newPhysBCUtil () const = 0;
 
-    // Reads BC data from file
+    // Overridable constructor
     virtual void define ();
+
+    // Performs static initialization (IO, etc).
+    static void staticDefine ();
+    static inline bool isStaticDefined ();
 
 
     // ICs / background fields -------------------------------------------------
     // These functions have defaults that just set the FABs to zero and should
-    // be overriden as needed.
+    // be overridden as needed.
 
     // Fills a FAB with the initial velocity.
     // Locations are in mapped space, but components are Cartesian.
@@ -82,7 +108,7 @@ public:
 
 
     // Utility functions -------------------------------------------------------
-    // Most of these functions just call thier FAB versions and should not
+    // Most of these functions just call their FAB versions and should not
     // need to be overridden.
 
     // Sets the velocity ICs over an entire level
@@ -115,6 +141,7 @@ public:
                                            const Real            a_time,
                                            const LevelGeometry&  a_levGeo) const;
 
+    // TODO: This should be moved to StratUtils.
     // Computes the Brunt–Väisälä frequency on a single grid.
     // All ins and outs must be CC.
     // a_bFAB is the background buoyancy field.
@@ -127,6 +154,7 @@ public:
                              const Box&       a_destBox,
                              const RealVect&  a_dx) const;
 
+    // TODO: This should be moved to StratUtils.
     // Computes the Brunt–Väisälä frequency over an entire level.
     // a_Nsq must be CC.
     virtual void computeNSq (LevelData<FArrayBox>& a_Nsq,
@@ -139,8 +167,8 @@ public:
     // This is in case the BC's have an effect on the timestep.
     // Pass in currently computed dt, along with the cfl and dx. If the effect
     // of the BCs requires a decreased timestep, then the newly reduced timestep
-    // is returned. In the default case, this just returns a_dt back; however,
-    // derived classes may actually have an effect.
+    // is returned. In the default case, this just returns a_dt back. Derived
+    // classes may need this.
     virtual void computeBoundaryDt (Real&                a_dt,
                                     const Real           a_cfl,
                                     const LevelGeometry& a_levGeo) const;
@@ -201,7 +229,7 @@ public:
     // Sets ghosts needed to calculate the viscous source term nu.L[vel]
     virtual Tuple<BCMethodHolder, SpaceDim> viscousSourceFuncBC () const;
 
-    // Used in single-compoent velocity TGA solves
+    // Used in single-component velocity TGA solves
     virtual BCMethodHolder viscousSolveFuncBC (int a_dir) const;
 
     // returns single-component BC for viscous refluxing solves
@@ -319,10 +347,13 @@ protected:
     // Member variables and utility functions ----------------------------------
 
     // Have we read params from the input file yet?
-    static bool s_staticMembersSet;
+    static bool m_isStaticDefined;
 
     static RealVect s_domLength;
+
     static bool s_useBackgroundScalar;
+    static int s_bgScalarProfile;
+    static RefCountedPtr<EllipticBCValueClass> s_stdProfilePtr;
 
     static RealVect s_tidalU0;
     static Real s_tidalOmega;
@@ -331,8 +362,59 @@ protected:
     static bool s_useSpongeLayer;
     static Real s_spongeWidth[CH_SPACEDIM][2];
     static Real s_spongeDtMult[CH_SPACEDIM][2];
+
+    // Scalar metadata
+    struct ScalarMetaData
+    {
+        std::string name;
+        int         numComps;
+        IntVect     ghostVect;
+    };
+    static const ScalarMetaData s_scalarMetaData[ScalarIndex::_COUNT];
 };
 
+
+
+// -----------------------------------------------------------------------------
+// Simple accessor
+// -----------------------------------------------------------------------------
+inline bool PhysBCUtil::isStaticDefined ()
+{
+    return m_isStaticDefined;
+}
+
+
+// -----------------------------------------------------------------------------
+// Simple accessor
+// -----------------------------------------------------------------------------
+inline unsigned int PhysBCUtil::getNumScalars ()
+{
+    return ScalarIndex::_COUNT;
+}
+
+
+// -----------------------------------------------------------------------------
+// Simple accessor
+// -----------------------------------------------------------------------------
+inline const std::string& PhysBCUtil::getName (unsigned int a_idx) {
+    return s_scalarMetaData[a_idx].name;
+}
+
+
+// -----------------------------------------------------------------------------
+// Simple accessor
+// -----------------------------------------------------------------------------
+inline int PhysBCUtil::getNumComps (unsigned int a_idx) {
+    return s_scalarMetaData[a_idx].numComps;
+}
+
+
+// -----------------------------------------------------------------------------
+// Simple accessor
+// -----------------------------------------------------------------------------
+inline const IntVect& PhysBCUtil::getGhostVect (unsigned int a_idx) {
+    return s_scalarMetaData[a_idx].ghostVect;
+}
 
 
 // -----------------------------------------------------------------------------

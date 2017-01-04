@@ -29,7 +29,7 @@
 // Initialize static variables here
 
 // These are constants
-int AMRNavierStokes::s_num_scal_comps = 1;            // number of scalars (not including lambda)
+const unsigned int AMRNavierStokes::s_num_scal_comps = PhysBCUtil::getNumScalars(); // number of scalars (not including lambda)
 const bool AMRNavierStokes::s_considerCellSizes = false;
 
 // These will be set by input file
@@ -46,6 +46,8 @@ Tuple<Real,3> AMRNavierStokes::s_vort_tag_tol;
 Real AMRNavierStokes::s_vel_tag_tol = 0.0;
 Real AMRNavierStokes::s_buoyancy_tag_tol = 0.0;
 Real AMRNavierStokes::s_pressure_tag_tol = 0.0;
+bool AMRNavierStokes::s_do_Ri_tagging = false;
+Real AMRNavierStokes::s_Ri_tag_tol = 0.25;
 bool AMRNavierStokes::s_vert_extrude_tags = false;
 
 Real AMRNavierStokes::s_init_shrink = 1.0;
@@ -60,6 +62,7 @@ bool AMRNavierStokes::s_limitDtViaInternalWaveSpeed = false;
 
 Real AMRNavierStokes::s_tidalOmega = 0.0;
 RealVect AMRNavierStokes::s_tidalU0 = RealVect::Zero;
+Real AMRNavierStokes::s_coriolisF = 0.0;
 
 bool AMRNavierStokes::s_advective_momentum_reflux = false;
 bool AMRNavierStokes::s_diffusive_momentum_reflux = false;
@@ -170,6 +173,8 @@ bool AMRNavierStokes::s_write_level_ids = false;
 bool AMRNavierStokes::s_write_grids = false;
 bool AMRNavierStokes::s_write_displacement = true;
 bool AMRNavierStokes::s_write_geometry = false;
+bool AMRNavierStokes::s_write_Ri = false;
+
 
 // Total (composite) energy
 Real AMRNavierStokes::s_totalEnergy = 1e8;
@@ -194,7 +199,8 @@ Vector<std::string> AMRNavierStokes::s_scal_names(0);
 AMRNavierStokes::AMRNavierStokes ()
 : m_finest_level(false),
   m_is_empty(true),
-  m_cfl(0.8)
+  m_cfl(0.8),
+  m_copierCache(IntVect(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW)))
 {
     if (s_verbosity >= 5) {
         pout() << "AMRNavierStokes default constructor" << endl;
@@ -354,9 +360,7 @@ void AMRNavierStokes::readParameters ()
     // Name the scalars
     s_scal_names.resize(s_num_scal_comps);
     for (int comp = 0; comp < s_num_scal_comps; ++comp) {
-        ostringstream name;
-        name << "scalar_" << comp;
-        s_scal_names[comp] = name.str();
+        s_scal_names[comp] = PhysBCUtil::getName(comp);
     }
 
     const ProblemContext* ctx = ProblemContext::getInstance();
@@ -376,6 +380,8 @@ void AMRNavierStokes::readParameters ()
     s_vel_tag_tol = ctx->vel_tag_tol;
     s_buoyancy_tag_tol = ctx->buoyancy_tag_tol;
     s_pressure_tag_tol = ctx->pressure_tag_tol;
+    s_do_Ri_tagging = ctx->do_Ri_tagging;
+    s_Ri_tag_tol = ctx->Ri_tag_tol;
     s_vert_extrude_tags = ctx->vert_extrude_tags;
 
     s_write_stdout = ctx->write_stdout;
@@ -390,6 +396,7 @@ void AMRNavierStokes::readParameters ()
     s_limitDtViaInternalWaveSpeed = ctx->limitDtViaInternalWaveSpeed;
     s_tidalOmega = ctx->tidalOmega;
     s_tidalU0 = ctx->tidalU0;
+    s_coriolisF = ctx->coriolisF;
 
     s_bogus_value = ctx->bogus_value;
     s_smooth_after_regrid = ctx->smooth_after_regrid;
@@ -413,7 +420,6 @@ void AMRNavierStokes::readParameters ()
     s_nu = ctx->nu;
 
     s_diffSolverScheme = ctx->diffSolverScheme;
-    s_num_scal_comps = ctx->num_scal_comps;
     s_scal_coeffs = ctx->scal_coeffs;
 
     // Advection settings
@@ -504,6 +510,7 @@ void AMRNavierStokes::readParameters ()
     s_write_grids = ctx->write_grids;
     s_write_displacement = ctx->write_displacement;
     s_write_geometry = ctx->write_geometry;
+    s_write_Ri = ctx->write_Ri;
 
     // set flag to indicate that we've done this
     s_ppInit = true;

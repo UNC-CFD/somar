@@ -27,6 +27,8 @@
 #include "ExtrapolationUtils.H"
 #include "computeMappedSum.H"
 #include "MappedAMRPoissonOpFactory.H"
+#include "StratUtils.H"
+#include "EllipticBCUtils.H"
 #include <iomanip>
 
 
@@ -96,21 +98,23 @@ void AMRNavierStokes::computeLapVel (LevelData<FArrayBox>&       a_lapVel,
 
     // Apply the op
     bool isHomogeneous = false;
+    VelBCHolder velBC(m_physBCPtr->viscousSourceFuncBC());
+
     m_velocityAMRPoissonOp.setTime(a_time);
     m_velocityAMRPoissonOp.applyOp(a_lapVel,
                                    tmpVel,
                                    a_crseVelPtr,
                                    isHomogeneous,
-                                   NULL);
+                                   &velBC);
 
     // Extrap all ghosts
     extrapAllGhosts(a_lapVel,0);
 
     // And exchange
-    if (a_lapVel.ghostVect() == m_tracingGhosts) {
-        a_lapVel.exchange(m_tracingExCopier);
+    if (a_lapVel.ghostVect() == m_copierCache.getTracingGhosts()) {
+        a_lapVel.exchange(m_copierCache.getTracingExCopier(a_lapVel.getBoxes()));
     } else if(a_lapVel.ghostVect() == IntVect::Unit) {
-        a_lapVel.exchange(m_oneGhostExCopier);
+        a_lapVel.exchange(m_copierCache.getOneGhostExCopier(a_lapVel.getBoxes()));
     } else {
         a_lapVel.exchange();
     }
@@ -118,39 +122,190 @@ void AMRNavierStokes::computeLapVel (LevelData<FArrayBox>&       a_lapVel,
 
 
 // -----------------------------------------------------------------------------
+// Compute D[nu G[u]].
 // -----------------------------------------------------------------------------
-void AMRNavierStokes::computeLapScal (LevelData<FArrayBox>&       a_lapScal,
-                                      LevelData<FArrayBox>&       a_scal,               // TODO: Make const!
-                                      const LevelData<FArrayBox>* a_crseScalPtr,
-                                      const CFRegion*             a_CFRegionPtr)
+void AMRNavierStokes::computeViscousSrc (LevelData<FArrayBox>&       a_viscSrc,
+                                         const LevelData<FArrayBox>& a_cartVel,
+                                         const Real                  a_time) const
 {
+    ((AMRNavierStokes*)this)->fillViscousSource(a_viscSrc, a_cartVel, a_time);
+    return;
+}
+
+
+// -----------------------------------------------------------------------------
+// Compute D[kappa G[b]].
+// -----------------------------------------------------------------------------
+void AMRNavierStokes::computeDiffusiveSrc (LevelData<FArrayBox>&       a_diffSrc,
+                                           const LevelData<FArrayBox>& a_scal,
+                                           const LevelData<FArrayBox>* a_crseScalPtr,
+                                           const int                   a_comp,
+                                           const Real                  a_time) const
+{
+    // Sanity checks
+    CH_assert(0 <= a_comp);
+    CH_assert(a_comp < PhysBCUtil::getNumScalars());
+    CH_assert(m_levGeoPtr->getBoxes() == a_diffSrc.getBoxes());
+    CH_assert(m_levGeoPtr->getBoxes() == a_scal.getBoxes());
+
+    // Gather data structures
+    const ProblemDomain& domain = m_levGeoPtr->getDomain();
+    const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
+    DataIterator dit = a_diffSrc.dataIterator();
+
+    // Send scalar to a new container.
+    // This way, we can change the ghost values.
+    LevelData<FArrayBox> localScal(grids, 1, a_scal.ghostVect());
+    {
+        const Interval srcIvl(a_comp, a_comp);
+        const Interval& destIvl = localScal.interval();
+        Copier noGhostCopier(grids, grids, domain, IntVect::Zero, false);
+        a_scal.copyTo(srcIvl, localScal, destIvl, noGhostCopier);
+    }
+
+    MappedAMRPoissonOp& lapOp = (MappedAMRPoissonOp&)m_scalarsAMRPoissonOp;
+
     // Apply the op
     BCMethodHolder scalPhysBCs = m_physBCPtr->diffusiveSourceFuncBC();
-    m_scalarsAMRPoissonOp.setBC(scalPhysBCs);
+    lapOp.setBC(scalPhysBCs);
 
     bool isHomogeneous = false;
     if (a_crseScalPtr != NULL) {
-        m_scalarsAMRPoissonOp.AMROperatorNF(a_lapScal,
-                                            a_scal,
-                                            *a_crseScalPtr,
-                                            isHomogeneous);
+        lapOp.AMROperatorNF(a_diffSrc,
+                            localScal,
+                            *a_crseScalPtr,
+                            isHomogeneous);
     } else {
-        m_scalarsAMRPoissonOp.applyOpI(a_lapScal,
-                                       a_scal,
-                                       isHomogeneous);
+        lapOp.applyOpI(a_diffSrc,
+                       localScal,
+                       isHomogeneous);
     }
 
-    // Extrap all ghosts
-    extrapAllGhosts(a_lapScal,0);
-
-    // And exchange
-    if (a_lapScal.ghostVect() == m_tracingGhosts) {
-        a_lapScal.exchange(m_tracingExCopier);
-    } else if(a_lapScal.ghostVect() == IntVect::Unit) {
-        a_lapScal.exchange(m_oneGhostExCopier);
-    } else {
-        a_lapScal.exchange();
+    for (dit.reset(); dit.ok(); ++dit) {
+        a_diffSrc[dit] *= s_scal_coeffs[a_comp];
     }
+
+    // Extrapolate all ghosts.
+    extrapAllGhosts(a_diffSrc,0);
+
+    // Do exchanges.
+    const IntVect& ghostVect = a_diffSrc.ghostVect();
+    if (ghostVect == m_copierCache.getTracingGhosts()) {
+        a_diffSrc.exchange(m_copierCache.getTracingExCopier(a_diffSrc.getBoxes()));
+    } else if (ghostVect == IntVect::Unit) {
+        a_diffSrc.exchange(m_copierCache.getOneGhostExCopier(a_diffSrc.getBoxes()));
+    } else if (ghostVect != IntVect::Zero) {
+        a_diffSrc.exchange();
+    }
+
+    return;
+}
+
+
+// -----------------------------------------------------------------------------
+// Compute the gradient Richardson number.
+// -----------------------------------------------------------------------------
+void AMRNavierStokes::computeRiNumber (LevelData<FArrayBox>& a_Ri,
+                                       const int             a_RiComp,
+                                       const Real            a_time) const
+{
+    CH_TIME("AMRNavierStokes::computeRiNumber");
+
+    // Collect references
+    const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
+    const Copier& cp = m_copierCache.getOneGhostExCopier(grids);
+
+    // If useExtrapBCs is true, cartVel and buoyancy will simply be extrapolated
+    // to the ghost cells. This is an attempt to avoid excessive tagging at
+    // the physical boundaries.
+    const bool useExtrapBCs = true;
+    const int extrapOrder = 1;
+
+    // Set up extrapolation BCs if needed.
+    BCMethodHolder extrapBCHolder;
+    if (useExtrapBCs) {
+        RefCountedPtr<BCGhostClass> extrapBCPtr(
+            new EllipticExtrapBCGhostClass(extrapOrder,
+                                           IntVect::Unit,
+                                           IntVect::Unit)
+        );
+        extrapBCHolder.addBCMethod(extrapBCPtr);
+    }
+
+    // Sanity checks
+    CH_assert(m_problem_domain == grids.physDomain());
+    CH_assert(newVel().getBoxes() == grids);
+    CH_assert(oldVel().getBoxes() == grids);
+    CH_assert(newScal(0).getBoxes() == grids);
+    CH_assert(oldScal(0).getBoxes() == grids);
+
+    // Compute Cartesian-based velocity with one ghost.
+    LevelData<FArrayBox> cartVel(grids, SpaceDim, IntVect::Unit);
+    {
+        // Interpolate the velocity in time
+        this->velocity(cartVel, a_time);
+
+        // Fill physical and CF BC ghosts.
+        if (useExtrapBCs) {
+            Tuple<BCMethodHolder, SpaceDim> extrapTuple;
+            D_TERM(extrapTuple[0] = extrapBCHolder;,
+                   extrapTuple[1] = extrapBCHolder;,
+                   extrapTuple[2] = extrapBCHolder;)
+            VelBCHolder velBCHolder(extrapTuple);
+            this->setGhostsVelocity(cartVel, velBCHolder, a_time);
+        } else {
+            if (s_nu > 0.0) {
+                // Use viscous BCs
+                VelBCHolder velBCHolder(m_physBCPtr->viscousVelFuncBC());
+                this->setGhostsVelocity(cartVel, velBCHolder, a_time);
+            } else {
+                // Use inviscid BCs for tracing
+                VelBCHolder velBCHolder(m_physBCPtr->tracingVelFuncBC());
+                this->setGhostsVelocity(cartVel, velBCHolder, a_time);
+            }
+        }
+
+        // Exchange ghosts
+        cartVel.exchange(cp);
+
+        // Convert to Cartesian basis.
+        m_levGeoPtr->sendToCartesianBasis(cartVel, true);
+    }
+
+    // Compute total buoyancy
+    LevelData<FArrayBox> buoyancy(grids, 1, IntVect::Unit);
+    {
+        const int comp = 0;
+        const bool onlyAtValid = true;
+
+        // Interpolate the scalar in time
+        this->scalar(buoyancy, a_time, comp);
+
+        // Set all ghosts on the scalar
+        if (useExtrapBCs) {
+            this->setGhostsScalar(buoyancy, extrapBCHolder, a_time, comp, onlyAtValid);
+        } else {
+            if (s_scal_coeffs[0] > 0.0) {
+                BCMethodHolder scalBCHolder = m_physBCPtr->diffusiveSourceFuncBC();
+                this->setGhostsScalar(buoyancy, scalBCHolder, a_time, comp, onlyAtValid);
+            } else {
+                BCMethodHolder scalBCHolder = m_physBCPtr->scalarTraceFuncBC(comp);
+                this->setGhostsScalar(buoyancy, scalBCHolder, a_time, comp, onlyAtValid);
+            }
+        }
+
+        // Compute total buoyancy by adding the background to the deviation.
+        m_physBCPtr->addBackgroundScalar(buoyancy, comp, a_time, *m_levGeoPtr);
+
+        // Exchange ghosts
+        buoyancy.exchange(cp);
+    }
+
+    // Compute the gradient Richardson number via the StratUtils function.
+    const bool useHorizSsq = true;
+    computeGradRiNumber(a_Ri, a_RiComp, cartVel,
+                        buoyancy, *m_levGeoPtr,
+                        a_time, useHorizSsq);
 }
 
 
@@ -211,7 +366,8 @@ void AMRNavierStokes::computeVorticity (LevelData<FArrayBox>& a_vorticity) const
     }
 
     // Do exchange.
-    vel.exchange(m_oneGhostExCopier);
+    vel.exchange(m_copierCache.getOneGhostExCopier(vel.getBoxes()));
+
 
     // Compute vorticity
     for (dit.reset(); dit.ok(); ++dit) {

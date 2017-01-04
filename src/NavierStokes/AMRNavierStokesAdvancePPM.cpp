@@ -86,9 +86,9 @@ void AMRNavierStokes::PPMTimeStep (const Real a_oldTime,
 
 
     // Compute advecting velocities
-    LevelData<FArrayBox> old_vel(grids, SpaceDim, m_tracingGhosts);
+    LevelData<FArrayBox> old_vel(grids, SpaceDim, m_copierCache.getTracingGhosts());
     fillVelocity(old_vel, a_oldTime);
-    old_vel.exchange(m_tracingExCopier);
+    old_vel.exchange(m_copierCache.getTracingExCopier(old_vel.getBoxes()));
     nanCheck(old_vel);
 
     LevelData<FluxBox> adv_vel(grids, 1, IntVect::Unit); // Changed from m_tracingGhosts to 1
@@ -99,7 +99,7 @@ void AMRNavierStokes::PPMTimeStep (const Real a_oldTime,
         // Lambda update
         LevelData<FArrayBox> old_lambda;
         fillLambda(old_lambda, a_oldTime);
-        old_lambda.exchange(m_tracingExCopier);
+        old_lambda.exchange(m_copierCache.getTracingExCopier(old_lambda.getBoxes()));
         nanCheck(old_lambda);
 
         LevelData<FArrayBox> dLdt(grids, 1);
@@ -111,7 +111,7 @@ void AMRNavierStokes::PPMTimeStep (const Real a_oldTime,
         // Scalar update
         LevelData<FArrayBox> old_b;
         fillScalars(old_b, a_oldTime, 0);
-        old_b.exchange(m_tracingExCopier);
+        old_b.exchange(m_copierCache.getTracingExCopier(old_b.getBoxes()));
         nanCheck(old_b);
 
         LevelData<FArrayBox> dSdt(grids, 1);
@@ -123,7 +123,7 @@ void AMRNavierStokes::PPMTimeStep (const Real a_oldTime,
         // Scalar update
         LevelData<FArrayBox> old_scal;
         fillScalars(old_scal, a_oldTime, comp);
-        old_scal.exchange(m_tracingExCopier);
+        old_scal.exchange(m_copierCache.getTracingExCopier(old_scal.getBoxes()));
 
         LevelData<FArrayBox> dSdt(grids, 1);
         getNewScalar(dSdt, newScal(comp), old_scal, old_vel, adv_vel, a_oldTime, a_dt, a_dt, comp);
@@ -135,8 +135,79 @@ void AMRNavierStokes::PPMTimeStep (const Real a_oldTime,
         nanCheck(new_vel);
     }
 
+
+    // // Set BCs
+    // for (dit.reset(); dit.ok(); ++dit) {
+    //     const Box& stateBox = new_vel[dit].box();
+
+    //     Box ghostBox = adjCellLo(m_problem_domain.domainBox(), SpaceDim-1, 1);
+
+    //     Box validBox = ghostBox;
+    //     validBox.shift(SpaceDim-1, 1);
+
+    //     new_vel[dit].setVal(0.0, ghostBox & stateBox, 0);
+    //     new_vel[dit].setVal(0.0, validBox & stateBox, 0);
+    // }
+
+
+
+
+    LevelData<FArrayBox> oldGradPi, oldPi;
+    if (s_useLaggedPressure) {
+        // We need to compute new_vel = new_vel - dt * Grad[Pi]
+        // where Grad[Pi] is the lagged pressure correction at t^{n-1/2}.
+        // To learn why we use the lagged pressure correction,
+        // see JCOMP 168, 464–499 (2001), doi:10.1006/jcph.2001.6715.
+
+        // Remove lagged pressure gradient.
+        oldGradPi.define(grids, SpaceDim);
+        gradCCPressure(oldGradPi, 1.0);
+        m_levGeoPtr->divByJ(oldGradPi);
+
+        for (dit.reset(); dit.ok(); ++dit) {
+            new_vel[dit].plus(oldGradPi[dit], -a_dt);
+        }
+
+        // Save the old pressure state
+        oldPi.define(grids, 1, IntVect::Unit);
+        m_ccPressure.copyTo(oldPi);
+    }
+
+
     // Project CC velocities
     doCCProjection(new_vel, a_oldTime + a_dt, a_dt, a_doLevelProj);
+
+    if (s_useLaggedPressure) {
+        // // Add 2nd order pressure correction.
+        // LevelData<FArrayBox>& lapPi = oldGradPi;
+
+        // CFRegion cfregion(grids, m_levGeoPtr->getDomain());
+        // BCMethodHolder bc = m_physBCPtr->gradPiFuncBC();
+
+        // MappedAMRPoissonOpFactory opFact;
+        // opFact.define(m_levGeoPtr->getFCJgupPtr(),
+        //               m_levGeoPtr->getCCJinvPtr(),
+        //               m_copierCache.getOneGhostExCopier(grids),
+        //               cfregion,
+        //               m_levGeoPtr->getDx(),
+        //               0.0,            // alpha
+        //               -0.5*s_nu*a_dt, // beta
+        //               bc,
+        //               0, 0, 0, 0);
+        // MappedAMRLevelOp<LevelData<FArrayBox> >* opPtr = opFact.AMRnewOp(m_levGeoPtr->getDomain());
+
+        // opPtr->applyOp(lapPi, m_ccPressure);
+
+        // for (dit.reset(); dit.ok(); ++dit) {
+        //     m_ccPressure[dit].plus(lapPi[dit], +1.0);
+        // }
+
+
+        // Update pressure by adding increment.
+        for (dit.reset(); dit.ok(); ++dit) {
+            m_ccPressure[dit].plus(oldPi[dit], +1.0);
+        }
+    }
 }
 
 
@@ -354,7 +425,11 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
     // TODO: This is a bit of a waste!!!
     LevelData<FArrayBox> bkgdSrc(grids, 1, IntVect::Unit);
 
-    if (m_physBCPtr->useBackgroundScalar() && s_gravityMethod == ProblemContext::GravityMethod::EXPLICIT) {
+    bool nonZeroBkgd = m_physBCPtr->useBackgroundScalar();
+    nonZeroBkgd &= (s_gravityMethod == ProblemContext::GravityMethod::EXPLICIT);
+    nonZeroBkgd &= (a_comp == PhysBCUtil::ScalarIndex::BUOYANCY_DEVIATION);
+
+    if (nonZeroBkgd) {
         LevelData<FluxBox> bkgdFlux(grids, 1, IntVect::Unit);
 #ifndef NDEBUG
         setValLevel(bkgdSrc, quietNAN);
@@ -392,7 +467,7 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
         }
 
         // Exchange data.       // TODO: Is this necessary?
-        bkgdSrc.exchange(m_oneGhostExCopier);
+        bkgdSrc.exchange(m_copierCache.getOneGhostExCopier(bkgdSrc.getBoxes()));
 
     } else {
         // No background source. Just set to zero.
@@ -401,16 +476,6 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
 
     if (isDiffusive) {
         // This scalar is diffusive...
-
-        // Create data holders
-        LevelData<FArrayBox> diffusiveSrc(grids, 1, m_tracingGhosts);
-        LevelData<FArrayBox> tempStorage (grids, 1, m_tracingGhosts);     // TODO: Can this be a_rhs?
-
-        // Set to bogus values
-        if (s_set_bogus_values) {
-            setValLevel(diffusiveSrc, s_bogus_value);
-            setValLevel(tempStorage, s_bogus_value);
-        }
 
         // Get coarse-level scalars for BC's if necessary
         LevelData<FArrayBox>* oldCrseScalPtr = NULL;
@@ -426,25 +491,16 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
         }
 
         // 1. Compute the diffusive source term
+        LevelData<FArrayBox> diffusiveSrc(grids, 1, m_copierCache.getTracingGhosts());
         {
-            LevelData<FArrayBox>* crseDataPtr = NULL;
-
-            // Copy scalar into temp storage so we don't overwrite C/F BC's.
-            // Define our own copier here to prevent ghost cells
-            // being filled (avoiding a potentially expensive exchange)
-            // since they will be filled a bit later when we compute the Laplacian
-            {
-                Copier noGhostCopier(a_oldScalar.getBoxes(),
-                                     tempStorage.getBoxes(),
-                                     IntVect::Zero);
-                a_oldScalar.copyTo(interv,
-                                    tempStorage,
-                                    tempStorage.interval(),
-                                    noGhostCopier);
+            // Initialize to bogus values.
+            if (s_set_bogus_values) {
+                setValLevel(diffusiveSrc, s_bogus_value);
             }
 
             // Set up crse level BC.
             // Remember, coarse level may be at a more advanced time than this level.
+            LevelData<FArrayBox>* crseDataPtr = NULL;
             if (m_level > 0) {
                 CH_assert(oldCrseScalPtr != NULL);
                 CH_assert(newCrseScalPtr != NULL);
@@ -459,12 +515,10 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
                            interv);
             }
 
-            // Compute the diffusive source term, coeff * L[scalar].
+            // Compute the diffusive source term, D[kappa G[scalar]].
             // (The op takes care of the exchanges.)
-            this->computeLapScal(diffusiveSrc, tempStorage, crseDataPtr, NULL);
-            for (dit.reset(); dit.ok(); ++dit) {
-                diffusiveSrc[dit] *= s_scal_coeffs[a_comp];
-            }
+            this->computeDiffusiveSrc(diffusiveSrc, a_oldScalar, crseDataPtr,
+                                      a_comp, a_oldTime);
 
             // Free memory
             if (crseDataPtr != NULL) {
@@ -475,8 +529,7 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
         // 2. Compute the advective update
 
         // The background advective source term is -w * d[backgroundScalar] / dz
-        // TODO: This is a bit of a waste!!!
-        if (m_physBCPtr->useBackgroundScalar()) {
+        if (nonZeroBkgd) {
             for (dit.reset(); dit.ok(); ++dit) {
                 diffusiveSrc[dit].plus(bkgdSrc[dit], 0, 0, 1);
             }
@@ -502,8 +555,7 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
 
         // We need to create storage for -Div[u*s]. We can just
         // use tmpStorage since it is already lying around.
-        LevelData<FArrayBox>& adv_src = tempStorage;
-        adv_src.define(grids, 1);
+        LevelData<FArrayBox> adv_src(grids, 1);
         if (s_set_bogus_values) {
             setValLevel(adv_src, s_bogus_value);
         }
@@ -516,7 +568,7 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
         }
 
         // Add the contribution from bkgdSrc
-        if (m_physBCPtr->useBackgroundScalar()) {
+        if (nonZeroBkgd) {
             for (dit.reset(); dit.ok(); ++dit) {
                 adv_src[dit].plus(bkgdSrc[dit], 0, 0, 1);
             }
@@ -563,6 +615,8 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
             const Real halfTime = a_oldTime + 0.5 * a_dt;
             const Real newTime = a_oldTime + a_dt;
             {
+                // TODO: This is inefficient!
+
                 LevelData<FArrayBox> halfScalar(grids, 1, IntVect::Unit);
                 timeInterp(halfScalar, halfTime,
                            a_oldScalar, a_oldTime,
@@ -589,12 +643,10 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
                                Interval(0,0));
                 }
 
-                // Compute the diffusive source term, coeff * L[scalar].
+                // Compute the diffusive source term, D[kappa G[scalar]].
                 // (The op takes care of the exchanges.)
-                this->computeLapScal(diffusiveSrc, halfScalar, crseDataPtr, NULL);
-                for (dit.reset(); dit.ok(); ++dit) {
-                    diffusiveSrc[dit] *= s_scal_coeffs[a_comp];
-                }
+                this->computeDiffusiveSrc(diffusiveSrc, halfScalar, crseDataPtr,
+                                          a_comp, halfTime);
 
                 // Free memory
                 delete crseDataPtr;
@@ -713,7 +765,7 @@ void AMRNavierStokes::getNewScalar (LevelData<FArrayBox>&       a_rhs,
         }
 
         // Add the background advective source term
-        if (m_physBCPtr->useBackgroundScalar()) {
+        if (nonZeroBkgd) {
             for (dit.reset(); dit.ok(); ++dit) {
                 a_rhs[dit].plus(bkgdSrc[dit]);
             }
@@ -1066,7 +1118,7 @@ void AMRNavierStokes::getNewVelocity (LevelData<FArrayBox>&       a_rhs,
 
         // Compute half-time viscous source.
         LevelData<FArrayBox> viscSource(grids, SpaceDim);
-        fillViscousSource(viscSource, cartVel, half_time);
+        computeViscousSrc(viscSource, cartVel, half_time);
         m_levGeoPtr->sendToMappedBasis(viscSource, false);
 
         // Add viscous source term.
@@ -1313,8 +1365,8 @@ void AMRNavierStokes::predictVelocities (LevelData<FluxBox>&       a_predVel,
     const DisjointBoxLayout& grids = newVel().getBoxes();
     DataIterator dit = grids.dataIterator();
 
-    LevelData<FArrayBox> srcTerms(grids, SpaceDim, m_tracingGhosts);
-    LevelData<FArrayBox> cartOldVel(grids, SpaceDim, m_tracingGhosts);
+    LevelData<FArrayBox> srcTerms(grids, SpaceDim, m_copierCache.getTracingGhosts());
+    LevelData<FArrayBox> cartOldVel(grids, SpaceDim, m_copierCache.getTracingGhosts());
 
     // Sanity checks
     CH_assert(a_predVel.nComp() == SpaceDim);
@@ -1348,7 +1400,7 @@ void AMRNavierStokes::predictVelocities (LevelData<FluxBox>&       a_predVel,
 
     // Compute the viscous source term. This initializes srcTerms.
     if (isViscous) {
-        this->fillViscousSource(srcTerms, cartOldVel, a_oldTime);
+        this->computeViscousSrc(srcTerms, cartOldVel, a_oldTime);
     } else {
         setValLevel(srcTerms, 0.0);
     }
@@ -1356,7 +1408,7 @@ void AMRNavierStokes::predictVelocities (LevelData<FluxBox>&       a_predVel,
     // Compute the gravitational source term.
     if (s_gravityMethod == ProblemContext::GravityMethod::EXPLICIT) {
         const bool addBackground = false;
-        LevelData<FArrayBox> gravSource(grids, SpaceDim, m_tracingGhosts);
+        LevelData<FArrayBox> gravSource(grids, SpaceDim, m_copierCache.getTracingGhosts());
         this->fillGravSource(gravSource, a_oldTime, addBackground);
 
         // Note: fillGravSource produces a vector, not a flux,
@@ -1371,7 +1423,7 @@ void AMRNavierStokes::predictVelocities (LevelData<FluxBox>&       a_predVel,
         // The a_dt passed in is used to compute a derivative.
         // This only needs to be first order, so passing in 0.5*a_dt ot a_dt
         // shouldn't make much of a difference.
-        LevelData<FArrayBox> tidalSource(grids, SpaceDim, m_tracingGhosts);
+        LevelData<FArrayBox> tidalSource(grids, SpaceDim, m_copierCache.getTracingGhosts());
         this->fillTidalSource(tidalSource, a_oldTime, 0.5*a_dt);
 
         // Note: fillTidalSource produces a vector, not a flux,
@@ -1397,8 +1449,8 @@ void AMRNavierStokes::predictVelocities (LevelData<FluxBox>&       a_predVel,
     }
 
     // These aren't a must, but they do make a difference.
-    srcTerms.exchange(m_tracingExCopier);
-    srcTerms.exchange(m_tracingExCornerCopier);
+    srcTerms.exchange(m_copierCache.getTracingExCopier(srcTerms.getBoxes()));
+    srcTerms.exchange(m_copierCache.getTracingExCornerCopier(srcTerms.getBoxes()));
 
     // Loop through velocity components and compute the fluxes for each.
     for (int veldir = 0; veldir < CH_SPACEDIM; ++veldir) {
@@ -1411,7 +1463,7 @@ void AMRNavierStokes::predictVelocities (LevelData<FluxBox>&       a_predVel,
         //
         // NOTE: This would be more efficient if aliasLevelData worked
         // with T = FluxBox or if predictScalar had a destComp parameter.
-        LevelData<FluxBox> predVelDir(grids, 1, m_tracingGhosts);     // TODO: Try with less ghosts
+        LevelData<FluxBox> predVelDir(grids, 1, m_copierCache.getTracingGhosts());     // TODO: Try with less ghosts
         if (s_set_bogus_values) {
             setValLevel(predVelDir, s_bogus_value);
         }

@@ -260,6 +260,7 @@ public:
 
     // Sends a vector from the scaled, mapped basis to an unscaled, Cartesian basis.
     // uCart^{a} = [dx^{a} / dXi^{b}] * uMapped^{b}
+    void sendToCartesianBasis (FArrayBox& a_vectFAB, const Box& a_region) const;
     void sendToCartesianBasis (LevelData<FArrayBox>& a_CCvect, bool a_doGhosts = true) const;
     void sendToCartesianBasis (LevelData<FluxBox>& a_FCvect, bool a_doGhosts = true) const;
 

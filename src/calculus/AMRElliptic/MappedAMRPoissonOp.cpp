@@ -37,7 +37,6 @@
 #include "Debug.H"
 #include "ProblemContext.H"
 #include "Printing.H"
-#include "CornerCopier.H"
 #include "AMRIO.H"
 #include "InterpF_F.H" // Only needed for 2 InterpHomo functions.
 
@@ -273,6 +272,8 @@ void MappedAMRPoissonOp::define(const DisjointBoxLayout& a_grids,
 
     m_exchangeCopier = a_exchange;
     m_cfregion = a_cfregion;
+
+    m_cornerCopier.define(a_grids, a_grids, a_domain, IntVect::Unit, true);
 
     m_validDomain = a_domain.domainBox();
     for (int dir = 0; dir < SpaceDim; ++dir) {
@@ -790,12 +791,14 @@ void MappedAMRPoissonOp::applyOpI (LevelData<FArrayBox>&       a_lhs,
     // This is OK if we use it to only change ghost cells
     LevelData<FArrayBox>& phiRef = const_cast< LevelData<FArrayBox>& >(a_phi);
 
-    // Begin exchange of valid data
+#define USE_SYNC_METHOD
+#ifdef USE_SYNC_METHOD
+    // Synchronous exchange
     CH_START(exchangeTmr);
     this->exchangeComplete(phiRef);
     CH_STOP(exchangeTmr);
 
-    // Loop through grids and perform calculations that do not need ghosts.
+    // Loop through grids and perform all calculations.
     for (dit.reset(); dit.ok(); ++dit) {
         const FArrayBox& phiFAB    = a_phi[dit];
         FArrayBox&       phiRefFAB = phiRef[dit];
@@ -833,6 +836,9 @@ void MappedAMRPoissonOp::applyOpI (LevelData<FArrayBox>&       a_lhs,
 
         // Set boundary fluxes
         m_bc.setFluxes(fluxFB, &extrapFAB, valid, m_domain, m_dx, dit(), &JgupFB, a_homogeneous, m_time);
+
+        // Scale by beta
+        fluxFB *= m_beta;
 
         // Compute divergence
         CH_START(divTmr);
@@ -890,6 +896,154 @@ void MappedAMRPoissonOp::applyOpI (LevelData<FArrayBox>&       a_lhs,
                 CHF_BOX(valid));
         }
     }
+
+#else // !USE_SYNC_METHOD
+
+    // Allocate while exchanging.
+    phiRef.exchangeBegin(m_exchangeCopier);
+    LevelData<FArrayBox> extrap(grids, ncomps, a_phi.ghostVect());
+    LevelData<FluxBox> flux(grids, ncomps);
+    phiRef.exchangeEnd();
+
+    // Loop through grids and perform calculations that do not need ghosts.
+    for (dit.reset(); dit.ok(); ++dit) {
+        const FArrayBox& phiFAB    = a_phi[dit];
+        FArrayBox&       phiRefFAB = phiRef[dit];
+        const FluxBox&   JgupFB    = (*m_FCJgup)[dit];
+        const Box&       valid     = grids[dit];
+        FArrayBox&       extrapFAB = extrap[dit];
+
+#ifndef NDEBUG
+        FluxBox& fluxFB = flux[dit];
+        fluxFB.setVal(quietNAN);
+#endif
+
+        // Extrapolate ghosts for non-diagonal derivatives
+        this->fillExtrap(extrapFAB, phiFAB, 2);
+
+        // Set physical BCs
+        m_bc.setGhosts(phiRefFAB, &extrapFAB, valid, m_domain, m_dx, dit(), &JgupFB, a_homogeneous, m_time);
+    }
+
+    // Begin exchange of corner ghosts.
+    if (!m_horizontalOp) {
+        CH_assert(m_cornerCopier.isDefined());
+        extrap.exchangeBegin(m_cornerCopier);
+    } else {
+        CH_assert(a_phi.ghostVect() == IntVect::Unit - BASISV(SpaceDim-1));
+    }
+
+    // Loop through grids and perform calculations that do not need ghosts.
+    for (dit.reset(); dit.ok(); ++dit) {
+        const FArrayBox& phiFAB    = a_phi[dit];
+        const Box&       valid     = grids[dit];
+        FluxBox&         fluxFB    = flux[dit];
+        FArrayBox&       extrapFAB = extrap[dit];
+
+        // Compute fluxes
+        if (!m_horizontalOp) {
+            D_TERM(this->getFluxDuringExchange(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
+                   this->getFluxDuringExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);,
+                   this->getFluxDuringExchange(fluxFB[2], phiFAB, extrapFAB, surroundingNodes(valid,2), dit(), 2);)
+        } else {
+            D_HTERM(this->getFluxDuringExchange(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
+                    this->getFluxDuringExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
+        }
+    }
+
+    // End exchange of corner ghosts.
+    if (!m_horizontalOp) {
+        extrap.exchangeEnd();
+    }
+
+    // Loop through grids and perform calculations that need ghosts.
+    for (dit.reset(); dit.ok(); ++dit) {
+        const FArrayBox& phiFAB    = a_phi[dit];
+        const Box&       valid     = grids[dit];
+        FluxBox&         fluxFB    = flux[dit];
+        FArrayBox&       extrapFAB = extrap[dit];
+
+        // Compute fluxes
+        if (!m_horizontalOp) {
+            D_TERM(this->getFluxAfterExchange(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
+                   this->getFluxAfterExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);,
+                   this->getFluxAfterExchange(fluxFB[2], phiFAB, extrapFAB, surroundingNodes(valid,2), dit(), 2);)
+        } else {
+            D_HTERM(this->getFluxAfterExchange(fluxFB[0], phiFAB, extrapFAB, surroundingNodes(valid,0), dit(), 0);,
+                    this->getFluxAfterExchange(fluxFB[1], phiFAB, extrapFAB, surroundingNodes(valid,1), dit(), 1);)
+        }
+    }
+
+    // Loop through grids and perform calculations that do not need ghosts.
+    for (dit.reset(); dit.ok(); ++dit) {
+        const FArrayBox& phiFAB    = a_phi[dit];
+        FArrayBox&       lhsFAB    = a_lhs[dit];
+        const FluxBox&   JgupFB    = (*m_FCJgup)[dit];
+        const FArrayBox& JinvFAB   = (*m_CCJinv)[dit];
+        const Box&       valid     = grids[dit];
+        FluxBox&         fluxFB    = flux[dit];
+        FArrayBox&       extrapFAB = extrap[dit];
+
+        // Set boundary fluxes
+        m_bc.setFluxes(fluxFB, &extrapFAB, valid, m_domain, m_dx, dit(), &JgupFB, a_homogeneous, m_time);
+        // Scale by beta
+        fluxFB *= m_beta;
+
+        // Compute divergence
+#if CH_SPACEDIM == 2
+        if (!m_horizontalOp) {
+            FORT_MAPPEDFLUXDIVERGENCE2D(
+                CHF_FRA(lhsFAB),
+                CHF_CONST_FRA(fluxFB[0]),
+                CHF_CONST_FRA(fluxFB[1]),
+                CHF_CONST_FRA1(JinvFAB,0),
+                CHF_BOX(valid),
+                CHF_CONST_REALVECT(m_dx));
+        } else {
+            FORT_MAPPEDFLUXDIVERGENCE1D(
+                CHF_FRA(lhsFAB),
+                CHF_CONST_FRA(fluxFB[0]),
+                CHF_CONST_FRA1(JinvFAB,0),
+                CHF_BOX(valid),
+                CHF_CONST_REAL(m_dx[0]));
+        }
+#elif CH_SPACEDIM == 3
+        if (!m_horizontalOp) {
+            FORT_MAPPEDFLUXDIVERGENCE3D(
+                CHF_FRA(lhsFAB),
+                CHF_CONST_FRA(fluxFB[0]),
+                CHF_CONST_FRA(fluxFB[1]),
+                CHF_CONST_FRA(fluxFB[2]),
+                CHF_CONST_FRA1(JinvFAB,0),
+                CHF_BOX(valid),
+                CHF_CONST_REALVECT(m_dx));
+        } else {
+            FORT_MAPPEDFLUXDIVERGENCE2D(
+                CHF_FRA(lhsFAB),
+                CHF_CONST_FRA(fluxFB[0]),
+                CHF_CONST_FRA(fluxFB[1]),
+                CHF_CONST_FRA1(JinvFAB,0),
+                CHF_BOX(valid),
+                CHF_CONST_REALVECT(m_dx));
+        }
+#else
+#error Bad CH_SPACEDIM
+#endif
+
+        // Right now, lhsFAB = beta*L[phiFAB].
+        // We want lhsFAB = (alpha + beta*L)[phiFAB].
+        // This utility function does just that for us.
+        if (m_alpha != 0.0) {
+            const Real betaDummy = 1.0;
+            FORT_AXBYIP(
+                CHF_FRA(lhsFAB),
+                CHF_CONST_FRA(phiFAB),
+                CHF_CONST_REAL(m_alpha),
+                CHF_CONST_REAL(betaDummy),
+                CHF_BOX(valid));
+        }
+    }
+#endif // USE_SYNC_METHOD / !USE_SYNC_METHOD
 }
 
 
@@ -985,6 +1139,9 @@ void MappedAMRPoissonOp::applyOpNoBoundary(LevelData<FArrayBox>&       a_lhs,
 
         // Set boundary fluxes
         m_bc.setFluxes(fluxFB, &extrapFAB, valid, m_domain, m_dx, dit(), &JgupFB, a_homogeneous, m_time);
+        
+        // Scale by beta
+        fluxFB *= m_beta;
 
         // Compute divergence
 #if CH_SPACEDIM == 2
@@ -1499,7 +1656,7 @@ void MappedAMRPoissonOp::reflux(const LevelData<FArrayBox>&              a_phiFi
                 this->getFlux(crseFlux, crsePhi, ditc(), idir);
 
                 // Increment the register
-                const Real scale = 1.0 / m_dx[idir];
+                const Real scale = m_beta / m_dx[idir];
                 m_levfluxreg.incrementCoarse(crseFlux, scale, ditc(),
                                              interv, interv, idir);
             }
@@ -1535,7 +1692,7 @@ void MappedAMRPoissonOp::reflux(const LevelData<FArrayBox>&              a_phiFi
                                     1); // refToFiner (1 since we are using the finer op)
 
                     // Increment the register
-                    const Real scale = 1.0 / m_dx[idir];
+                    const Real scale = m_beta / m_dx[idir];
                     m_levfluxreg.incrementFine(fineFlux, scale, ditf(),
                                                interv, interv, idir, hiorlo);
                 }
@@ -1703,8 +1860,6 @@ void MappedAMRPoissonOp::getFluxDuringExchange (FArrayBox&       a_flux,
                                                 int              a_ref) const
 {
     CH_TIME("MappedAMRPoissonOp::getFluxDuringExchange");
-    TODO();
-    UNDEFINED_FUNCTION();
 
 #ifndef NDEBUG
     // Set up dimensional info
@@ -1733,7 +1888,7 @@ void MappedAMRPoissonOp::getFluxDuringExchange (FArrayBox&       a_flux,
     if (!FCBox.isEmpty()) {
         if (m_isDiagonal) {
             // Don't need to do anything special for ortho + horizontalOp.
-            const Real scale = m_beta * a_ref / m_dx[a_dir];
+            const Real scale = a_ref / m_dx[a_dir];
             if (!m_horizontalOp) {
                 FORT_MAPPEDGETFLUXORTHO(
                     CHF_FRA(a_flux),
@@ -1746,7 +1901,7 @@ void MappedAMRPoissonOp::getFluxDuringExchange (FArrayBox&       a_flux,
                 MayDay::Error("FORT_MAPPEDGETFLATFLUXORTHO is not yet written");
             }
         } else {
-            const Real scale = m_beta * a_ref;
+            const Real scale = a_ref;
             if (!m_horizontalOp) {
                 FORT_MAPPEDGETFLUX(
                     CHF_FRA(a_flux),
@@ -1809,8 +1964,6 @@ void MappedAMRPoissonOp::getFluxAfterExchange(FArrayBox&       a_flux,
                                               int              a_ref) const
 {
     CH_TIME("MappedAMRPoissonOp::getFluxAfterExchange");
-    TODO();
-    UNDEFINED_FUNCTION();
 
 #ifndef NDEBUG
     // Set up dimensional info
@@ -1839,7 +1992,7 @@ void MappedAMRPoissonOp::getFluxAfterExchange(FArrayBox&       a_flux,
         if (!FCBox.isEmpty()) {
             if (m_isDiagonal) {
                 // Don't need to do anything special for ortho + horizontalOp.
-                const Real scale = m_beta * a_ref / m_dx[a_dir];
+                const Real scale = a_ref / m_dx[a_dir];
                 FORT_MAPPEDGETFLUXORTHO(CHF_FRA(a_flux),
                                         CHF_CONST_FRA(a_data),
                                         CHF_CONST_FRA1(JgupFAB,a_dir),
@@ -1847,7 +2000,7 @@ void MappedAMRPoissonOp::getFluxAfterExchange(FArrayBox&       a_flux,
                                         CHF_CONST_REAL(scale),
                                         CHF_CONST_INT(a_dir));
             } else {
-                const Real scale = m_beta * a_ref;
+                const Real scale = a_ref;
                 if (!m_horizontalOp) {
                     FORT_MAPPEDGETFLUX(CHF_FRA(a_flux),
                                        CHF_CONST_FRA(a_data),
@@ -1922,7 +2075,7 @@ void MappedAMRPoissonOp::getFluxComplete (FArrayBox&       a_flux,
     if (!a_edgebox.isEmpty()) {
         if (m_isDiagonal) {
             // Don't need to do anything special for ortho + horizontalOp.
-            const Real scale = m_beta * a_ref / m_dx[a_dir];
+            const Real scale = a_ref / m_dx[a_dir];
             FORT_MAPPEDGETFLUXORTHO(
                 CHF_FRA(a_flux),
                 CHF_CONST_FRA(a_data),
@@ -1931,7 +2084,7 @@ void MappedAMRPoissonOp::getFluxComplete (FArrayBox&       a_flux,
                 CHF_CONST_REAL(scale),
                 CHF_CONST_INT(a_dir));
         } else {
-            const Real scale = m_beta * a_ref;
+            const Real scale = a_ref;
             if (!m_horizontalOp) {
                 FORT_MAPPEDGETFLUX(
                     CHF_FRA(a_flux),
@@ -2077,8 +2230,8 @@ void MappedAMRPoissonOp::exchangeComplete (LevelData<FArrayBox>& a_phi) const
     a_phi.exchange(exCopier);
 
     if (!m_horizontalOp) {
-        CornerCopier exCornerCopier(grids, grids, m_domain, ghostVect, true);
-        a_phi.exchange(exCornerCopier);
+        CH_assert(m_cornerCopier.isDefined());
+        a_phi.exchange(m_cornerCopier);
     } else {
         CH_assert(ghostVect == IntVect::Unit - BASISV(SpaceDim-1));
     }

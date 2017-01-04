@@ -27,6 +27,7 @@
 #include "MappedCoarseAverage.H"
 #include "Constants.H"
 #include "ProblemContext.H"
+#include "computeMappedNorm.H"
 
 #include "Jacobi.H"
 #include "GSRB.H"
@@ -655,49 +656,42 @@ MappedAMRPoissonOpFactory::MGnewOp(const ProblemDomain&   a_indexSpace,
     newOp->m_restrictPtr = new FullWeightingPS(newOp->m_CCJinv);
 
     // Set the prolongation strategy.
-    bool removeAvg = false;
-    do {
-        // If we survive each test, we will remove the average.
-        const int dims = m_horizontalFactory? SpaceDim-1: SpaceDim;
+    {
+        // Check if the operator has a non-trivial null space.
+        // We do this by computing L[1] - L[0] with homogeneous BCs.
+        // If the result is 0, then 1 is in the null space.
         const DisjointBoxLayout& grids = newOp->m_FCJgup->getBoxes();
         DataIterator dit = grids.dataIterator();
-        CFRegion& cfregion = newOp->m_cfregion;
 
-        // 1. Check if this is a parabolic operator.
-        if (m_alpha != 0.0) break;
+        LevelData<FArrayBox> phi(grids, 1, IntVect::Unit);
+        LevelData<FArrayBox> rhs(grids, 1, IntVect::Zero);
+        LevelData<FArrayBox> res(grids, 1, IntVect::Zero);
 
-        // 2. Check physical BCs
-        bool hasNullSpace = m_bc.hasNullSpace(grids, cfregion, activeDirs);
-        if (hasNullSpace == false) break;
-
-        // 3. Check for CF interfaces
-        bool hasCFInterface = false;
-        for (int dir = 0; dir < dims; ++dir) {
-            for (dit.reset(); dit.ok(); ++dit) {
-                const CFIVS& loCFIVS = cfregion.loCFIVS(dit(), dir);
-                const CFIVS& hiCFIVS = cfregion.hiCFIVS(dit(), dir);
-
-                hasCFInterface |= !loCFIVS.isEmpty();
-                hasCFInterface |= !hiCFIVS.isEmpty();
-            }
-            if (hasCFInterface) break;
+        for (dit.reset(); dit.ok(); ++dit) {
+            phi[dit].setVal(0.0);
         }
-        if (hasCFInterface) break;
+        newOp->applyOp(rhs, phi, true);
 
-        // Well, it looks like we made it. Remove the average.
-        removeAvg = true;
-    } while(0);
+        for (dit.reset(); dit.ok(); ++dit) {
+            phi[dit].setVal(1.0);
+        }
+        newOp->residual(res, phi, rhs, true);
 
-    if (removeAvg) {
-        const Real dxProduct = m_horizontalFactory?
-                               (D_TERM(1.0, *dx[0], *dx[1])):
-                               (D_TERM(dx[0], *dx[1], *dx[2]));
-        newOp->m_prolongPtr = new ZeroAvgConstInterpPS(dxProduct, newOp->m_CCJinv);
-        // pout() << "Using ZeroAvgConstInterpPS" << endl;
-    } else {
-        newOp->m_prolongPtr = new ConstInterpPS;
-        // pout() << "Using ConstInterpPS" << endl;
+        const Real maxNorm = abs(computeMax(res, NULL, IntVect::Zero, res.interval()));
+        const Real thresh = 0.01 * ProblemContext::getInstance()->AMRMG_eps;
+
+        if (maxNorm < thresh) {
+            const Real dxProduct = m_horizontalFactory?
+                                   (D_TERM(1.0, *dx[0], *dx[1])):
+                                   (D_TERM(dx[0], *dx[1], *dx[2]));
+            newOp->m_prolongPtr = new ZeroAvgConstInterpPS(dxProduct, newOp->m_CCJinv);
+            // pout() << "Using ZeroAvgConstInterpPS" << endl;
+        } else {
+            newOp->m_prolongPtr = new ConstInterpPS;
+            // pout() << "Using ConstInterpPS" << endl;
+        }
     }
+
 
     // TEMPORARY!!!
     ostringstream ss;
@@ -863,50 +857,43 @@ MappedAMRPoissonOpFactory::AMRnewOp(const ProblemDomain& a_indexSpace)
     newOp->m_restrictPtr = new FullWeightingPS(newOp->m_CCJinv);
 
     // Set the prolongation strategy.
-    bool removeAvg = false;
-    do {
-        // If we survive each test, we will remove the average.
-        const int dims = m_horizontalFactory? SpaceDim-1: SpaceDim;
+    {
+        // Check if the operator has a non-trivial null space.
+        // We do this by computing L[1] - L[0] with homogeneous BCs.
+        // If the result is 0, then 1 is in the null space.
         const DisjointBoxLayout& grids = newOp->m_FCJgup->getBoxes();
         DataIterator dit = grids.dataIterator();
-        CFRegion& cfregion = newOp->m_cfregion;
 
-        // 1. Check if this is a parabolic operator.
-        if (m_alpha != 0.0) break;
+        LevelData<FArrayBox> phi(grids, 1, IntVect::Unit);
+        LevelData<FArrayBox> rhs(grids, 1, IntVect::Zero);
+        LevelData<FArrayBox> res(grids, 1, IntVect::Zero);
 
-        // 2. Check physical BCs
-        bool hasNullSpace = m_bc.hasNullSpace(grids, cfregion, activeDirs);
-        if (hasNullSpace == false) break;
-
-        // 3. Check for CF interfaces
-        bool hasCFInterface = false;
-        for (int dir = 0; dir < dims; ++dir) {
-            for (dit.reset(); dit.ok(); ++dit) {
-                const CFIVS& loCFIVS = cfregion.loCFIVS(dit(), dir);
-                const CFIVS& hiCFIVS = cfregion.hiCFIVS(dit(), dir);
-
-                hasCFInterface |= !loCFIVS.isEmpty();
-                hasCFInterface |= !hiCFIVS.isEmpty();
-            }
-            if (hasCFInterface) break;
+        for (dit.reset(); dit.ok(); ++dit) {
+            phi[dit].setVal(0.0);
         }
-        if (hasCFInterface) break;
+        newOp->applyOp(rhs, phi, true);
 
-        // Well, it looks like we made it. Remove the average.
-        removeAvg = true;
-    } while(0);
+        for (dit.reset(); dit.ok(); ++dit) {
+            phi[dit].setVal(1.0);
+        }
+        newOp->residual(res, phi, rhs, true);
 
-    if (removeAvg) {
-        const RealVect& dx = newOp->m_dx;
-        const Real dxProduct = m_horizontalFactory?
-                               (D_TERM(1.0, *dx[0], *dx[1])):
-                               (D_TERM(dx[0], *dx[1], *dx[2]));
-        newOp->m_prolongPtr = new ZeroAvgConstInterpPS(dxProduct, newOp->m_CCJinv);
-        // pout() << "Using ZeroAvgConstInterpPS" << endl;
-    } else {
-        newOp->m_prolongPtr = new ConstInterpPS;
-        // pout() << "Using ConstInterpPS" << endl;
+        const Real maxNorm = abs(computeMax(res, NULL, IntVect::Zero, res.interval()));
+        const Real thresh = 0.01 * ProblemContext::getInstance()->AMRMG_eps;
+
+        if (maxNorm < thresh) {
+            const RealVect& dx = newOp->m_dx;
+            const Real dxProduct = m_horizontalFactory?
+                                   (D_TERM(1.0, *dx[0], *dx[1])):
+                                   (D_TERM(dx[0], *dx[1], *dx[2]));
+            newOp->m_prolongPtr = new ZeroAvgConstInterpPS(dxProduct, newOp->m_CCJinv);
+            // pout() << "Using ZeroAvgConstInterpPS" << endl;
+        } else {
+            newOp->m_prolongPtr = new ConstInterpPS;
+            // pout() << "Using ConstInterpPS" << endl;
+        }
     }
+
 
     // TEMPORARY!!!
     ostringstream ss;

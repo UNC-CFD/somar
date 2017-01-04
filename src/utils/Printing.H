@@ -226,13 +226,22 @@ void _writeHDF5 (const Vector<LevelData<FArrayBox>*>& a_data,
                  int                                  a_lmin,
                  int                                  a_lmax,
                  const char*                          a_filename,
-                 const Vector<std::string>&           a_names = Vector<std::string>());
+                 const Vector<std::string>&           a_names = Vector<std::string>(),
+                 const Real                           a_time = -1.0);
 
 void _writeHDF5 (const Vector<LevelData<FluxBox>*>& a_data,
                  const LevelGeometry&               a_levGeo,
                  int                                a_lmin,
                  int                                a_lmax,
                  const char*                        a_filename);
+
+#define writeHDF5CompNames(d,n,lg) \
+do { \
+    static int fidx = 0; \
+    ostringstream fname; \
+    fname << #d << "_" << fidx++ << ".hdf5"; \
+    _writeHDF5((d), (lg), 0, -1, fname.str().c_str(), (n)); \
+} while(0)
 
 #define writeLevelsHDF5(d,lg,min,max) \
 do { \
@@ -243,6 +252,12 @@ do { \
 } while(0)
 
 #define writeHDF5(d,lg) writeLevelsHDF5(d,(lg),0,-1)
+
+#define writeLevelHDF5CompNames(d,n,lg) \
+do { \
+    const Vector<LevelData<FArrayBox>*> level_##d(1, (LevelData<FArrayBox>*)&(d)); \
+    writeHDF5CompNames(level_##d, (n), (lg)); \
+} while(0)
 
 
 ///

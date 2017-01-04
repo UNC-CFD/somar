@@ -129,7 +129,7 @@ void AMRNavierStokes::setGhostsLambda (LevelData<FArrayBox>& a_lambda,
     const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
     DataIterator dit = grids.dataIterator();
     const ProblemDomain& domain = this->problemDomain();
-    const IntVect tracingGhosts(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW));
+    const IntVect tracingGhosts = m_copierCache.getTracingGhosts();
 
     const Real old_time = m_time - m_dt;
     const Real new_time = m_time;
@@ -495,7 +495,7 @@ void AMRNavierStokes::fillLambda (LevelData<FArrayBox>& a_lambda,
 
     // Collect some needed data
     const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
-    const IntVect ghostVect(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW));
+    const IntVect ghostVect = m_copierCache.getTracingGhosts();
     const int ncomp = 1;
 
     // Define the level data holder
@@ -533,7 +533,7 @@ void AMRNavierStokes::fillScalars (LevelData<FArrayBox>& a_scal,
     // Define the level data holder
     if (!a_scal.isDefined()) {
         const DisjointBoxLayout& grids = m_levGeoPtr->getBoxes();
-        const IntVect ghostVect(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW));
+        const IntVect& ghostVect = m_copierCache.getTracingGhosts();
 
         a_scal.define(grids, m_scal_new[a_comp]->nComp(), ghostVect);
     }

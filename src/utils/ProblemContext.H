@@ -93,6 +93,9 @@ public:
     Real vel_tag_tol;
     Real buoyancy_tag_tol;
     Real pressure_tag_tol;
+    bool do_Ri_tagging;
+    Real Ri_tag_tol;
+
     bool vert_extrude_tags;
 
     bool write_stdout;
@@ -133,6 +136,7 @@ public:
     };
     int gravityMethod;
     Real gravityTheta;
+    Real coriolisF;
 
     struct HeatSolverScheme {
         enum {
@@ -146,7 +150,6 @@ public:
     int viscSolverScheme;
     int diffSolverScheme;
 
-    int num_scal_comps;
     Vector<Real> scal_coeffs;
 
     Real nu;
@@ -194,6 +197,13 @@ public:
     std::string demFile;
     int interpOrder;
 
+    // Stretching parameters -- specific to BathymetricBaseMaps.
+    bool useHorizStretching;
+    Real horizStretchingStrength;
+
+    bool useVertStretching;
+    Real vertStretchingStrength;
+
 private:
     // The plot.* parameters
     void readPlot ();
@@ -219,6 +229,7 @@ public:
     bool write_grids;
     bool write_displacement;
     bool write_geometry;
+    bool write_Ri;
 
 private:
     // The ibc.* parameters.
@@ -246,7 +257,19 @@ public:
     };
     int problem;
 
+    struct BGScalarProfile {
+        enum {
+            NONE         = 0,
+            USER_DEFINED = 1,
+            LINEAR       = 2,
+            QUADRATIC    = 3,
+            TANH         = 4,
+            _NUM_BGSCALAR_PROFILES
+        };
+    };
+    int bgScalarProfile;
     bool useBackgroundScalar;
+
     bool useSpongeLayer;
     Real spongeWidth[CH_SPACEDIM][2];
     Real spongeDtMult[CH_SPACEDIM][2];

@@ -56,7 +56,7 @@ int writeLevel(HDF5Handle& a_handle,
     meta.m_real["dt"] = a_dt;
     meta.m_real["time"] = a_time;
     meta.m_box["prob_domain"] = a_domain;
-    meta.m_intvect["vec_ref_ratio"] = a_refRatios;
+    meta.m_intvect["ref_ratio"] = a_refRatios;
 
     error = meta.writeToFile(a_handle);
     if (error != 0) return 2;
@@ -492,7 +492,8 @@ void _writeHDF5 (const Vector<LevelData<FArrayBox>*>& a_data,
                  int                                  a_lmin,
                  int                                  a_lmax,
                  const char*                          a_filename,
-                 const Vector<std::string>&           a_names)
+                 const Vector<std::string>&           a_names,
+                 const Real                           a_time)
 {
     const int finestLevel = a_data.size() - 1;
     if (a_lmax < 0) a_lmax = finestLevel;
@@ -590,7 +591,7 @@ void _writeHDF5 (const Vector<LevelData<FArrayBox>*>& a_data,
         CH_assert(comp == numComps+SpaceDim);
 
         Real dt = 1.0;
-        Real dummyTime = 0.0;
+        Real dummyTime = ((a_time < 0.0)? 0.0: a_time);
         WriteAnisotropicAMRHierarchyHDF5(string(a_filename),
                                          vGrids, vOutput, vNames,
                                          lev0Domain.domainBox(),
@@ -781,6 +782,10 @@ WriteAnisotropicAMRHierarchyHDF5(
     header.m_string ["filetype"]      = filedescriptor;
     header.m_int ["num_levels"]       = a_numLevels;
     header.m_int ["num_components"]    = nComp;
+
+    header.m_int ["max_level"]  = a_numLevels-1;
+    // header.m_int ["iteration"]  = ?;
+    header.m_real["time"] = a_time;
 
     for (int ivar = 0; ivar < nComp; ivar++) {
         char labelChSt[100];

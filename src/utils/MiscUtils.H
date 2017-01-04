@@ -33,6 +33,20 @@
 #include "LevelGeometry.H"
 
 
+// Takes a Vector of RefCountedPtrs and converts it to a Vector of C pointers.
+// I claim no responsibility for irresponsible use.
+template<class T>
+Vector<T*> stripRCPs (Vector<RefCountedPtr<T> >& a_src)
+{
+    const int size = a_src.size();
+    Vector<T*> dest(size, NULL);
+    for (int idx = 0; idx < size; ++idx) {
+        dest[idx] = &(*(a_src[idx]));
+    }
+    return dest;
+}
+
+
 // Takes a DBL and returns a new one whose boxes are merged in a_dir.
 void mergeLayout (DisjointBoxLayout&       a_newLayout,
                   const DisjointBoxLayout& a_origLayout,
@@ -61,6 +75,34 @@ void defineImpartialCopier (Copier&                  a_copier,
                             const IntVect&           a_shift = IntVect::Zero);
 
 
+// Changes the range in a single direction of all boxes in a BoxLayout
+// while preserving proc assignments, etc.
+class RangeTransform: public BaseTransform
+{
+public:
+    RangeTransform (const int a_dir, const int a_loEnd, const int a_numCells = 1)
+    : m_dir(a_dir), m_loEnd(a_loEnd), m_numCells(a_numCells)
+    {
+        CH_assert(0 <= m_dir);
+        CH_assert(m_dir < SpaceDim);
+        CH_assert(m_numCells >= 1);
+    }
+
+    virtual ~RangeTransform ()
+    {;}
+
+    virtual Box operator() (const Box& a_inputBox)
+    {
+        return Box(a_inputBox).setRange(m_dir, m_loEnd, m_numCells);
+    }
+
+protected:
+    int m_dir;
+    int m_loEnd;
+    int m_numCells;
+};
+
+
 // Shifts all boxes in a BoxLayout while preserving proc assignments, etc.
 class ShiftTransform: public BaseTransform
 {
@@ -79,6 +121,31 @@ public:
     virtual Box operator() (const Box& a_inputBox)
     {
         return Box(a_inputBox).shift(m_shift);
+    }
+
+protected:
+    IntVect m_shift;
+};
+
+
+// Shifts all boxes in a BoxLayout while preserving proc assignments, etc.
+class ShiftHalfTransform: public BaseTransform
+{
+public:
+    ShiftHalfTransform (const IntVect& a_shift)
+    : m_shift(a_shift)
+    {;}
+
+    ShiftHalfTransform (const int a_dir, const int a_shift)
+    : m_shift(a_shift * BASISV(a_dir))
+    {;}
+
+    virtual ~ShiftHalfTransform ()
+    {;}
+
+    virtual Box operator() (const Box& a_inputBox)
+    {
+        return Box(a_inputBox).shiftHalf(m_shift);
     }
 
 protected:

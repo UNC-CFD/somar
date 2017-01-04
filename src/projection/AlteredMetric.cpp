@@ -42,9 +42,10 @@ AlteredMetric::AlteredMetric ()
 // -----------------------------------------------------------------------------
 AlteredMetric::AlteredMetric (const GeoSourceInterface* a_geoSourcePtr,
                               const PhysBCUtil*         a_physBCPtr,
-                              const Real                a_dtTheta)
+                              const Real                a_dtTheta,
+                              const Real                a_coriolisF)
 {
-    this->define(a_geoSourcePtr, a_physBCPtr, a_dtTheta);
+    this->define(a_geoSourcePtr, a_physBCPtr, a_dtTheta, a_coriolisF);
 }
 
 
@@ -63,11 +64,13 @@ AlteredMetric::~AlteredMetric ()
 // -----------------------------------------------------------------------------
 void AlteredMetric::define (const GeoSourceInterface* a_geoSourcePtr,
                             const PhysBCUtil*         a_physBCPtr,
-                            const Real                a_dtTheta)
+                            const Real                a_dtTheta,
+                            const Real                a_coriolisF)
 {
     m_geoSourcePtr = a_geoSourcePtr;
     m_physBCPtr = a_physBCPtr;
     m_theta = a_dtTheta;
+    m_coriolisF = a_coriolisF;
 }
 
 
@@ -147,6 +150,12 @@ void AlteredMetric::fill_Jgup (FArrayBox&       a_dest,
     destAlias /= tmpFAB;
     destAlias *= -1.0;
 
+    // = +ftilde^2/(1+ftilde^2)
+    const Real ftilde = m_coriolisF * m_theta;
+    const Real ftildesq = ftilde*ftilde;
+    const Real invfCoeff = 1.0 / (1.0 + ftildesq);
+    destAlias += ftildesq * invfCoeff;
+
     // * dXi^mu/dz
     m_geoSourcePtr->fill_dXidx(tmpFAB, 0, a_mu, SpaceDim-1, a_dXi);
     destAlias *= tmpFAB;
@@ -157,8 +166,30 @@ void AlteredMetric::fill_Jgup (FArrayBox&       a_dest,
     }
     destAlias *= tmpFAB;
 
-    // + g^{mu,nu}
+    // + ftilde*invfCoeff*(Horizontal Jacobian)
+    if (a_mu != a_nu) {
+        FArrayBox ix(destBox, 1);
+        FArrayBox jy(destBox, 1);
+        FArrayBox iy(destBox, 1);
+        FArrayBox jx(destBox, 1);
+
+        m_geoSourcePtr->fill_dXidx(ix, 0, a_mu, 0, a_dXi);
+        m_geoSourcePtr->fill_dXidx(jy, 0, a_nu, 1, a_dXi);
+        m_geoSourcePtr->fill_dXidx(iy, 0, a_mu, 1, a_dXi);
+        m_geoSourcePtr->fill_dXidx(jx, 0, a_nu, 0, a_dXi);
+
+        BoxIterator bit(destBox);
+        for (bit.reset(); bit.ok(); ++bit) {
+            const IntVect& cc = bit();
+
+            destAlias(cc) += ftilde * invfCoeff
+                           * (ix(cc)*jy(cc) - iy(cc)*jx(cc));
+        }
+    }
+
+    // + g^{mu,nu} * invfCoeff
     m_geoSourcePtr->fill_gup(tmpFAB, 0, a_mu, a_nu, a_dXi);
+    tmpFAB *= invfCoeff;
     destAlias += tmpFAB;
 
     // * J*a_scale

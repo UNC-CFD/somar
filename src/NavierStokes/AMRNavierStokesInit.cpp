@@ -73,6 +73,10 @@ void AMRNavierStokes::initialGrid (const Vector<Box>& a_new_grids)
         }
     }
 
+    // Grids are now defined on this level.
+
+    // Removed Copier::define code from here. 2016-3-16 ES
+
     // Now that we have grids on this level, regrid the levGeo.
     m_levGeoPtr->reset();
     m_levGeoPtr->regrid(grids);
@@ -138,7 +142,7 @@ void AMRNavierStokes::initialGrid (const Vector<Box>& a_new_grids)
         m_scal_fluxreg_ptrs[comp] = new MappedLevelFluxRegister;
     } // end loop over scalar components
 
-    // Finally, pressure.
+    // Pressures.
     m_macPressure.define(grids, 1, IntVect::Unit);
     m_ccPressure.define(grids, 1, IntVect::Unit);
     m_syncPressure.define(grids, 1, IntVect::Unit);
@@ -200,10 +204,10 @@ void AMRNavierStokes::initialData ()
     m_levGeoPtr->sendToMappedBasis(*m_vel_new_ptr, true);
 
     // Do exchanges
-    m_vel_new_ptr->exchange(m_oneGhostExCopier);
-    m_lambda_new_ptr->exchange(m_oneGhostExCopier);
+    m_vel_new_ptr->exchange(m_copierCache.getOneGhostExCopier(m_vel_new_ptr->getBoxes()));
+    m_lambda_new_ptr->exchange(m_copierCache.getOneGhostExCopier(m_lambda_new_ptr->getBoxes()));
     for (int comp = 0; comp < s_num_scal_comps; ++comp) {
-        m_scal_new[comp]->exchange(m_oneGhostExCopier);
+        m_scal_new[comp]->exchange(m_copierCache.getOneGhostExCopier(m_scal_new[comp]->getBoxes()));
     }
 
     // Remove background scalar from newScal.
@@ -599,7 +603,6 @@ void AMRNavierStokes::levelSetup (const DisjointBoxLayout& a_grids)
 
     CH_assert(!m_is_empty);
 
-    const RealVect dx = m_levGeoPtr->getDx();
     const DisjointBoxLayout* crseGridsPtr = NULL;
     AMRNavierStokes* crse_amrns_ptr = this->crseNSPtr();
     AMRNavierStokes* fine_amrns_ptr = this->fineNSPtr();
@@ -668,9 +671,8 @@ void AMRNavierStokes::levelSetup (const DisjointBoxLayout& a_grids)
         }
 
         // Define CF interpolation operator
-        m_velCFInterp.define(a_grids, crseGridsPtr,
-                             dx, nRefCrse, SpaceDim,
-                             m_problem_domain);
+        // NOTE: Removed due to lack of use.
+
     } // end if coarser level exists
 
 
@@ -802,18 +804,7 @@ void AMRNavierStokes::levelSetup (const DisjointBoxLayout& a_grids)
         this->initializeInternalWaveSpeed();
     }
 
-    TODO(); // Try to trim the edges, etc.
-    // Define exchange copiers
-    m_oneGhostExCopier.define(a_grids, a_grids, m_problem_domain, IntVect::Unit, true);
-    // m_oneGhostExCopier.exchangeDefine(a_grids, IntVect::Unit);
-    // m_oneGhostExCopier.trimEdges(a_grids, IntVect::Unit);
-
-    // Define the exchange copiers used by the hyperbolic tracing scheme
-    m_tracingGhosts = IntVect(D_DECL(ADVECT_GROW, ADVECT_GROW, ADVECT_GROW));
-    // m_tracingExCopier.exchangeDefine(a_grids, m_tracingGhosts);
-    // m_tracingExCopier.trimEdges(a_grids, m_tracingGhosts);
-    m_tracingExCopier.define(a_grids, a_grids, m_problem_domain, m_tracingGhosts, true);
-    m_tracingExCornerCopier.define(a_grids, a_grids, m_problem_domain, m_tracingGhosts, true);
+    // Removed Copier::define code from here. 2016-3-16 ES
 
     // Define the advection utilities
     m_advectUtilVel.define(m_levGeoPtr,

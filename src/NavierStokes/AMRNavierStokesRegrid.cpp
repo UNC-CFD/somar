@@ -199,20 +199,28 @@ void AMRNavierStokes::tagCells (IntVectSet& a_tags)
     // Tag at hill surface
     if (0) {
         // Hill surface location
-        const Box domBox = m_levGeoPtr->getDomain().domainBox();
+        const Box domBox = m_problem_domain.domainBox();
 
         IntVect hillTop = domBox.smallEnd();
         hillTop += domBox.size() / 2;
         hillTop[SpaceDim-1] = domBox.smallEnd(SpaceDim-1);
 
+        // Initialize lo and hi points at center of hill top.
         IntVect loEnd = hillTop;
-        loEnd[0] = hillTop[0] - domBox.size(0) / 6;//12;
-        // loEnd[0] = domBox.smallEnd(0);
-
         IntVect hiEnd = hillTop;
-        hiEnd[0] = hillTop[0] + domBox.size(0) / 6;//12;
-        hiEnd[1] = hillTop[1] + 48;
-        // hiEnd[0] = domBox.bigEnd(0);
+
+        // Streamwise extents.
+        loEnd[0] = hillTop[0] - domBox.size(0) / 20;
+        hiEnd[0] = hillTop[0] + domBox.size(0) / 20;
+
+        // Vertical extents.
+        hiEnd[SpaceDim-1] = hillTop[SpaceDim-1] + domBox.size(SpaceDim-1) / 4;
+
+        // Spanwise extents.
+        if (SpaceDim == 3 && m_problem_domain.isPeriodic(1)) {
+            loEnd[1] = domBox.smallEnd(1);
+            hiEnd[1] = domBox.bigEnd(1);
+        }
 
         Box tagBox(loEnd, hiEnd);
         a_tags |= tagBox;
@@ -221,6 +229,27 @@ void AMRNavierStokes::tagCells (IntVectSet& a_tags)
     }
     // ------- End of specialized tagging -------
 
+
+    // Tag on Richardson number
+    if (s_do_Ri_tagging) {
+        LevelData<FArrayBox> Ri(grids, 1);
+        this->computeRiNumber(Ri, 0, m_time);
+
+        DataIterator dit = grids.dataIterator();
+        for (dit.reset(); dit.ok(); ++dit) {
+            const FArrayBox& RiFAB = Ri[dit];
+            const Box& valid = grids[dit];
+
+            // Tag where Ri <= tol.
+            BoxIterator bit(valid);
+            for (bit.reset(); bit.ok(); ++bit) {
+                const IntVect& cc = bit();
+                if (RiFAB(cc) <= s_Ri_tag_tol) {
+                    a_tags |= cc;
+                }
+            } // end loop over valid (bit)
+        } // end loop over grids (dit)
+    } // end if tagging on Gradient Richardson number
 
 
     // Tag on vorticity
@@ -606,6 +635,29 @@ void AMRNavierStokes::tagCells (IntVectSet& a_tags)
         }
     }
 
+    // Extrude tags in periodic y-dir
+    if (0) {
+        if (SpaceDim == 3 && m_problem_domain.isPeriodic(1)) {
+            const int loY = m_problem_domain.domainBox().smallEnd(1);
+            const int hiY = m_problem_domain.domainBox().bigEnd  (1);
+
+            IntVectSet extrudedTags = a_tags;
+
+            IVSIterator ivsit(extrudedTags);
+            for (ivsit.reset(); ivsit.ok(); ++ivsit) {
+                const IntVect& cc = ivsit();
+
+                Box yStrip(cc,cc);
+                yStrip.shift(1, loY-cc[1]);
+                yStrip.setBig(1, hiY);
+
+                a_tags |= yStrip;
+            }
+        }
+    }
+
+
+
     // LEAVE ME ALONE.
     // An error will be thrown if a_tags internally represented by a
     // TreeIntVectSet!!!! These lines should convert its storage to a
@@ -681,6 +733,7 @@ void AMRNavierStokes::regrid (const Vector<Box>& a_new_grids)
         // No matter what, if we get here, the coarser level is not the finest.
         crseNSPtr()->finestLevel(false);
 
+        // Removed Copier::define code from here. 2016-3-16 ES
 
         // Setup post-regrid smoothers.
         if (s_smooth_after_regrid) {
@@ -899,9 +952,9 @@ void AMRNavierStokes::regrid (const Vector<Box>& a_new_grids)
                 if (!crse_amrns_ptr->isEmpty()) {
                     crse_amrns_ptr->finestLevel(true);
                 }
+            } else {
+                MayDay::Error("in AMRNavierStokes::regrid: m_coarser_level_ptr is not castable to AMRNavierStokes*");
             }
-        } else {
-            MayDay::Error("in AMRNavierStokes::regrid: m_coarser_level is not castable to AMRNavierStokes*");
         }
     } // end if new level is empty
 }

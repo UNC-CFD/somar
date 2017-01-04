@@ -107,36 +107,74 @@ c ------------------------------------------------------------------------------
 
 c ------------------------------------------------------------------------------
 c Calculates sqrt(-db/dz)^p = dXi^{i}/dz * (partial_{i}b)^(p/2)
+c J01 = dXi/dz
+c J11 = dEta/dz
 c ------------------------------------------------------------------------------
       subroutine ComputeBVFreq2D (
      &     CHF_FRA1[BVFreq],
      &     CHF_CONST_FRA1[buoyancy0],
      &     CHF_CONST_FRA1[buoyancy1],
-     &     CHF_CONST_FRA[dXidz],
+     &     CHF_CONST_FRA1[J01],
+     &     CHF_CONST_FRA1[J11],
      &     CHF_CONST_REALVECT[dx],
      &     CHF_BOX[region],
-     &     CHF_CONST_REAL[p])
+     &     CHF_CONST_INT[p],
+     &     CHF_CONST_INT[doAbs])
 
-      integer CHF_DDECL[i;j;k]
-      REAL_T val
-
-      CH_assert(CH_SPACEDIM .eq. 2)
 #if CH_SPACEDIM == 2
 
-#ifndef NDEBUG
-      if (CHF_NCOMP[dXidz] .ne. CH_SPACEDIM) then
-        print*, 'dXidz does not have the correct number of comps, ', CHF_NCOMP[dXidz]
-        call MAYDAYERROR()
-      endif
-#endif
+      integer CHF_DDECL[i;j;k]
+      REAL_T val, xscale, yscale
+      REAL_T realPow
+      integer intPow
 
+      ! We don't want complex results. If we are not taking an absolute value,
+      ! then p must be even (p/2 must be an integer).
+      CH_assert( ((doAbs .eq. 0) .or. (mod(p,2) .eq. 0)) )
+
+      xscale = one / dx(0)
+      yscale = one / dx(1)
+
+      ! Compute -db/dz.
       CHF_MULTIDO[region;i;j;k]
-        val = dXidz(CHF_IX[i;j;k],0) * (  buoyancy0(CHF_IX[i+1;j  ;k  ])
-     &                                  - buoyancy0(CHF_IX[i  ;j  ;k  ])  ) / dx(0)
-     &      + dXidz(CHF_IX[i;j;k],1) * (  buoyancy1(CHF_IX[i  ;j+1;k  ])
-     &                                  - buoyancy1(CHF_IX[i  ;j  ;k  ])  ) / dx(1)
-        BVFreq(CHF_IX[i;j;k]) = abs(val)**(p/two)
+        BVFreq(CHF_IX[i;j;k]) = J01(CHF_IX[i;j;k]) * (  buoyancy0(CHF_IX[i  ;j  ;k  ])
+     &                                                - buoyancy0(CHF_IX[i+1;j  ;k  ])  ) * xscale
+     &                        + J11(CHF_IX[i;j;k]) * (  buoyancy1(CHF_IX[i  ;j  ;k  ])
+     &                                                - buoyancy1(CHF_IX[i  ;j+1;k  ])  ) * yscale
       CHF_ENDDO
+
+      ! Apply abs and/or raise to appropriate power.
+      if (doAbs .ne. 0) then
+        ! Use an absolute value before applying the power.
+        ! The power can be any real number.
+        if (p .eq. 1) then
+          CHF_MULTIDO[region;i;j;k]
+            BVFreq(CHF_IX[i;j;k]) = sqrt(abs(BVFreq(CHF_IX[i;j;k])))
+          CHF_ENDDO
+        else if (p .eq. 2) then
+          CHF_MULTIDO[region;i;j;k]
+            BVFreq(CHF_IX[i;j;k]) = abs(BVFreq(CHF_IX[i;j;k]))
+          CHF_ENDDO
+        else
+          realPow = DBLE(p) / two
+          CHF_MULTIDO[region;i;j;k]
+            BVFreq(CHF_IX[i;j;k]) = abs(BVFreq(CHF_IX[i;j;k]))**realPow
+          CHF_ENDDO
+        endif
+      else
+        ! Do not take the absolute value.
+        ! The p must be a power of two.
+        intPow = p / 2
+        if (intPow .gt. 1) then
+          CHF_MULTIDO[region;i;j;k]
+            BVFreq(CHF_IX[i;j;k]) = BVFreq(CHF_IX[i;j;k])**intPow
+          CHF_ENDDO
+        endif
+      endif
+
+#else
+      print*, 'ComputeBVFreq2D called in 3D.'
+      call MAYDAYERROR()
 #endif
 
       return
@@ -145,40 +183,80 @@ c ------------------------------------------------------------------------------
 
 c ------------------------------------------------------------------------------
 c Calculates sqrt(-db/dz)^p = dXi^{i}/dz * (partial_{i}b)^(p/2)
+c J02 = dXi/dz
+c J12 = dEta/dz
+c J22 = dZeta/dz
 c ------------------------------------------------------------------------------
       subroutine ComputeBVFreq3D (
      &     CHF_FRA1[BVFreq],
      &     CHF_CONST_FRA1[buoyancy0],
      &     CHF_CONST_FRA1[buoyancy1],
      &     CHF_CONST_FRA1[buoyancy2],
-     &     CHF_CONST_FRA[dXidz],
+     &     CHF_CONST_FRA1[J02],
+     &     CHF_CONST_FRA1[J12],
+     &     CHF_CONST_FRA1[J22],
      &     CHF_CONST_REALVECT[dx],
      &     CHF_BOX[region],
-     &     CHF_CONST_REAL[p])
-
-      integer CHF_DDECL[i;j;k]
-      REAL_T val
-
-      CH_assert(CH_SPACEDIM .eq. 3)
+     &     CHF_CONST_INT[p],
+     &     CHF_CONST_INT[doAbs])
 
 #if CH_SPACEDIM == 3
 
-#ifndef NDEBUG
-      if (CHF_NCOMP[dXidz] .ne. CH_SPACEDIM) then
-        print*, 'dXidz does not have the correct number of comps, ', CHF_NCOMP[dXidz]
-        call MAYDAYERROR()
-      endif
-#endif
+      integer CHF_DDECL[i;j;k]
+      REAL_T val, xscale, yscale, zscale
+      REAL_T realPow
+      integer intPow
 
+      ! We don't want complex results. If we are not taking an absolute value,
+      ! then p must be even (p/2 must be an integer).
+      CH_assert( ((doAbs .eq. 0) .or. (mod(p,2) .eq. 0)) )
+
+      xscale = one / dx(0)
+      yscale = one / dx(1)
+      zscale = one / dx(2)
+
+      ! Compute -db/dz.
       CHF_MULTIDO[region;i;j;k]
-        val = dXidz(CHF_IX[i;j;k],0) * (  buoyancy0(CHF_IX[i+1;j  ;k  ])
-     &                                  - buoyancy0(CHF_IX[i  ;j  ;k  ])  ) / dx(0)
-     &      + dXidz(CHF_IX[i;j;k],1) * (  buoyancy1(CHF_IX[i  ;j+1;k  ])
-     &                                  - buoyancy1(CHF_IX[i  ;j  ;k  ])  ) / dx(1)
-     &      + dXidz(CHF_IX[i;j;k],2) * (  buoyancy2(CHF_IX[i  ;j  ;k+1])
-     &                                  - buoyancy2(CHF_IX[i  ;j  ;k  ])  ) / dx(2)
-        BVFreq(CHF_IX[i;j;k]) = abs(val)**(p/two)
+        BVFreq(CHF_IX[i;j;k]) = J02(CHF_IX[i;j;k]) * (  buoyancy0(CHF_IX[i  ;j  ;k  ])
+     &                                                - buoyancy0(CHF_IX[i+1;j  ;k  ])  ) * xscale
+     &                        + J12(CHF_IX[i;j;k]) * (  buoyancy1(CHF_IX[i  ;j  ;k  ])
+     &                                                - buoyancy1(CHF_IX[i  ;j+1;k  ])  ) * yscale
+     &                        + J22(CHF_IX[i;j;k]) * (  buoyancy2(CHF_IX[i  ;j  ;k  ])
+     &                                                - buoyancy2(CHF_IX[i  ;j  ;k+1])  ) * zscale
       CHF_ENDDO
+
+      ! Apply abs and/or raise to appropriate power.
+      if (doAbs .ne. 0) then
+        ! Use an absolute value before applying the power.
+        ! The power can be any real number.
+        if (p .eq. 1) then
+          CHF_MULTIDO[region;i;j;k]
+            BVFreq(CHF_IX[i;j;k]) = sqrt(abs(BVFreq(CHF_IX[i;j;k])))
+          CHF_ENDDO
+        else if (p .eq. 2) then
+          CHF_MULTIDO[region;i;j;k]
+            BVFreq(CHF_IX[i;j;k]) = abs(BVFreq(CHF_IX[i;j;k]))
+          CHF_ENDDO
+        else
+          realPow = DBLE(p) / two
+          CHF_MULTIDO[region;i;j;k]
+            BVFreq(CHF_IX[i;j;k]) = abs(BVFreq(CHF_IX[i;j;k]))**realPow
+          CHF_ENDDO
+        endif
+      else
+        ! Do not take the absolute value.
+        ! The p must be a power of two.
+        intPow = p / 2
+        if (intPow .gt. 1) then
+          CHF_MULTIDO[region;i;j;k]
+            BVFreq(CHF_IX[i;j;k]) = BVFreq(CHF_IX[i;j;k])**intPow
+          CHF_ENDDO
+        endif
+      endif
+
+#else
+      print*, 'ComputeBVFreq3D called in 2D.'
+      call MAYDAYERROR()
 #endif
 
       return
@@ -556,6 +634,193 @@ c ------------------------------------------------------------------------------
       CHF_AUTOMULTIDO[region;i]
         x = (i0 + offset) * physDx - xcenter
         A0(CHF_AUTOIX[i]) = amp / (cosh(x / width)**2)
+      CHF_ENDDO
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c ComputeStrainRateSq
+c
+c Computes S^2 = du^i/dx^j : du^i/dx^j
+c ----------------------------------------------------------------
+      subroutine ComputeStrainRateSq (
+     &      CHF_FRA1[Ssq],
+     &      CHF_CONST_FRA[cartVel],
+     &      CHF_CONST_FRA[dXidx],
+     &      CHF_CONST_REALVECT[dx],
+     &      CHF_BOX[region])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T CHF_DDECL[dudx; dudy,dvdx,dvdy; dudz,dvdz,dwdx,dwdy,dwdz]
+      REAL_T CHF_DDECL[Sxx; Sxy,Syy; Szx,Syz,Szz]
+      REAL_T CHF_DDECL[xscale; yscale; zscale]
+
+      CH_assert((CHF_NCOMP[cartVel] .eq. CH_SPACEDIM))
+      CH_assert((CHF_NCOMP[dXidx] .eq. CH_SPACEDIM*CH_SPACEDIM))
+
+      CHF_DTERM[
+      xscale = half / dx(0);
+      yscale = half / dx(1);
+      zscale = half / dx(2)]
+
+#if CH_SPACEDIM == 2
+      CHF_MULTIDO[region;i;j;k]
+        ! u derivs...
+        dudx = dXidx(CHF_IX[i;j;k],xxComp) * (cartVel(CHF_IX[i+1;j;k],0) - cartVel(CHF_IX[i-1;j;k],0)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],xyComp) * (cartVel(CHF_IX[i;j+1;k],0) - cartVel(CHF_IX[i;j-1;k],0)) * yscale
+
+        dudy = dXidx(CHF_IX[i;j;k],yxComp) * (cartVel(CHF_IX[i+1;j;k],0) - cartVel(CHF_IX[i-1;j;k],0)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],yyComp) * (cartVel(CHF_IX[i;j+1;k],0) - cartVel(CHF_IX[i;j-1;k],0)) * yscale
+
+        ! v derivs...
+        dvdx = dXidx(CHF_IX[i;j;k],xxComp) * (cartVel(CHF_IX[i+1;j;k],1) - cartVel(CHF_IX[i-1;j;k],1)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],xyComp) * (cartVel(CHF_IX[i;j+1;k],1) - cartVel(CHF_IX[i;j-1;k],1)) * yscale
+
+        dvdy = dXidx(CHF_IX[i;j;k],yxComp) * (cartVel(CHF_IX[i+1;j;k],1) - cartVel(CHF_IX[i-1;j;k],1)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],yyComp) * (cartVel(CHF_IX[i;j+1;k],1) - cartVel(CHF_IX[i;j-1;k],1)) * yscale
+
+        Sxx = dudx
+        Syy = dvdy
+        Sxy = half * (dudy + dvdx)
+
+        Ssq(CHF_IX[i;j;k]) = Sxx**2 + Syy**2 + two*(Sxy**2)
+      CHF_ENDDO
+#else
+      CHF_MULTIDO[region;i;j;k]
+        ! u derivs...
+        dudx = dXidx(CHF_IX[i;j;k],xxComp) * (cartVel(CHF_IX[i+1;j;k],0) - cartVel(CHF_IX[i-1;j;k],0)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],xyComp) * (cartVel(CHF_IX[i;j+1;k],0) - cartVel(CHF_IX[i;j-1;k],0)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],xzComp) * (cartVel(CHF_IX[i;j;k+1],0) - cartVel(CHF_IX[i;j;k-1],0)) * zscale
+
+        dudy = dXidx(CHF_IX[i;j;k],yxComp) * (cartVel(CHF_IX[i+1;j;k],0) - cartVel(CHF_IX[i-1;j;k],0)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],yyComp) * (cartVel(CHF_IX[i;j+1;k],0) - cartVel(CHF_IX[i;j-1;k],0)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],yzComp) * (cartVel(CHF_IX[i;j;k+1],0) - cartVel(CHF_IX[i;j;k-1],0)) * zscale
+
+        dudz = dXidx(CHF_IX[i;j;k],zxComp) * (cartVel(CHF_IX[i+1;j;k],0) - cartVel(CHF_IX[i-1;j;k],0)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],zyComp) * (cartVel(CHF_IX[i;j+1;k],0) - cartVel(CHF_IX[i;j-1;k],0)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],zzComp) * (cartVel(CHF_IX[i;j;k+1],0) - cartVel(CHF_IX[i;j;k-1],0)) * zscale
+
+        ! v derivs...
+        dvdx = dXidx(CHF_IX[i;j;k],xxComp) * (cartVel(CHF_IX[i+1;j;k],1) - cartVel(CHF_IX[i-1;j;k],1)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],xyComp) * (cartVel(CHF_IX[i;j+1;k],1) - cartVel(CHF_IX[i;j-1;k],1)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],xzComp) * (cartVel(CHF_IX[i;j;k+1],1) - cartVel(CHF_IX[i;j;k-1],1)) * zscale
+
+        dvdy = dXidx(CHF_IX[i;j;k],yxComp) * (cartVel(CHF_IX[i+1;j;k],1) - cartVel(CHF_IX[i-1;j;k],1)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],yyComp) * (cartVel(CHF_IX[i;j+1;k],1) - cartVel(CHF_IX[i;j-1;k],1)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],yzComp) * (cartVel(CHF_IX[i;j;k+1],1) - cartVel(CHF_IX[i;j;k-1],1)) * zscale
+
+        dvdz = dXidx(CHF_IX[i;j;k],zxComp) * (cartVel(CHF_IX[i+1;j;k],1) - cartVel(CHF_IX[i-1;j;k],1)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],zyComp) * (cartVel(CHF_IX[i;j+1;k],1) - cartVel(CHF_IX[i;j-1;k],1)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],zzComp) * (cartVel(CHF_IX[i;j;k+1],1) - cartVel(CHF_IX[i;j;k-1],1)) * zscale
+
+        ! w derivs...
+        dwdx = dXidx(CHF_IX[i;j;k],xxComp) * (cartVel(CHF_IX[i+1;j;k],2) - cartVel(CHF_IX[i-1;j;k],2)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],xyComp) * (cartVel(CHF_IX[i;j+1;k],2) - cartVel(CHF_IX[i;j-1;k],2)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],xzComp) * (cartVel(CHF_IX[i;j;k+1],2) - cartVel(CHF_IX[i;j;k-1],2)) * zscale
+
+        dwdy = dXidx(CHF_IX[i;j;k],yxComp) * (cartVel(CHF_IX[i+1;j;k],2) - cartVel(CHF_IX[i-1;j;k],2)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],yyComp) * (cartVel(CHF_IX[i;j+1;k],2) - cartVel(CHF_IX[i;j-1;k],2)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],yzComp) * (cartVel(CHF_IX[i;j;k+1],2) - cartVel(CHF_IX[i;j;k-1],2)) * zscale
+
+        dwdz = dXidx(CHF_IX[i;j;k],zxComp) * (cartVel(CHF_IX[i+1;j;k],2) - cartVel(CHF_IX[i-1;j;k],2)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],zyComp) * (cartVel(CHF_IX[i;j+1;k],2) - cartVel(CHF_IX[i;j-1;k],2)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],zzComp) * (cartVel(CHF_IX[i;j;k+1],2) - cartVel(CHF_IX[i;j;k-1],2)) * zscale
+
+        Sxx = dudx
+        Syy = dvdy
+        Szz = dwdz
+        Syz = half * (dvdz + dwdy)
+        Szx = half * (dwdx + dudz)
+        Sxy = half * (dudy + dvdx)
+
+        Ssq(CHF_IX[i;j;k]) = Sxx**2 + Syy**2 + Szz**2 + two*(Syz**2 + Szx**2 + Sxy**2)
+      CHF_ENDDO
+#endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c ComputeStrainRateSq
+c
+c Computes S^2 = du/dz^2 + dv/dz^2
+c             = (du/dXi*dXi/dz + du/dEta*dEta/dz + du/dZeta*dZeta/dz)^2
+c             + (dv/dXi*dXi/dz + dv/dEta*dEta/dz + dv/dZeta*dZeta/dz)^2
+c ----------------------------------------------------------------
+      subroutine ComputeHorizStrainRateSq (
+     &      CHF_FRA1[Ssq],
+     &      CHF_CONST_FRA[cartVel],
+     &      CHF_CONST_FRA[dXidx],
+     &      CHF_CONST_REALVECT[dx],
+     &      CHF_BOX[region])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T CHF_DDECL[xscale; yscale; zscale]
+#if CH_SPACEDIM == 2
+      REAL_T dudy
+#else
+      REAL_T dudz, dvdz
+#endif
+
+      CH_assert((CHF_NCOMP[cartVel] .eq. CH_SPACEDIM))
+      CH_assert((CHF_NCOMP[dXidx] .eq. CH_SPACEDIM*CH_SPACEDIM))
+
+      CHF_DTERM[
+      xscale = half / dx(0);
+      yscale = half / dx(1);
+      zscale = half / dx(2)]
+
+#if CH_SPACEDIM == 2
+      CHF_MULTIDO[region;i;j;k]
+        dudy = dXidx(CHF_IX[i;j;k],yxComp) * (cartVel(CHF_IX[i+1;j;k],0) - cartVel(CHF_IX[i-1;j;k],0)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],yyComp) * (cartVel(CHF_IX[i;j+1;k],0) - cartVel(CHF_IX[i;j-1;k],0)) * yscale
+
+        Ssq(CHF_IX[i;j;k]) = dudy**2
+
+      CHF_ENDDO
+#else
+      CHF_MULTIDO[region;i;j;k]
+        dudz = dXidx(CHF_IX[i;j;k],zxComp) * (cartVel(CHF_IX[i+1;j;k],0) - cartVel(CHF_IX[i-1;j;k],0)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],zyComp) * (cartVel(CHF_IX[i;j+1;k],0) - cartVel(CHF_IX[i;j-1;k],0)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],zzComp) * (cartVel(CHF_IX[i;j;k+1],0) - cartVel(CHF_IX[i;j;k-1],0)) * zscale
+
+        dvdz = dXidx(CHF_IX[i;j;k],zxComp) * (cartVel(CHF_IX[i+1;j;k],1) - cartVel(CHF_IX[i-1;j;k],1)) * xscale
+     &       + dXidx(CHF_IX[i;j;k],zyComp) * (cartVel(CHF_IX[i;j+1;k],1) - cartVel(CHF_IX[i;j-1;k],1)) * yscale
+     &       + dXidx(CHF_IX[i;j;k],zzComp) * (cartVel(CHF_IX[i;j;k+1],1) - cartVel(CHF_IX[i;j;k-1],1)) * zscale
+
+        Ssq(CHF_IX[i;j;k]) = dudz**2 + dvdz**2
+
+      CHF_ENDDO
+#endif
+
+      return
+      end
+
+
+c ----------------------------------------------------------------
+c ComputeMaskedRig
+c
+c  Compute Rig = N^2/S^2. In all cells where Rig is >= tol,
+c  Rig will be set to maskVal.
+c ----------------------------------------------------------------
+      subroutine ComputeMaskedRig (
+     &   CHF_FRA1[Rig],
+     &   CHF_CONST_FRA1[Nsq],
+     &   CHF_CONST_FRA1[Ssq],
+     &   CHF_BOX[region],
+     &   CHF_CONST_REAL[tol],
+     &   CHF_CONST_REAL[maskVal])
+
+      integer CHF_DDECL[i;j;k]
+      REAL_T val
+
+      CHF_MULTIDO[region;i;j;k]
+        val = Nsq(CHF_IX[i;j;k]) / Ssq(CHF_IX[i;j;k])
+        if (val .ge. tol) val = maskVal
+        Rig(CHF_IX[i;j;k]) = val
       CHF_ENDDO
 
       return

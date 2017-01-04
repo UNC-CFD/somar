@@ -217,7 +217,7 @@ void MappedCFInterp::coarseFineInterp (LevelData<FArrayBox>&       a_phif,
 {
     CH_assert(m_isDefined);
     CH_assert(a_phif.nComp() == a_phic.nComp());
-    CH_assert(a_phic.ghostVect() >= IntVect::Unit);
+    CH_assert(a_phif.ghostVect() >= IntVect::Unit); // Changed from a_phic
     CH_assert(0 <= a_order && a_order <= 2);
 
     // Send coarse data to grids that are compatible with the finer level.

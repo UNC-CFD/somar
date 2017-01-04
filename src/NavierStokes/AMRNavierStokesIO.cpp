@@ -30,6 +30,7 @@
 #include "computeMappedNorm.H"
 #include "SetValLevel.H"
 #include "TaylorGreenBCUtil.H"
+#include "StratUtils.H"
 
 #ifdef CH_USE_HDF5
 #include "CH_HDF5.H"
@@ -1015,6 +1016,13 @@ void AMRNavierStokes::writePlotHeader (HDF5Handle& a_handle) const
         comp++;
     }
 
+    // Write gradient Richardson number
+    if (s_write_Ri) {
+        sprintf(comp_str, "component_%d", comp);
+        header.m_string[comp_str] = "Grad_Ri";
+        comp++;
+    }
+
     header.writeToFile(a_handle);
 
     if (s_verbosity >= 5) {
@@ -1180,6 +1188,11 @@ int AMRNavierStokes::numPlotComps () const
         ++numcomp;              // FofT
     }
 
+    // Write gradient Richardson number
+    if (s_write_Ri) {
+        ++numcomp;
+    }
+
     return numcomp;
 }
 
@@ -1267,7 +1280,8 @@ void AMRNavierStokes::getPlotData (LevelData<FArrayBox>& a_plot_data) const
         LevelData<FArrayBox> Ju(grids, SpaceDim, m_vel_new_ptr->ghostVect());
         m_vel_new_ptr->copyTo(velComps, Ju, velComps, copier);
         m_levGeoPtr->multByJ(Ju);
-        Ju.exchange(velComps, m_oneGhostExCopier);
+        Ju.exchange(velComps, m_copierCache.getOneGhostExCopier(Ju.getBoxes()));
+
 
         // Set up coarser Ju
         LevelData<FArrayBox>* crseJuPtr = NULL;
@@ -1674,8 +1688,8 @@ void AMRNavierStokes::getPlotData (LevelData<FArrayBox>& a_plot_data) const
         pout() << "Level " << m_level << " u: inf, 1, and 2 norms / solNorms = "
                << unorm0 << ", " << unorm1 << ", " << unorm2 << endl;
         if (procID() == 0) {
-            std::cout << "Level " << m_level << " u: inf, 1, and 2 norms / solNorms = "
-                      << unorm0 << ", " << unorm1 << ", " << unorm2 << endl;
+            std::cout << color::yellow << "Level " << m_level << " u: inf, 1, and 2 norms / solNorms = "
+                      << unorm0 << ", " << unorm1 << ", " << unorm2 << color::none << endl;
         }
 
         Real pSolNorm0 = computeMappedNorm(pSolRef, NULL, *m_levGeoPtr, 0);
@@ -1687,10 +1701,21 @@ void AMRNavierStokes::getPlotData (LevelData<FArrayBox>& a_plot_data) const
         Real pnorm2 = computeMappedNorm(pError, NULL, *m_levGeoPtr, 2) / pSolNorm2;
         pout() << "Level " << m_level << " p: inf, 1, and 2 norms / solNorms = "
                << pnorm0 << ", " << pnorm1 << ", " << pnorm2 << endl;
+        if (procID() == 0) {
+            std::cout << color::yellow << "Level " << m_level << " p: inf, 1, and 2 norms / solNorms = "
+                   << pnorm0 << ", " << pnorm1 << ", " << pnorm2 << color::none << endl;
+        }
 
         // Increment plot counter
         plot_data_counter += SpaceDim;  // velocity
         ++plot_data_counter;            // pressure
         ++plot_data_counter;            // FofT
     } // end if TaylorGreenBCUtil
+
+
+    // Write gradient Richardson number
+    if (s_write_Ri) {
+        this->computeRiNumber(a_plot_data, plot_data_counter, m_time);
+        ++plot_data_counter;
+    }
 }

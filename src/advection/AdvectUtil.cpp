@@ -105,7 +105,7 @@ void MappedAdvectionUtil::define (const LevelGeometry* a_levGeoPtr,
 }
 
 
-#define USE_OLD_METHOD
+// #define USE_OLD_METHOD
 #ifdef USE_OLD_METHOD
 // -----------------------------------------------------------------------------
 // predictScalar

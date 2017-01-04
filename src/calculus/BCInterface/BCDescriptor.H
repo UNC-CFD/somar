@@ -145,11 +145,13 @@ public:
         m_bcdir[a_dir][a_side] = a_bcType;
     }
 
-    void set (int a_bcType)
+    void set (int            a_bcType,
+              const IntVect& a_doLoSides = IntVect::Unit,
+              const IntVect& a_doHiSides = IntVect::Unit)
     {
         for (int dir = 0; dir < SpaceDim; ++dir) {
-            m_bcdir[dir][Side::Lo] = a_bcType;
-            m_bcdir[dir][Side::Hi] = a_bcType;
+            if (a_doLoSides[dir] != 0) m_bcdir[dir][Side::Lo] = a_bcType;
+            if (a_doHiSides[dir] != 0) m_bcdir[dir][Side::Hi] = a_bcType;
         }
     }
 
@@ -184,12 +186,23 @@ public:
                 int& dest = m_bcdir[idir][iside];
                 const int& src = a_src[idir][iside];
 
-                if ((dest == BCType::Undefined || src == BCType::Undefined) || (dest != BCType::None && src != BCType::None))
-                    dest = BCType::Undefined;
-                else if (dest == BCType::None)
+                if (dest == BCType::None) {
                     dest = src;
-            }
-        }
+                } else if (dest == BCType::Undefined) {
+                    // Do nothing
+                } else {
+                    if (src == BCType::None) {
+                        // Do nothing
+                    } else if (src == BCType::Undefined) {
+                        dest = BCType::Undefined;
+                    } else if (src != dest) {
+                        MayDay::Warning("Mixing BCTypes");
+                    } else {
+                        // MayDay::Warning("Duplicating BCTypes");
+                    }
+                }
+            } // end loop over sides (sit)
+        } // end loop over directions (idir)
         return *this;
     }
 
@@ -212,6 +225,7 @@ public:
         if ((!a_domain.isPeriodic(a_dir)) &&
             (a_region.sideEnd(a_side)[a_dir] == a_domain.domainBox().sideEnd(a_side)[a_dir]))
             return m_bcdir[a_dir][a_side];
+
         return BCType::None;
     }
 

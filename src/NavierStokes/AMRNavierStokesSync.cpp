@@ -346,7 +346,7 @@ void AMRNavierStokes::doImplicitScalarReflux ()
     CH_assert(s_advective_scalar_reflux || s_diffusive_scalar_reflux);
     // CH_assert(s_nu > 0.0);
 
-    const bool considerCellVols = false;
+    const bool considerCellVols = true;
 
     // Find the coarsest level and collect its data
     AMRNavierStokes* thisNSPtr = this;
@@ -365,8 +365,8 @@ void AMRNavierStokes::doImplicitScalarReflux ()
     finest_level = thisNSPtr->m_level;
 
     // Create containers for diffusive solve
-    Vector<LevelData<FArrayBox>*> scalRefluxCorr(finest_level+1, NULL);
     Vector<LevelData<FArrayBox>*> scalRefluxRHS(finest_level+1, NULL);
+    Vector<LevelData<FArrayBox>*> scalRefluxCorr(finest_level+1, NULL);
 
     // Climb down levels and collect data. Collect everything down to m_level-1
     // if it exists. It will be used for setting BCs.
@@ -646,8 +646,8 @@ void AMRNavierStokes::doImplicitMomentumReflux (const Vector<LevelData<FArrayBox
         // RHS has no ghost cells
         // Soln will have one layer of ghost cells
         refluxRHS[lev] = new LevelData<FArrayBox>(levelGrids, 1);
-        tempRefluxData[lev] = new LevelData<FArrayBox>(levelGrids, SpaceDim);
         refluxCorr[lev] = new LevelData<FArrayBox>(levelGrids, 1, IntVect::Unit);
+        tempRefluxData[lev] = new LevelData<FArrayBox>(levelGrids, SpaceDim);
 
         // Initialize rhs to 0
         DataIterator levelDit = tempRefluxData[lev]->dataIterator();
@@ -1089,7 +1089,7 @@ void AMRNavierStokes::syncSingleGridDiagnostics()
     LevelData<FArrayBox>& vel = newVel();
 
     // Exchange ghosts
-    vel.exchange(m_oneGhostExCopier);
+    vel.exchange(m_copierCache.getOneGhostExCopier(vel.getBoxes()));
 
     // Set physical BC's
     VelBCHolder velBC(m_physBCPtr->uStarFuncBC(isViscous));

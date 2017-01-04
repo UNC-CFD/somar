@@ -36,6 +36,7 @@
 #include "MappedLevelFluxRegister.H"
 #include "CFRegion.H"
 #include "FluxBox.H"
+#include "CornerCopier.H"
 #include "GNUC_Extensions.H"
 class MappedAMRPoissonOpFactory;
 class RealVect;
@@ -464,6 +465,7 @@ protected:
     CFRegion                m_cfregion;
 
     Copier                  m_exchangeCopier;
+    CornerCopier            m_cornerCopier;
 
     MappedQuadCFInterp      m_interpWithCoarser;
 
@@ -575,7 +577,13 @@ void MappedAMRPoissonOp::create(LevelData<FArrayBox>&       a_lhs,
 void MappedAMRPoissonOp::assign(LevelData<FArrayBox>&       a_lhs,
                                 const LevelData<FArrayBox>& a_rhs)
 {
-    m_levelOps.assign(a_lhs, a_rhs);
+    if (a_lhs.getBoxes() == a_rhs.getBoxes()) {
+        for (DataIterator dit = a_lhs.dataIterator(); dit.ok(); ++dit) {
+            a_lhs[dit].copy(a_rhs[dit]);
+        }
+    } else {
+        m_levelOps.assign(a_lhs, a_rhs);
+    }
 }
 
 

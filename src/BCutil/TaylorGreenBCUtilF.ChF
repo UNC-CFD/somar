@@ -124,27 +124,24 @@ c ----------------------------------------------------------------
         offset(0) = half * (one-boxType(0));
         offset(1) = half * (one-boxType(1));
         offset(2) = half * (one-boxType(2))]
-        offset(dir) = one
       else
         CHF_DTERM[
         offset(0) = half * (one-boxType(0));
         offset(1) = half * (one-boxType(1));
         offset(2) = half * (one-boxType(2))]
-        offset(dir) = zero
       endif
 
       ncomp = CHF_NCOMP[state]
 
-      if (velDir .eq. dir) then
-        return
-      else if (velDir .eq. 0) then
+      if (velDir .eq. 0) then
         ! u comp
         if (dir .eq. 1) then
           do comp = 0, ncomp-1
             CHF_AUTOMULTIDO[ghostBox;i]
               x0 = (i0 + offset(0)) * dx(0) * k(0)
+              x1 = (i1 + offset(1)) * dx(1) * k(1)
               state(CHF_AUTOIX[i],comp) = state(CHF_AUTOIX[i],comp)
-     &                                  + two * sin(x0) * FofT
+     &                                  + two * sin(x0) * cos(x1) * FofT
             CHF_ENDDO
           enddo
         else
@@ -162,9 +159,10 @@ c ----------------------------------------------------------------
         if (dir .eq. 0) then
           do comp = 0, ncomp-1
             CHF_AUTOMULTIDO[ghostBox;i]
+              x0 = (i0 + offset(0)) * dx(0) * k(0)
               x1 = (i1 + offset(1)) * dx(1) * k(1)
               state(CHF_AUTOIX[i],comp) = state(CHF_AUTOIX[i],comp)
-     &                                  - two * sin(x1) * FofT
+     &                                  - two * cos(x0) * sin(x1) * FofT
             CHF_ENDDO
           enddo
         else
@@ -232,7 +230,8 @@ c ----------------------------------------------------------------
           do comp = 0, ncomp-1
             CHF_AUTOMULTIDO[faceBox;i]
               x0 = (i0 + offset(0)) * dx * k(0)
-              state(CHF_AUTOIX[i],comp) = sin(x0) * FofT
+              x1 = (i1 + offset(1)) * dx * k(1)
+              state(CHF_AUTOIX[i],comp) = sin(x0) * cos(x1) * FofT
             CHF_ENDDO
           enddo
         else
@@ -249,8 +248,9 @@ c ----------------------------------------------------------------
         if (dir .eq. 0) then
           do comp = 0, ncomp-1
             CHF_AUTOMULTIDO[faceBox;i]
+              x0 = (i0 + offset(0)) * dx * k(0)
               x1 = (i1 + offset(1)) * dx * k(1)
-              state(CHF_AUTOIX[i],comp) = -sin(x1) * FofT
+              state(CHF_AUTOIX[i],comp) = -cos(x0) * sin(x1) * FofT
             CHF_ENDDO
           enddo
         else
