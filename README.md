@@ -1,5 +1,4 @@
-The Stratified Ocean Model with Adaptive Refinement (SOMAR) v1.0 
-DOI:10.5281/zenodo.247741
+The Stratified Ocean Model with Adaptive Refinement (SOMAR) v1.0 DOI:10.5281/zenodo.247741
 =====
 
 Welcome to the SOMAR repository!
