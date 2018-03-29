@@ -1,9 +1,9 @@
-The Stratified Ocean Model with Adaptive Refinement (SOMAR) v1.0
+The Stratified Ocean Model with Adaptive Refinement (SOMAR) v1.0 DOI:10.5281/zenodo.247741
 =====
 
 Welcome to the SOMAR repository!
 
-SOMAR is [free software](https://www.gnu.org/licenses/lgpl-2.1.html 'The GNU Lesser General Public License, version 2.1 applies.') provided jointly by the [Marine Sciences](http://marine.unc.edu/ 'UNC Marine Sciences website') and [Physics](http://physics.unc.edu/ 'UNC Physics website') departments of the [University of North Carolina at Chapel Hill](http://unc.edu/ 'UNC at Chapel Hill website').
+SOMAR is [free software](https://www.gnu.org/licenses/lgpl-2.1.html 'The GNU Lesser General Public License, version 2.1 applies.') provided jointly by the [Marine Sciences](http://marine.unc.edu/ 'UNC Marine Sciences website') department of the [University of North Carolina at Chapel Hill](http://unc.edu/ 'UNC at Chapel Hill website') and [Philadelphia University](http://www.philau.edu/).
 
 
 Features
