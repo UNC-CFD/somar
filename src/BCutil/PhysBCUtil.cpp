@@ -821,17 +821,17 @@ Tuple<BCMethodHolder, SpaceDim> PhysBCUtil::viscousSourceFuncBC () const
 // -----------------------------------------------------------------------------
 BCMethodHolder PhysBCUtil::viscousSolveFuncBC (int a_dir) const
 {
-    // const bool isViscous = true;
-    // return this->basicVelFuncBC(a_dir, isViscous);
+    const bool isViscous = true;
+    return this->basicVelFuncBC(a_dir, isViscous);
 
-    int extrapOrder = 2; // 2 works best in TG test
-    RefCountedPtr<BCGhostClass> BCPtr(
-        new EllipticExtrapBCGhostClass(extrapOrder)
-    );
-    BCMethodHolder protoBC;
-    protoBC.addBCMethod(BCPtr);
+    // int extrapOrder = 2; // 2 works best in TG test
+    // RefCountedPtr<BCGhostClass> BCPtr(
+    //     new EllipticExtrapBCGhostClass(extrapOrder)
+    // );
+    // BCMethodHolder protoBC;
+    // protoBC.addBCMethod(BCPtr);
 
-    return protoBC;
+    // return protoBC;
 }
 
 
